@@ -55,18 +55,18 @@ func main() {
 		//{body: "(no parse"},
 	}
 	if err := parseAll(snippets); err != nil {
-		fmt.Fprintf(os.Stderr,"smsh: snippets didn't parse: %v\n", err)
+		fmt.Fprintf(os.Stderr, "smsh: snippets didn't parse: %v\n", err)
 		os.Exit(4)
 	}
 	if err := runAll(snippets); err != nil {
-		fmt.Fprintf(os.Stderr,"%s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(9)
 	}
 }
 
 type snippet struct {
-	name string
-	body string
+	name   string
+	body   string
 	parsed *syntax.File
 }
 
