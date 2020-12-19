@@ -1,0 +1,12 @@
+[submodule ".gopath/src/golang.org/x/term"]
+	path = .gopath/src/golang.org/x/term
+	url = https://go.googlesource.com/term
+[submodule ".gopath/src/golang.org/x/sync"]
+	path = .gopath/src/golang.org/x/sync
+	url = https://go.googlesource.com/sync
+[submodule ".gopath/src/golang.org/x/sys"]
+	path = .gopath/src/golang.org/x/sys
+	url = https://go.googlesource.com/sys
+[submodule ".gopath/src/mvdan.cc/sh/v3"]
+	path = .gopath/src/mvdan.cc/sh/v3
+	url = https://github.com/mvdan/sh
