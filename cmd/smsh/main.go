@@ -50,7 +50,10 @@ func main() {
 		fmt.Fprintf(os.Stderr,"smsh: snippets didn't parse: %v\n", err)
 		os.Exit(4)
 	}
-	runAll(snippets)
+	if err := runAll(snippets); err != nil {
+		fmt.Fprintf(os.Stderr,err.Error())
+		os.Exit(9)
+	}
 }
 
 type snippet struct {
@@ -85,7 +88,7 @@ func runAll(snippets []snippet) error {
 		ctx := context.Background()
 		err := r.Run(ctx, snip.parsed)
 		if err != nil {
-			return fmt.Errorf("smsh: error while processing %d'th command (%q): %w", i, snip, err)
+			return fmt.Errorf("smsh: error while processing %d'th command (%q): %w", i, snip.body, err)
 		}
 	}
 	return nil
