@@ -16,3 +16,6 @@
 [submodule ".gopath/src/github.com/cpuguy83/go-md2man"]
 	path = .gopath/src/github.com/cpuguy83/go-md2man
 	url = https://github.com/cpuguy83/go-md2man
+[submodule ".gopath/src/github.com/u-root/u-root"]
+	path = .gopath/src/github.com/u-root/u-root
+	url = https://github.com/u-root/u-root
