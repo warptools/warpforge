@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -34,10 +35,15 @@ import (
 	so you can run sequences of commands in smsh and still pipe the output and expect it to be processable normally
 	(presuming the commands you're running create processable stdout streams in the first place, anyway).
 
+	Beware there's no readline-like features such as up-arrow-for-last-command available in interactive mode.
+	There is also no support for customization of the prompt via "PS*" variables.
+	Sorry.
+
 	// the following is still TODO:
 
 	Some flags can change behavior modes (dramatically).
 
+		--interactiveerror     # this tells smsh to stay open and switch to interactive mode instead of exiting in case of an execution error.
 		--control=/dev/fd/3    # this tells smsh to expect a controller to speak to it over smsh's fd 3.
 		--snippet=/do/this     # this tells smsh to read a snippet from a file.  Can be used repeatedly.
 
@@ -96,8 +102,38 @@ func runAll(snippets []snippet) error {
 		ctx := context.Background()
 		err := r.Run(ctx, snip.parsed)
 		if err != nil {
-			return fmt.Errorf("smsh: error while processing %d'th command (%q): %w", i, snip.body, err)
+			err = fmt.Errorf("smsh: error while processing %d'th command (%q): %w", i, snip.body, err)
+			// fixme: figure out how to abstract this properly so this error doesn't need handling in weirdly divergent ways depending on mode.
+			// fixme: actually get the critical mode flag down here
+			if true {
+				return runInteractive(r, os.Stdin, os.Stdout, os.Stderr)
+			}
 		}
 	}
 	return nil
+}
+
+func runInteractive(r *interp.Runner, stdin io.Reader, stdout, stderr io.Writer) error {
+	parser := syntax.NewParser()
+	fmt.Fprintf(stdout, "$ ")
+	var runErr error
+	fn := func(stmts []*syntax.Stmt) bool {
+		if parser.Incomplete() {
+			fmt.Fprintf(stdout, "> ")
+			return true
+		}
+		ctx := context.Background()
+		for _, stmt := range stmts {
+			runErr = r.Run(ctx, stmt)
+			if r.Exited() {
+				return false
+			}
+		}
+		fmt.Fprintf(stdout, "$ ")
+		return true
+	}
+	if err := parser.Interactive(stdin, fn); err != nil {
+		return err
+	}
+	return runErr
 }
