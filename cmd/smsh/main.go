@@ -26,6 +26,14 @@ import (
 	(despite the fast-exit behavior _between_ each snippet).
 	Not all bash features are supported, but most are: see https://github.com/mvdan/sh for details.
 
+	A short human-readable header will be inserted in the output stream (on stderr) before each script snippet is evaluated.
+	(This should not be relied on for parsing, since it mangles together the control plane and data plane;
+	use other mode arguments to get safe machine-processable information.)
+
+	Anything smsh says will be on stderr (as opposed to stdout),
+	so you can run sequences of commands in smsh and still pipe the output and expect it to be processable normally
+	(presuming the commands you're running create processable stdout streams in the first place, anyway).
+
 	// the following is still TODO:
 
 	Some flags can change behavior modes (dramatically).
@@ -51,7 +59,7 @@ func main() {
 		os.Exit(4)
 	}
 	if err := runAll(snippets); err != nil {
-		fmt.Fprintf(os.Stderr,err.Error())
+		fmt.Fprintf(os.Stderr,"%s\n", err.Error())
 		os.Exit(9)
 	}
 }
@@ -83,7 +91,7 @@ func runAll(snippets []snippet) error {
 		return fmt.Errorf("smsh: failed to initialize interpreter: %w", err)
 	}
 	for i, snip := range snippets {
-		fmt.Fprintf(os.Stdout, "smsh>cmd%d>>\n", i)
+		fmt.Fprintf(os.Stderr, "\033[35m>>smsh>script%d>>\033[0m\n", i)
 		r.Reset()
 		ctx := context.Background()
 		err := r.Run(ctx, snip.parsed)
