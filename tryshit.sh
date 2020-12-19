@@ -1,13 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 
+export GOPATH=$PWD/.gopath/
+export CGO_ENABLED=0
+
 mkdir -p bin
 go build -o bin/quack ./cmd/quack/*
-GOPATH=$PWD/.gopath/ CGO_ENABLED=0 go build -o bin/smsh ./cmd/smsh/*
+go build -o bin/smsh ./cmd/smsh/*
 >&2 echo ":: go built"
 
+go install github.com/u-root/u-root
+rm -rf /tmp/initramfs.linux_amd64.cpio # i can't figure out how to change this
+bin/u-root -base=/dev/null -build=bb -format=dir --initcmd="" --defaultsh=""
+>&2 echo ":: u-root built"
+
+rm -rf rootfs
 mkdir -p rootfs/bin
-cp -a bin/* rootfs/bin
+cp -a bin/{quack,smsh} rootfs/bin
+cp -a /tmp/initramfs.linux_amd64.cpio/bbin/* rootfs/bin
 >&2 echo ":: rootfs prepped"
 
 rm config.json
