@@ -45,6 +45,7 @@ bits that sorta don't fit good (...for this exact usecase)
 - is... just too clever for me, essentially.  it's cool, but it's too much.
 	- it's being very active as i type.  recoloring things, trying to give lots of hints... it's cool but, eh.
 	- i'm very nervous around overly clever interactive things and passing it through effectively and without flapping noises in containment contexts.  (even if it works, if we want to replay the logs of it, it's... noise.)
+- tries to open lots of files and spray lots of state by default.  dislike.  and doesn't play well on a read-only filesystem, which we will often have.
 - **it's not doing $PATH in any way that i recognize**, which is a showshopper.
 	- "Compilation error: variable $PATH not found" excuse me you what
 
@@ -63,17 +64,33 @@ will probably replace this with something based on `github.com/mvdan/sh`.
 
 - *another* another shell.
 
-### sha aliases
-
-- there aren't as many of them as i might expect.  there's a 'shasum' but not 'sha256sum' or friends.  I see these used in scripts a fair amount so this is unfortunate.
-	- otoh, since we're working on a project that's trying to shift the hashing out into something you rely on the toolchain to consistently do for you, surely the impact of this should be minimal.
-
 ### unshare
 
 - it's cool that they made a small gadget for this
 - it hardcodes the default shell to elvish, heh
 
 
+missing bits
+------------
+
+### env
+
+- there's no env command?  that's... kinda a big one.
+- no `whoami`, either, while we're at it.
+
+### sha aliases
+
+- there aren't as many of them as i might expect.  there's a 'shasum' but not 'sha256sum' or friends.  I see these used in scripts a fair amount so this is unfortunate.
+	- otoh, since we're working on a project that's trying to shift the hashing out into something you rely on the toolchain to consistently do for you, surely the impact of this should be minimal.
+
+
+cool things that need more consideration
+----------------------------------------
+
+### sshd
+
+- there's literally an sshd in here.
+- i don't know if that's entirely a good thing for many container usecases, and certainly not for reproducibility things, but it's interesting.
 
 
 i should file a couple issues
