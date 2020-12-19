@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -18,6 +17,7 @@ import (
 
 	smsh executes a series of script "snippets" of a bash-like syntax.
 	Each snippet must parse cleanly on its own.
+	(All parsing is done before execution begins.  Nothing will be executed if _any_ snippets have a parse error.)
 	Each snippet will be executed in sequence.
 	Any snippet exiting non-zero will cause work to stop; no subsequent snippets will be evaluated.
 
@@ -38,37 +38,55 @@ import (
 */
 
 func main() {
-	snippets := []string{
-		"ls",
-		"ps",
-		"unknowncommand; echo no problem",
-		"unknowncommand; isaproblem",
-		"echo unreached",
+	snippets := []snippet{
+		{body: "ls"},
+		{body: "ps"},
+		{body: "unknowncommand; echo no problem"},
+		{body: "unknowncommand; isaproblem"},
+		{body: "echo unreached"},
+		//{body: "(no parse"},
+	}
+	if err := parseAll(snippets); err != nil {
+		fmt.Fprintf(os.Stderr,"smsh: snippets didn't parse: %v\n", err)
+		os.Exit(4)
 	}
 	runAll(snippets)
 }
 
-func runAll(snippets []string) error {
+type snippet struct {
+	name string
+	body string
+	parsed *syntax.File
+}
+
+func (snip *snippet) Parse() (err error) {
+	snip.parsed, err = syntax.NewParser().Parse(strings.NewReader(snip.body), snip.name)
+	return
+}
+
+func parseAll(snippets []snippet) error {
+	// todo: i'd love for this to return an aggregated list of errors, rather than just the first one.  does the golang community have a widely accepted standard for that yet?
+	for i := range snippets {
+		if err := snippets[i].Parse(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runAll(snippets []snippet) error {
 	r, err := interp.New(interp.StdIO(os.Stdin, os.Stdout, os.Stderr))
 	if err != nil {
 		return fmt.Errorf("smsh: failed to initialize interpreter: %w", err)
 	}
 	for i, snip := range snippets {
 		fmt.Fprintf(os.Stdout, "smsh>cmd%d>>\n", i)
-		err := run(r, strings.NewReader(snip), fmt.Sprintf("cmd%d", i))
+		r.Reset()
+		ctx := context.Background()
+		err := r.Run(ctx, snip.parsed)
 		if err != nil {
 			return fmt.Errorf("smsh: error while processing %d'th command (%q): %w", i, snip, err)
 		}
 	}
 	return nil
-}
-
-func run(r *interp.Runner, reader io.Reader, name string) error {
-	prog, err := syntax.NewParser().Parse(reader, name)
-	if err != nil {
-		return err
-	}
-	r.Reset()
-	ctx := context.Background()
-	return r.Run(ctx, prog)
 }
