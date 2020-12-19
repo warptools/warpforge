@@ -13,7 +13,7 @@ cp -a bin/* rootfs/bin
 rm config.json
 ./runc spec --rootless
 #sed -i 's#"sh"#"/bin/quack", "in containment"#' config.json
-sed -i 's#"sh"#"/bin/smsh", "--", "ls", "interactive"#' config.json
+sed -i 's#"sh"#"/bin/smsh", "--", "ls", "export ECHOME=heyy; export METOO=heyyyy", "interactive"#' config.json
 >&2 echo ":: runc config built"
 
 ./runc run --pid-file pid.pid yolo

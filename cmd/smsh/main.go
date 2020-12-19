@@ -112,7 +112,7 @@ func runAll(snippets []snippet) error {
 	}
 	for i, snip := range snippets {
 		fmt.Fprintf(os.Stderr, "\033[35m>>smsh>script%d>>\033[0m\n", i)
-		r.Reset()
+		//r.Reset() // don't, actually.  we want variables and stuff to carry between scriptlets.
 		ctx := context.Background()
 		err := r.Run(ctx, snip.parsed)
 		if err != nil {
