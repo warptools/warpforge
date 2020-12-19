@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+git submodule update --init
+
 export GOPATH=$PWD/.gopath/
 export CGO_ENABLED=0
 
