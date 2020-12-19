@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	cli "github.com/urfave/cli/v2"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -52,22 +53,35 @@ import (
 */
 
 func main() {
-	snippets := []snippet{
-		{body: "ls"},
-		{body: "ps"},
-		{body: "unknowncommand; echo no problem"},
-		{body: "unknowncommand; isaproblem"},
-		{body: "echo unreached"},
-		//{body: "(no parse"},
+	app := &cli.App{
+		Name: "smsh",
+		Action: func(args *cli.Context) error {
+			snippets := make([]snippet, args.Args().Len())
+			for _, arg := range args.Args().Slice() {
+				snippets = append(snippets, snippet{body: arg})
+			}
+			if err := parseAll(snippets); err != nil {
+				return cli.Exit(fmt.Errorf("snippets didn't parse: %v\n", err), 4)
+			}
+			if err := runAll(snippets); err != nil {
+				return cli.Exit(fmt.Errorf("%s\n", err.Error()), 9)
+			}
+			return nil
+		},
 	}
-	if err := parseAll(snippets); err != nil {
-		fmt.Fprintf(os.Stderr, "smsh: snippets didn't parse: %v\n", err)
-		os.Exit(4)
+
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "smsh: error: %s\n", err)
 	}
-	if err := runAll(snippets); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-		os.Exit(9)
-	}
+
+	//snippets := []snippet{
+	//	{body: "ls"},
+	//	{body: "ps"},
+	//	{body: "unknowncommand; echo no problem"},
+	//	{body: "unknowncommand; isaproblem"},
+	//	{body: "echo unreached"},
+	//	//{body: "(no parse"},
+	//}
 }
 
 type snippet struct {

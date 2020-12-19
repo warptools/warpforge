@@ -10,3 +10,9 @@
 [submodule ".gopath/src/mvdan.cc/sh/v3"]
 	path = .gopath/src/mvdan.cc/sh/v3
 	url = https://github.com/mvdan/sh
+[submodule ".gopath/src/github.com/urfave/cli/v2"]
+	path = .gopath/src/github.com/urfave/cli/v2
+	url = https://github.com/urfave/cli
+[submodule ".gopath/src/github.com/cpuguy83/go-md2man"]
+	path = .gopath/src/github.com/cpuguy83/go-md2man
+	url = https://github.com/cpuguy83/go-md2man
