@@ -58,3 +58,6 @@
 [submodule ".gopath/src/golang.org/x/crypto"]
 	path = .gopath/src/golang.org/x/crypto
 	url = https://go.googlesource.com/crypto
+[submodule ".gopath/src/github.com/cyphar/filepath-securejoin"]
+	path = .gopath/src/github.com/cyphar/filepath-securejoin
+	url = https://github.com/cyphar/filepath-securejoin
