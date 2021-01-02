@@ -23,12 +23,12 @@ cp -a /tmp/initramfs.linux_amd64.cpio/bbin/* rootfs/bin
 >&2 echo ":: rootfs prepped"
 
 rm config.json
-./runc spec --rootless
+./plugins/runc spec --rootless
 #sed -i 's#"sh"#"/bin/quack", "in containment"#' config.json
 sed -i 's#"sh"#"/bin/smsh", "--", "ls", "export ECHOME=heyy; export METOO=heyyyy", "interactive"#' config.json
 >&2 echo ":: runc config built"
 
-./runc run --pid-file pid.pid yolo
+./plugins/runc run --pid-file pid.pid yolo
 >&2 echo ":: done"
 
 
