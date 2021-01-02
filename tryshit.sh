@@ -23,7 +23,7 @@ cp -a bin/{quack,smsh} rootfs/bin
 cp -a /tmp/initramfs.linux_amd64.cpio/bbin/* rootfs/bin
 >&2 echo ":: rootfs prepped"
 
-rm config.json
+rm -f config.json
 ./plugins/runc spec --rootless
 #sed -i 's#"sh"#"/bin/quack", "in containment"#' config.json
 sed -i 's#"sh"#"/bin/smsh", "--", "ls", "export ECHOME=heyy; export METOO=heyyyy", "interactive"#' config.json
