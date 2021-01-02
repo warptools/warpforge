@@ -41,11 +41,24 @@ There are two major paths that could be taken:
 		- This is rarely true.  People expect to "export FOO=bar" and accumulate effects in environment, too.
 	- Could we extract env vars from the zombie of the shell process after it exits?
 		- Maybe.  But this is fairly complicated.
-	- Could we persist any other shell state this way?  Say, "set -euo pipefail"?
+	- Could we persist any other shell state this way?  Say, "set -euo pipefail"?  Any shell functions created?  Etc?
 		- No.
+	- Even the working dir?
+		- Maybe.  But this is fairly complicated.  I think you'd have to go looking for the tombstones from the child process and inspecting them.  This is inconvenient at best, and not even necessarily possible if some other process reaps them (and I think there are such racing reapers in play around here).
 2. Run one shell process, feeding commands to it (carefully).
 	- The "feed carefully" part is still tricky.  If we want per-script-step error detection and halt with reporting, we have to go one step at a time.
 		- Not all shells are good at this.  For example: bash doesn't make this possible at all, as far as I can tell -- the entire [using-bash.md] file for more details on this.
 	- Getting feedback about exactly what command failed is tricky.
 		- For example: bash's "-x" flag (and mode, equivalently) is useless, because it mixes data plane and control plane.
 			- See the entire [using-bash.md] file for more details on this and other problems.
+
+So what're we going to do?
+
+Option 2... plus... make our own darn shell.
+
+It's an aggressive tactic, but it's the only one that meets the goals with any reliability.
+
+We could also pursue spawning a new container with the same filesystem setup as a debug fallback.
+This would work even when someone has a job that doesn't want to launch with our shell.
+However, given the relative ease with which we've prototyped our shell approach,
+we might actually shunt this into "PR's welcome" territory.

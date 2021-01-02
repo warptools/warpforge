@@ -1,5 +1,11 @@
 package main
 
+import (
+	"os"
+
+	"github.com/warpfork/warpforge/forge/executor/runc"
+)
+
 /*
 	At least three major modes of operation:
 
@@ -26,6 +32,7 @@ package main
 		- keeps your uid the same inside the container
 		- network on by default (no namespace at all)
 		- remounts your working directory read-write (only this)
+			- or maybe we do an overlayfs on this by default.  "fuck around and find out" followed rapidly by "cancel" is good.
 		- makes a ramdisk for /tmp
 		- flags for creating a temporary user home dir that's writable
 
@@ -34,12 +41,40 @@ package main
 		- cwd initialized to `/quicktask` which is a ramdisk.
 		- host mounted read-only in `/host` by default.
 		- original host cwd mounted writeable in `/hostcwd` by default.
+			- or maybe we do an overlayfs on this by default.  "fuck around and find out" followed rapidly by "cancel" is good.
 
 	interesting to note that we might make use of default run mode and a bunch of impure imports for bootstrapping purposes.
 	the real hermetic release build will then simply be the same, but re-templated with inputs values to be content-addressed stuff.
 	very elegant; and the use of mounts in the bootstrap will make development much more rapid as well as bootstrap more maintainable.
- */
+*/
 
 func main() {
-
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	runc.ExecutorConfig{
+		OverlayDir: "/tmp/overlay",
+	}.Asdf(runc.ExecutorSpec{
+		Name: "fwee",
+		Cmd:  []string{"/bin/bash"},
+		// The following is angling in the direction of "quickrun":
+		Mounts: []runc.ExecutorMount{
+			{
+				Dest:   "/",
+				Source: "/",
+				Mode:   runc.MountMode_ReadOnly,
+			},
+			{
+				Dest: "/tmp",
+				Mode: runc.MountMode_Tmp,
+			},
+			{
+				Dest:   cwd,
+				Source: cwd,
+				Mode:   runc.MountMode_Overlay,
+			},
+		},
+		Cwd: cwd,
+	})
 }

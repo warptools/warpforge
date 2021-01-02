@@ -1,0 +1,180 @@
+{
+	"ociVersion": "1.0.2-dev",
+	"process": {
+		"terminal": true,
+		"user": {
+			"uid": 0,
+			"gid": 0
+		},
+		"args": [
+			"/bin/bash"
+		],
+		"env": [
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		],
+		"cwd": "/",
+		"capabilities": {
+			"bounding":    ["CAP_SYS_ADMIN"],
+			"effective":   ["CAP_SYS_ADMIN"],
+			"inheritable": ["CAP_SYS_ADMIN"],
+			"permitted":   ["CAP_SYS_ADMIN"],
+			"ambient":     ["CAP_SYS_ADMIN"]
+		},
+		"rlimits": [
+			{
+				"type": "RLIMIT_NOFILE",
+				"hard": 1024,
+				"soft": 1024
+			}
+		],
+		"noNewPrivileges": true
+	},
+	"root": {
+		"path": "rootfs"
+	},
+	"mounts": [
+		{
+			"destination": "/",
+			"type": "none",
+			"source": "/",
+			"options": [
+				"rbind",
+				"nosuid",
+				"nodev",
+				"ro"
+			]
+		},
+		{
+			"destination": "/tmp",
+			"type": "none",
+			"source": "/tmp",
+			"options": [
+				"rbind"
+			]
+		},
+		{
+			"destination": "/tmp/overlaytest",
+			"type": "overlay",
+			"source": "/tmp/overlay",
+			"options": [
+				"lowerdir=/tmp/overlay/lower",
+				"upperdir=/tmp/overlay/upper",
+				"workdir=/tmp/overlay/work"
+			]
+		},		
+		{
+			"destination": "/proc",
+			"type": "proc",
+			"source": "proc"
+		},
+		{
+			"destination": "/dev",
+			"type": "tmpfs",
+			"source": "tmpfs",
+			"options": [
+				"nosuid",
+				"strictatime",
+				"mode=755",
+				"size=65536k"
+			]
+		},
+		{
+			"destination": "/dev/pts",
+			"type": "devpts",
+			"source": "devpts",
+			"options": [
+				"nosuid",
+				"noexec",
+				"newinstance",
+				"ptmxmode=0666",
+				"mode=0620"
+			]
+		},
+		{
+			"destination": "/dev/shm",
+			"type": "tmpfs",
+			"source": "shm",
+			"options": [
+				"nosuid",
+				"noexec",
+				"nodev",
+				"mode=1777",
+				"size=65536k"
+			]
+		},
+		{
+			"destination": "/dev/mqueue",
+			"type": "mqueue",
+			"source": "mqueue",
+			"options": [
+				"nosuid",
+				"noexec",
+				"nodev"
+			]
+		},
+		{
+			"destination": "/sys",
+			"type": "none",
+			"source": "/sys",
+			"options": [
+				"rbind",
+				"nosuid",
+				"noexec",
+				"nodev",
+				"ro"
+			]
+		}
+	],
+	"linux": {
+		"uidMappings": [
+			{
+				"containerID": 0,
+				"hostID": 7000,
+				"size": 1
+			}
+		],
+		"gidMappings": [
+			{
+				"containerID": 0,
+				"hostID": 7000,
+				"size": 1
+			}
+		],
+		"namespaces": [
+			{
+				"type": "pid"
+			},
+			{
+				"type": "ipc"
+			},
+			{
+				"type": "uts"
+			},
+			{
+				"type": "mount"
+			},
+			{
+				"type": "user"
+			}
+		],
+		"maskedPaths": [
+			"/proc/acpi",
+			"/proc/asound",
+			"/proc/kcore",
+			"/proc/keys",
+			"/proc/latency_stats",
+			"/proc/timer_list",
+			"/proc/timer_stats",
+			"/proc/sched_debug",
+			"/sys/firmware",
+			"/proc/scsi"
+		],
+		"readonlyPaths": [
+			"/proc/bus",
+			"/proc/fs",
+			"/proc/irq",
+			"/proc/sys",
+			"/proc/sysrq-trigger"
+		]
+	}
+}
