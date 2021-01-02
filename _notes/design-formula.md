@@ -61,6 +61,7 @@ in and out
 	- "dir:(ro|rw)"
 		- optional: posix bits // why would anyone want these if we're stuck with one uid+gid ?  even if we have several, in a container environment,... who cares?
 	- technically also hermetic
+	- this could be something where someone wants to express a tmpfs preference... but, I think that should probably be adjunct config somehow; how much one is willing to spend RAM for speed is a host choice, not a correctness thing.
 - file literals
 	- "file:{literal text}"
 		- optional: posix bits // why would anyone want these if we're stuck with one uid+gid ?  even if we have several, in a container environment,... who cares?
