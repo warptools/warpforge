@@ -5,6 +5,7 @@ git submodule update --init
 
 export GOPATH=$PWD/.gopath/
 export CGO_ENABLED=0
+export GOBIN=$PWD/bin/
 
 mkdir -p bin
 go build -o bin/quack ./cmd/quack/*
