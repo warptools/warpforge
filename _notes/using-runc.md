@@ -65,3 +65,20 @@ These last two issues aren't things that can be easily avoided by changing or li
 
 There are overlay implementations in fuse, I understand, but this adds more dependencies, and also has a performance overhead.
 Perhaps we can use that when necessary; hopefully it's fairly drop-in and transparent in the occasions when its needed.
+
+### user namespaces
+
+... are disabled by default on most distros.  Which means no joy for rootless containers, full stop.
+First let's talk about detecting that; they talk about fixing it.
+
+Many host environments will have an `unshare` command which we can use to quickly test this:
+Try running `unshare --user sh`.
+If that errors with something about "operation not permitted",
+then your kernel doesn't have user namespaces enabled, and we won't be able to run rootless containers.
+
+There are several ways to address this, but they may vary based on your distro/kernel/etc, so these are things you can try:
+
+- `sudo sysctl -w kernel.unprivileged_userns_clone=1`
+- ?
+- Try this forum for more information and options:
+  https://superuser.com/questions/1094597/enable-user-namespaces-in-debian-kernel
