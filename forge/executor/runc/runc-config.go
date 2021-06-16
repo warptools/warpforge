@@ -113,7 +113,7 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 					//  We'll mark it readonly with a separate mechanism later.
 					fallthrough
 				case MountMode_Overlay:
-					assembleOciMountInfo(la.AssembleValue(),
+					assembleOciMountInfo(la.AssembleValue(), &err,
 						mnt.Dest,
 						"overlay",
 						"none",
@@ -124,7 +124,7 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 						},
 					)
 				case MountMode_Writable:
-					assembleOciMountInfo(la.AssembleValue(),
+					assembleOciMountInfo(la.AssembleValue(), &err,
 						mnt.Dest,
 						"none",
 						mnt.Source,
@@ -133,6 +133,9 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 						},
 					)
 				}
+			}
+			if err != nil {
+				panic(err)
 			}
 
 			// Next: all the magics.
@@ -145,7 +148,7 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 				}
 				switch mnt.Mode {
 				case MountMode_ReadOnly:
-					assembleOciMountInfo(la.AssembleValue(),
+					assembleOciMountInfo(la.AssembleValue(), &err,
 						mnt.Dest,
 						"none",
 						mnt.Source,
@@ -155,7 +158,7 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 						},
 					)
 				case MountMode_Overlay:
-					assembleOciMountInfo(la.AssembleValue(),
+					assembleOciMountInfo(la.AssembleValue(), &err,
 						mnt.Dest,
 						"overlay",
 						"none",
@@ -166,7 +169,7 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 						},
 					)
 				case MountMode_Writable:
-					assembleOciMountInfo(la.AssembleValue(),
+					assembleOciMountInfo(la.AssembleValue(), &err,
 						mnt.Dest,
 						"none",
 						mnt.Source,
@@ -232,15 +235,15 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 	}
 }
 
-func assembleOciMountInfo(na ipld.NodeAssembler, destination string, typ string, source string, options []string) (err error) {
-	quip.AssembleMap(&err, na, 4, func(ma ipld.MapAssembler) {
-		quip.AssignMapEntryString(&err, ma, "destination", destination)
-		quip.AssignMapEntryString(&err, ma, "type", typ)
-		quip.AssignMapEntryString(&err, ma, "source", source)
-		quip.AssignMapEntry(&err, ma, "options", func(va ipld.NodeAssembler) {
-			quip.AssembleList(&err, va, int64(len(options)), func(la ipld.ListAssembler) {
+func assembleOciMountInfo(na ipld.NodeAssembler, errCollect *error, destination string, typ string, source string, options []string) {
+	quip.AssembleMap(errCollect, na, 4, func(ma ipld.MapAssembler) {
+		quip.AssignMapEntryString(errCollect, ma, "destination", destination)
+		quip.AssignMapEntryString(errCollect, ma, "type", typ)
+		quip.AssignMapEntryString(errCollect, ma, "source", source)
+		quip.AssembleMapEntry(errCollect, ma, "options", func(va ipld.NodeAssembler) {
+			quip.AssembleList(errCollect, va, int64(len(options)), func(la ipld.ListAssembler) {
 				for i := range options {
-					quip.AssignListEntryString(&err, la, options[i])
+					quip.AssignListEntryString(errCollect, la, options[i])
 				}
 			})
 		})
