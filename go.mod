@@ -1,6 +1,6 @@
 module github.com/warpfork/warpforge
 
-go 1.15
+go 1.16
 
 require (
 	github.com/cyphar/filepath-securejoin v0.2.2
