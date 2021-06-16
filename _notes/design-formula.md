@@ -3,6 +3,12 @@ designing formulas
 
 Formulas are one of the main API surfaces of warpforge.
 
+:::info
+Seealso the "docs-formulas.md" file, which is a little more declarative about where we're at.
+
+This file is notes about the thinking behind the scenes and contains considerations moreso than decisions.
+:::
+
 - Formulas describe inputs to a process, the process, and the outputs to collect from the process.
 - Formulas are designed primarily to describe hermetic processes...
 	- but also have a couple points where they can also describe non-hermetic data interactions (mainly for debugging and development convenience).
@@ -124,7 +130,7 @@ But okay: resolution on this for now then:
 	- ...? is there any use to this?
 		- if you're building a pipeline that wants to build reports on its own possibly-partial successes, you should have it make report files and pass them around.
 			- you'll have a better time with this in general, because there's no control-plane-and-data-plane-mixing problems, as exit codes *always* fall prey to due to their limited range.
-			- use a non-zero exit from your container only for cataclysmic failings that mean future computations shouldn't even try.  think of it like panicking vs error returns. 
+			- use a non-zero exit from your container only for cataclysmic failings that mean future computations shouldn't even try.  think of it like panicking vs error returns.
 - env vars
 	- ...? is there much practical use to this?
 - objects
