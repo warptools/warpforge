@@ -85,7 +85,7 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 		// the overlay still gives runc a place to work, in a way that might otherwise be problematic if we had mounted something right at the root.
 		//
 		nb := basicnode.Prototype.List.NewBuilder()
-		quip.BuildList(&err, nb, -1, func(la ipld.ListAssembler) {
+		quip.AssembleList(&err, nb, -1, func(la ipld.ListAssembler) {
 			// First: the rootfs itself is a special case.
 			//  We want to default things to being read-only.  Runc has a flag which will do that... *as long as* you don't have a mount targeting here yourself.
 			//  If we do have a mount targeting here: in many cases *must* be an overlay, even if the end result is going to be read-only, because dirs often need to be made for other mounts to land on, and those have to go somewhere!
@@ -226,29 +226,21 @@ func (cfg ExecutorConfig) Asdf(spec ExecutorSpec) {
 	}
 
 	// Emit.  (To stderr, for the moment.  Placeholder.)
-	err = dagjson.Encoder(n, os.Stderr)
+	err = dagjson.Encode(n, os.Stderr)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func assembleOciMountInfo(na ipld.NodeAssembler, destination string, typ string, source string, options []string) (err error) {
-	quip.BuildMap(&err, na, 4, func(ma ipld.MapAssembler) {
-		quip.MapEntry(&err, ma, "destination", func(va ipld.NodeAssembler) {
-			quip.AbsorbError(&err, va.AssignString(destination))
-		})
-		quip.MapEntry(&err, ma, "type", func(va ipld.NodeAssembler) {
-			quip.AbsorbError(&err, va.AssignString(typ))
-		})
-		quip.MapEntry(&err, ma, "source", func(va ipld.NodeAssembler) {
-			quip.AbsorbError(&err, va.AssignString(source))
-		})
-		quip.MapEntry(&err, ma, "options", func(va ipld.NodeAssembler) {
-			quip.BuildList(&err, va, int64(len(options)), func(la ipld.ListAssembler) {
+	quip.AssembleMap(&err, na, 4, func(ma ipld.MapAssembler) {
+		quip.AssignMapEntryString(&err, ma, "destination", destination)
+		quip.AssignMapEntryString(&err, ma, "type", typ)
+		quip.AssignMapEntryString(&err, ma, "source", source)
+		quip.AssignMapEntry(&err, ma, "options", func(va ipld.NodeAssembler) {
+			quip.AssembleList(&err, va, int64(len(options)), func(la ipld.ListAssembler) {
 				for i := range options {
-					quip.ListEntry(&err, la, func(va ipld.NodeAssembler) {
-						quip.AbsorbError(&err, va.AssignString(options[i]))
-					})
+					quip.AssignListEntryString(&err, la, options[i])
 				}
 			})
 		})
@@ -266,7 +258,7 @@ func (cfg ExecutorConfig) DirForOverlay(jobName, mountName string) string {
 
 func mustParse(json string) ipld.Node {
 	nb := basicnode.Prototype.Any.NewBuilder()
-	err := dagjson.Decoder(nb, strings.NewReader(json))
+	err := dagjson.Decode(nb, strings.NewReader(json))
 	if err != nil {
 		panic(err)
 	}
