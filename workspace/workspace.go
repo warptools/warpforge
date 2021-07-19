@@ -21,9 +21,11 @@ type Workspace struct {
 // Consider using FindWorkspace or FindWorkspaceStack in most application code.
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, *wfapi.Error) {
+func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
 	f, err := fsys.Open(filepath.Join(rootPath, magicWorkspaceDirname))
-	f.Close()
+	if f != nil {
+		f.Close()
+	}
 	if err != nil {
 		return nil, wfapi.ErrorWorkspace(rootPath, err)
 	}

@@ -16,14 +16,20 @@ const (
 var homedir string
 
 func init() {
-	if homedir != "" {
-		return
-	}
 	var err error
+	// Assign homedir.
+	//  Somewhat complicated by the fact we non-rooted paths internally for consistency
+	//   (which is in turn driven largely by stdlib's `testing/testfs` not supporting them).
 	homedir, err = os.UserHomeDir()
 	homedir = filepath.Clean(homedir)
 	if err != nil {
 		wfapi.TerminalError(wfapi.ErrorSearchingFilesystem("homedir", err), 9)
+	}
+	if homedir == "" {
+		homedir = "home" // dummy, just to avoid the irritant of empty strings.
+	}
+	if homedir[0] == '/' { // de-rootify this, for ease of comparison with other derootified paths.
+		homedir = homedir[1:]
 	}
 }
 
@@ -40,7 +46,7 @@ func init() {
 // returning nils in the same way as if no workspace was found.
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, remainingSearchPath string, err *wfapi.Error) {
+func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, remainingSearchPath string, err wfapi.Error) {
 	// Our search loops over searchPath, popping a path segment off at the end of every round.
 	//  Keep the given searchPath in hand; we might need it for an error report.
 	searchAt := searchPath
@@ -48,7 +54,9 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 		// Assume the search path exists and is a dir (we'll get a reasonable error anyway if it's not);
 		//  join that path with our search target and try to open it.
 		f, err := fsys.Open(filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
-		f.Close()
+		if f != nil {
+			f.Close()
+		}
 		if err == nil { // no error?  Found it!
 			ws := openWorkspace(fsys, filepath.Join(basisPath, searchAt))
 			if ws.isHomeWorkspace {
@@ -78,7 +86,10 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 // The last element of the returned slice is the home workspace (or at the most extreme: where the home workspace *should be*).
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Workspace, err *wfapi.Error) {
+//
+// TODO: reconsider this interface... it's not very clear if it gets a bunch of file-not-found -- right now you just get the homedir workspace and no comment.
+func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Workspace, err wfapi.Error) {
+	// Repeatedly apply FindWorkspace and stack stuff up.
 	for {
 		var ws *Workspace
 		ws, searchPath, err = FindWorkspace(fsys, basisPath, searchPath)
@@ -90,7 +101,10 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 		}
 		wss = append(wss, ws)
 	}
-	wss = append(wss, openWorkspace(fsys, homedir))
+	// Include the home workspace at the end of the stack.  Unless it's already there, of course.
+	if len(wss) == 0 || !wss[len(wss)-1].isHomeWorkspace {
+		wss = append(wss, openWorkspace(fsys, homedir))
+	}
 	return wss, nil
 }
 
@@ -98,6 +112,6 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 // It will error if there's no workspace files yet there (it does not create them).
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-func OpenHomeWorkspace(fsys fs.FS) (*Workspace, *wfapi.Error) {
+func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
 	return OpenWorkspace(fsys, homedir)
 }
