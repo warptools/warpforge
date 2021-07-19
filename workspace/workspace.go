@@ -1,13 +1,14 @@
 package workspace
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/warpfork/warpforge/wfapi"
 )
 
 type Workspace struct {
+	fsys            fs.FS  // the fs.  (Most of the application is expected to use just one of these, but it's always configurable, largely for tests.)
 	rootPath        string // workspace root path -- *not* including the magicWorkspaceDirname segment on the end.
 	isHomeWorkspace bool   // if it's the ultimate workspace (the one in your homedir).
 }
@@ -18,30 +19,33 @@ type Workspace struct {
 //
 // OpenWorkspace assumes it will find a workspace exactly where you say; it doesn't search.
 // Consider using FindWorkspace or FindWorkspaceStack in most application code.
-func OpenWorkspace(rootPath string) (*Workspace, *wfapi.Error) {
-	f, err := os.Open(filepath.Join(rootPath, magicWorkspaceDirname))
+//
+// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, *wfapi.Error) {
+	f, err := fsys.Open(filepath.Join(rootPath, magicWorkspaceDirname))
 	f.Close()
 	if err != nil {
 		return nil, wfapi.ErrorWorkspace(rootPath, err)
 	}
-	return openWorkspace(rootPath), nil
+	return openWorkspace(fsys, rootPath), nil
 }
 
 // openWorkspace is the same as the public method, but with no error checking at all;
 // it presumes you've already done that (as most of the Find methods have).
-func openWorkspace(rootPath string) *Workspace {
+func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 	rootPath = filepath.Clean(rootPath)
 	return &Workspace{
+		fsys:            fsys,
 		rootPath:        rootPath,
 		isHomeWorkspace: rootPath == homedir,
 		// that's it; everything else is loaded later.
 	}
 }
 
-// Path returns the workspace's path -- the directory that is its root.
+// Path returns the workspace's fs and path -- the directory that is its root.
 // (This does *not* include the ".warpforge" segment on the end of the path.)
-func (ws *Workspace) Path() string {
-	return ws.rootPath
+func (ws *Workspace) Path() (fs.FS, string) {
+	return ws.fsys, ws.rootPath
 }
 
 // IsHomeWorkspace returns true if this workspace is the one in the user's home dir.
