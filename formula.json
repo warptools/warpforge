@@ -1,0 +1,24 @@
+{
+    "inputs": [
+        {
+            "dest": "/",
+            "src": "tar:5nc7cEWMCr8u3dZNAM3vaoS4JhZPoc7SeH8k8uParQ9ygghNxnH3Ev2SLp9c7ep3gg"
+        },
+        {
+            "dest": "/pwd",
+            "src": "/home/eric/git/warpforge"
+        }
+    ],
+    "exec": {
+        "network": true,
+        "args": [
+            "/bin/echo",
+            "hi"
+        ]
+    },
+    "outputs": [
+        {
+            "path": "/out"
+        }
+    ]
+}
