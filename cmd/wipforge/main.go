@@ -91,29 +91,6 @@ func get_base_config() specs.Spec {
 func make_rio_mount(ware_id string, dest string) specs.Mount {
 	s := get_base_config()
 
-	/*
-	proc := specs.Process{
-		Env: []string{"RIO_CACHE=/warpforge/cache"},
-		Args: []string{
-			"/warpforge/bin/rio",
-			"unpack",
-			"--source=ca+file:///warpforge/warehouse",
-			// force uid and gid to zero since these are the values in the container
-                        // note that the resulting hash used for placing this in the cache dir
-                        // will end up being different if a tar doesn't only use uid/gid 0!
-                        // these *must* be zero due to runc issue 1800, otherwise we would
-                        // choose a more sane value
-			"--filters=uid=0,gid=0,mtime=follow",
-			"--placer=none",
-			"--format=json",
-			ware_id,
-			"/null",
-		},
-		Cwd: "/",
-	}
-	s.Process = &proc
-	*/
-
 	s.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
 	s.Process.Args = []string{
 		"/warpforge/bin/rio",
@@ -130,7 +107,6 @@ func make_rio_mount(ware_id string, dest string) specs.Mount {
 		ware_id,
 		"/null",
 	}
-
 
 	out_str := invoke_runc(s)
 	out := RioOutput{}
@@ -212,6 +188,35 @@ func invoke_runc(s specs.Spec) string {
 	return stdout.String()
 }
 
+func rio_pack(s specs.Spec, o FormulaOutput) string {
+	s.Process.Args = []string{
+		"/warpforge/bin/rio",
+		"pack",
+		"--format=json",
+		"--target=ca+file:///warpforge/warehouse",
+		"tar",
+		o.Path,
+	}
+
+	out_str := invoke_runc(s)
+	out := RioOutput{}
+	for _, line := range strings.Split(out_str, "\n") {
+		err := json.Unmarshal([]byte(line), &out)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if out.Result.WareId != "" {
+			// found ware_id
+			break
+		}
+	}
+	if out.Result.WareId == "" {
+		log.Fatal("no ware_id output from rio!")
+	}
+
+	return out.Result.WareId
+}
+
 func main() {
 	// read formula from pwd
 	formula_file, err := ioutil.ReadFile("formula.json")
@@ -246,12 +251,15 @@ func main() {
 		}
 	}
 
-	proc := specs.Process{
-		Args: formula.Exec.Args,
-		Cwd: "/",
-	}
-	s.Process = &proc
-
+	// run the exec action
+	s.Process.Args = formula.Exec.Args
+	s.Process.Cwd = "/"
 	out := invoke_runc(s)
 	fmt.Printf("%s\n", out)
+
+	// collect outputs
+	for _, output := range formula.Outputs {
+		ware_id := rio_pack(s, output)
+		fmt.Println("packed", output.Path, "->", ware_id)
+	}
 }
