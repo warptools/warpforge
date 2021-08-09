@@ -2,15 +2,19 @@
     "inputs": [
         {
             "dest": "/",
-            "src": "tar:5nc7cEWMCr8u3dZNAM3vaoS4JhZPoc7SeH8k8uParQ9ygghNxnH3Ev2SLp9c7ep3gg"
-        }
+            "src": "tar:2XLLW2hmBTxpY2Pz6faQhBLcSNCjb8QPRCYpJzGVi1gCoUsVA8GRAp4N6N3pTdfh8H"
+        },
+	{
+            "dest": "/pwd",
+	    "src": "/home/eric/git/warpforge"
+	}
     ],
     "exec": {
         "network": true,
         "args": [
             "/bin/sh",
-            "-c",
-	    "mkdir /out && echo 'it works' > /out/test"
+	    "-c",
+	    "/bbin/echo hello from elvish"
         ]
     },
     "outputs": [
