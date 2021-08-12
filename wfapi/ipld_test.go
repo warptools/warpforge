@@ -26,8 +26,8 @@ func TestCatalogSerialForm(t *testing.T) {
 			{
 				"name": "v1.0",
 				"items": {
-					"linux-amd64": "tar:asdf"
-					"darwin-amd64": "tar:qwer",
+					"linux-amd64": "tar:asdf",
+					"darwin-amd64": "tar:qwer"
 				},
 				"metadata": {
 					"whee": "yay"
@@ -36,8 +36,8 @@ func TestCatalogSerialForm(t *testing.T) {
 			{
 				"name": "v2.0",
 				"items": {
-					"linux-amd64": "tar:zonk"
-					"darwin-amd64": "tar:bonk",
+					"linux-amd64": "tar:zonk",
+					"darwin-amd64": "tar:bonk"
 				},
 				"metadata": {
 					"whee": "yahoo"
@@ -51,6 +51,6 @@ func TestCatalogSerialForm(t *testing.T) {
 	nb := np.Representation().NewBuilder()
 	err := json.Decode(nb, strings.NewReader(serial))
 	qt.Assert(t, err, qt.IsNil)
-	// n := bindnode.Unwrap(nb.Build()).(*CatalogLineageEnvelope)
-	// _ = n.Value.(CatalogLineage) // doesn't work yet -- more bindnode features needed
+	n := bindnode.Unwrap(nb.Build()).(*CatalogLineageEnvelope)
+	_ = n
 }
