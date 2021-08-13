@@ -11,6 +11,8 @@ func init() {
 			schema.SpawnStructField("hash", "String", false, false),
 		},
 		schema.SpawnStructRepresentationStringjoin(":")))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__String__WareID",
+		"String", "WareID", false))
 }
 
 type WareID struct {

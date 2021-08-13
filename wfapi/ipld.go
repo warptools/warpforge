@@ -24,4 +24,8 @@ var TypeSystem = func() *schema.TypeSystem {
 func init() {
 	// Prelude.
 	TypeSystem.Accumulate(schema.SpawnString("String"))
+
+	// Common enough:
+	TypeSystem.Accumulate(schema.SpawnMap("Map__String__String",
+		"String", "String", false))
 }

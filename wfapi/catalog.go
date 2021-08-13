@@ -28,10 +28,6 @@ func init() {
 			schema.SpawnStructField("metadata", "Map__String__String", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
-	TypeSystem.Accumulate(schema.SpawnMap("Map__String__WareID",
-		"String", "WareID", false))
-	TypeSystem.Accumulate(schema.SpawnMap("Map__String__String",
-		"String", "String", false))
 }
 
 type CatalogLineageEnvelope struct {
