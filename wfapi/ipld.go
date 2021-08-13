@@ -25,7 +25,9 @@ func init() {
 	// Prelude.
 	TypeSystem.Accumulate(schema.SpawnString("String"))
 
-	// Common enough:
+	// Common enough (in fact, we wish these were created implicitly):
 	TypeSystem.Accumulate(schema.SpawnMap("Map__String__String",
 		"String", "String", false))
+	TypeSystem.Accumulate(schema.SpawnList("List__String",
+		"String", false))
 }

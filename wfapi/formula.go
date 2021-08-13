@@ -40,12 +40,12 @@ func init() {
 		})))
 	TypeSystem.Accumulate(schema.SpawnStruct("Action_Echo",
 		[]schema.StructField{
-			// TODO
+			// Nothing here.
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnStruct("Action_Exec",
 		[]schema.StructField{
-			// TODO
+			schema.SpawnStructField("command", "List__String", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnStruct("Action_Script",
@@ -66,8 +66,35 @@ type Action_Echo struct {
 	// Nothing here.  This is just a debug action, and needs no detailed configuration.
 }
 type Action_Exec struct {
+	Command []string
 	// TODO
 }
 type Action_Script struct {
 	// TODO
+}
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnStruct("FormulaContext",
+		[]schema.StructField{
+			schema.SpawnStructField("warehouses", "Map__WareID__WarehouseAddr", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+	TypeSystem.Accumulate(schema.SpawnStruct("FormulaAndContext",
+		[]schema.StructField{
+			schema.SpawnStructField("formula", "Formula", false, false),
+			schema.SpawnStructField("context", "FormulaContext", true, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+}
+
+type FormulaContext struct {
+	Warehouses struct {
+		Keys   []WareID
+		Values map[WareID]WarehouseAddr
+	}
+}
+
+type FormulaAndContext struct {
+	Formula Formula
+	Context *FormulaContext
 }
