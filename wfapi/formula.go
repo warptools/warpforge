@@ -1,29 +1,122 @@
 package wfapi
 
 import (
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/schema"
 )
 
 func init() {
 	TypeSystem.Accumulate(schema.SpawnStruct("Formula",
 		[]schema.StructField{
-			schema.SpawnStructField("inputs", "Map__String__WareID", false, false), // TODO this is oversimplified
+			schema.SpawnStructField("inputs", "Map__SandboxPort__FormulaInput", false, false),
 			schema.SpawnStructField("action", "Action", false, false),
-			schema.SpawnStructField("outputs", "Map__String__String", false, false),
+			schema.SpawnStructField("outputs", "Map__OutputName__GatherDirective", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__SandboxPort__FormulaInput",
+		"SandboxPort", "FormulaInput", false))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__OutputName__GatherDirective",
+		"OutputName", "GatherDirective", false))
+
 }
 
 type Formula struct {
 	Inputs struct {
-		Keys   []string
-		Values map[string]WareID
+		Keys   []SandboxPort
+		Values map[SandboxPort]FormulaInput
 	}
 	Action  Action
 	Outputs struct {
-		Keys   []string
-		Values map[string]string
+		Keys   []OutputName
+		Values map[OutputName]GatherDirective
 	}
+}
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnUnion("SandboxPort",
+		[]schema.TypeName{
+			"SandboxPath",
+			"VariableName",
+		},
+		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
+			"/": "SandboxPath",
+			"$": "VariableName",
+		})))
+	TypeSystem.Accumulate(schema.SpawnString("SandboxPath"))
+	TypeSystem.Accumulate(schema.SpawnString("VariableName"))
+}
+
+type SandboxPort struct {
+	SandboxPath  *SandboxPath
+	VariableName *VariableName
+}
+
+type SandboxPath string
+
+type VariableName string
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnUnion("FormulaInput",
+		[]schema.TypeName{
+			"FormulaInputSimple",
+			"FormulaInputComplex",
+		},
+		schema.SpawnUnionRepresentationKinded(map[ipld.Kind]schema.TypeName{
+			ipld.Kind_String: "FormulaInputSimple",
+			ipld.Kind_Map:    "FormulaInputComplex",
+		})))
+	TypeSystem.Accumulate(schema.SpawnUnion("FormulaInputSimple",
+		[]schema.TypeName{
+			"WareID",
+			"Mount",
+			"String",
+		},
+		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
+			"ware:":    "WareID",
+			"mount:":   "Mount",
+			"literal:": "String",
+		})))
+	TypeSystem.Accumulate(schema.SpawnStruct("FormulaInputComplex",
+		[]schema.StructField{
+			schema.SpawnStructField("input", "FormulaInputSimple", false, false),
+			schema.SpawnStructField("filters", "FilterMap", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+}
+
+type FormulaInput struct {
+	FormulaInputSimple  *FormulaInputSimple
+	FormulaInputComplex *FormulaInputComplex
+}
+
+type FormulaInputSimple struct {
+	WareID  *WareID
+	Mount   *Mount
+	Literal *string
+}
+
+type FormulaInputComplex struct {
+	input   FormulaInputSimple
+	filters FilterMap
+}
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnString("OutputName"))
+	TypeSystem.Accumulate(schema.SpawnStruct("GatherDirective",
+		[]schema.StructField{
+			schema.SpawnStructField("from", "SandboxPort", false, false),
+			schema.SpawnStructField("packtype", "Packtype", true, false),
+			schema.SpawnStructField("filters", "FilterMap", true, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+}
+
+type OutputName string
+
+type GatherDirective struct {
+	From     SandboxPort
+	Packtype *Packtype  // 'optional': should be absent iff SandboxPort is a VariableName.
+	Filters  *FilterMap // 'optional': must be absent if SandboxPort is a VariableName.
 }
 
 func init() {

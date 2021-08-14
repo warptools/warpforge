@@ -19,6 +19,8 @@ github.com/ipld/go-ipld-prime v0.10.1-0.20210721023048-333be0f75cff h1:lq3003BnM
 github.com/ipld/go-ipld-prime v0.10.1-0.20210721023048-333be0f75cff/go.mod h1:KvBLMr4PX1gWptgkzRjVZCrLmSGcZCb/jioOQwCqZN8=
 github.com/ipld/go-ipld-prime v0.11.1-0.20210812162104-1e8e5c6864ea h1:mMs0Xu0xyGBdMPDW9BU8lz80BPcZUxqBenpaoRocig4=
 github.com/ipld/go-ipld-prime v0.11.1-0.20210812162104-1e8e5c6864ea/go.mod h1:+WIAkokurHmZ/KwzDOMUuoeJgaRQktHtEaLglS3ZeV8=
+github.com/ipld/go-ipld-prime v0.11.1-0.20210814212049-a34aaeeeff46 h1:sG7kq/faOTpABAus6aZ/0DHBrl9wSBrUKtEUvaDYoxI=
+github.com/ipld/go-ipld-prime v0.11.1-0.20210814212049-a34aaeeeff46/go.mod h1:+WIAkokurHmZ/KwzDOMUuoeJgaRQktHtEaLglS3ZeV8=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/klauspost/cpuid/v2 v2.0.4 h1:g0I61F2K2DjRHz1cnxlkNSBIaePVoJIjjnHui8QHbiw=

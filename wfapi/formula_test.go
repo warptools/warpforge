@@ -13,7 +13,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 	serial := `{
 	"formula": {
 		"inputs": {
-			"/mount/path": "tar:qwerasdf",
+			"/mount/path": "ware:tar:qwerasdf",
 			"$ENV_VAR": "literal:hello"
 		},
 		"action": {
@@ -21,7 +21,15 @@ func TestParseFormulaAndContext(t *testing.T) {
 				"command": ["/bin/bash", "-c", "echo hey there"]
 			}
 		},
-		"outputs": {}
+		"outputs": {
+			"theoutputlabel": {
+				"from": "/collect/here",
+				"packtype": "tar"
+			},
+			"another": {
+				"from": "$VAR",
+			}
+		}
 	},
 	"context": {
 		"warehouses": {
