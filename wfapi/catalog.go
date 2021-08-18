@@ -28,25 +28,29 @@ func init() {
 			schema.SpawnStructField("metadata", "Map__String__String", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
-	TypeSystem.Accumulate(schema.SpawnMap("Map__String__WareID",
-		"String", "WareID", false))
-	TypeSystem.Accumulate(schema.SpawnMap("Map__String__String",
-		"String", "String", false))
 }
 
 type CatalogLineageEnvelope struct {
-	Index int
-	Value interface{}
+	CatalogLineage *CatalogLineage
 }
 
 type CatalogLineage struct {
 	Name     string
-	Metadata map[string]string
+	Metadata struct {
+		Keys   []string
+		Values map[string]string
+	}
 	Releases []CatalogRelease
 }
 
 type CatalogRelease struct {
-	Name     string
-	Items    map[string]WareID
-	Metadata map[string]string
+	Name  string
+	Items struct {
+		Keys   []string
+		Values map[string]WareID
+	}
+	Metadata struct {
+		Keys   []string
+		Values map[string]string
+	}
 }
