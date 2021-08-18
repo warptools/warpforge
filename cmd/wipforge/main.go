@@ -68,7 +68,7 @@ func warpforge_run_dir() string {
 
 func get_base_config() specs.Spec {
 	_ = os.Remove("config.json")
-	cmd := exec.Command("runc", "spec", "--rootless")
+	cmd := exec.Command(warpforge_dir() + "/bin/runc", "spec", "--rootless")
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -234,7 +234,7 @@ func invoke_runc(s specs.Spec) string {
 
 	err = ioutil.WriteFile("config.json", config, 0644)
 
-	cmd := exec.Command("runc", "run", "container-id")
+	cmd := exec.Command(warpforge_dir() + "/bin/runc", "run", "container-id")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	var stdout bytes.Buffer
