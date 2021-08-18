@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"bytes"
 	"strings"
 	"fmt"
@@ -39,6 +40,20 @@ type Formula struct {
 	Outputs []FormulaOutput `json:"outputs"`
 }
 
+type Warehouse struct {
+	Ware string `json:"ware"`
+	Url string `json:"url"`
+}
+
+type FormulaContext struct {
+	Warehouses []Warehouse `json:"warehouses"`
+}
+
+type FormulaAndContext struct {
+	Formula Formula `json:"formula"`
+	Context FormulaContext `json:"context"`
+}
+
 func warpforge_dir() string {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
@@ -69,6 +84,7 @@ func get_base_config() specs.Spec {
 	// set up fake root -- this is not actually used since it is replaced with an overlayfs
 	_ = os.RemoveAll("/tmp/fakeroot")
 	_ = os.Mkdir("/tmp/fakeroot", 0755)
+
 	root := specs.Root{
 		Path: "/tmp/fakeroot",
 		// if root is readonly, the overlayfs mount at '/' will also be readonly
@@ -88,14 +104,55 @@ func get_base_config() specs.Spec {
 	return s
 }
 
-func make_rio_mount(ware_id string, dest string) specs.Mount {
+func make_rio_mount(ware_id string, dest string, warehouses []Warehouse) specs.Mount {
 	s := get_base_config()
+
+	// default warehouse to unpack from
+	src := "ca+file:///warpforge/warehouse"
+	// check to see if this ware should be fetched from a different warehouse
+	for _, w := range warehouses {
+		if w.Ware == ware_id {
+			src = w.Url
+		}
+	}
+
+
+	// unpacking may require fetching from a remote source, which may
+	// require network access. since we do this in an empty container,
+	// we need a resolv.conf for DNS configuration and /etc/ssl/certs
+	// for trusted CAs
+
+	// copy host's resolv.conf so we can mount it
+	_ = os.Mkdir(warpforge_dir() + "/etc", 0755)
+	dest_resolv, _ := os.Create(warpforge_dir() + "/etc/resolv.conf")
+	defer dest_resolv.Close()
+	src_resolv, _ := os.Open("/etc/resolv.conf")
+	defer src_resolv.Close()
+	io.Copy(dest_resolv, src_resolv)
+	dest_resolv.Sync()
+
+	// add mounts for resolv.conf and ssl certificates
+	etc_mount := specs.Mount{
+		Source: warpforge_dir() + "/etc",
+		Destination: "/etc",
+		Type: "none",
+		Options: []string{"rbind"},
+	}
+	ca_mount := specs.Mount{
+		Source: "/etc/ssl/certs",
+		Destination: "/etc/ssl/certs",
+		Type: "none",
+		Options: []string{"rbind", "readonly"},
+	}
+	s.Mounts = append(s.Mounts, etc_mount)
+	s.Mounts = append(s.Mounts, ca_mount)
+
 
 	s.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
 	s.Process.Args = []string{
 		"/warpforge/bin/rio",
 		"unpack",
-		"--source=ca+file:///warpforge/warehouse",
+		fmt.Sprintf("--source=%s", src),
 		// force uid and gid to zero since these are the values in the container
 		// note that the resulting hash used for placing this in the cache dir
 		// will end up being different if a tar doesn't only use uid/gid 0!
@@ -108,7 +165,9 @@ func make_rio_mount(ware_id string, dest string) specs.Mount {
 		"/null",
 	}
 
+	fmt.Println("invoking runc for rio unpack", ware_id)
 	out_str := invoke_runc(s)
+
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
 		err := json.Unmarshal([]byte(line), &out)
@@ -182,7 +241,7 @@ func invoke_runc(s specs.Spec) string {
 	cmd.Stdout = &stdout
 	err = cmd.Run()
 	if err != nil {
-		fmt.Printf("%s\n", stderr)
+		fmt.Println("error running runc:", stdout.String(), stderr.String())
 		log.Fatal(err)
 	}
 	return stdout.String()
@@ -198,6 +257,7 @@ func rio_pack(s specs.Spec, o FormulaOutput) string {
 		o.Path,
 	}
 
+	fmt.Println("invoking runc for pack", o.Path)
 	out_str := invoke_runc(s)
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
@@ -223,11 +283,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	formula := Formula{}
-	err = json.Unmarshal([]byte(formula_file), &formula)
+	formulaAndContext := FormulaAndContext{}
+	err = json.Unmarshal([]byte(formula_file), &formulaAndContext)
 	if err != nil {
 		log.Fatal(err)
 	}
+	formula := formulaAndContext.Formula
+	warehouses := formulaAndContext.Context.Warehouses
 
 	// create and cd to working dir
 	_ = os.MkdirAll(warpforge_run_dir(), 0755)
@@ -240,7 +302,7 @@ func main() {
 		if _, err := os.Stat(input.Source); !os.IsNotExist(err) {
 			mnt = make_dir_mount(input.Source, input.Destination)
 		} else {
-			mnt = make_rio_mount(input.Source, input.Destination)
+			mnt = make_rio_mount(input.Source, input.Destination, warehouses)
 		}
 
 		// root mount must come first
@@ -254,6 +316,7 @@ func main() {
 	// run the exec action
 	s.Process.Args = formula.Exec.Args
 	s.Process.Cwd = "/"
+	fmt.Println("invoking runc for exec")
 	out := invoke_runc(s)
 	fmt.Printf("%s\n", out)
 

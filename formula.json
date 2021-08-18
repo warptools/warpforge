@@ -1,25 +1,21 @@
-{
-    "inputs": [
-        {
-            "dest": "/",
-            "src": "tar:2XLLW2hmBTxpY2Pz6faQhBLcSNCjb8QPRCYpJzGVi1gCoUsVA8GRAp4N6N3pTdfh8H"
-        },
-	{
-            "dest": "/pwd",
-	    "src": "/home/eric/git/warpforge"
-	}
-    ],
-    "exec": {
-        "network": true,
-        "args": [
-            "/bin/sh",
-	    "-c",
-	    "/bbin/echo hello from elvish"
-        ]
+{ "formula": { "inputs": [ {
+		    "dest": "/",
+		    "src": "tar:8N5mUJuMVVgRLutf3BDzJZnZ1EBzTr3PBoQ7oKBKv9W7XdSpsziwY7s6QCopZKj5qA"
+		}
+	    ],
+	    "exec": {
+		"network": true,
+		"args": [
+		    "/bin/sh",
+		    "-c",
+		    "echo 'hello from warpforge!'"
+		]
+	    },
+	    "outputs": [
+	    ]
     },
-    "outputs": [
-        {
-            "path": "/out"
-        }
-    ]
+    "context": {
+	    "warehouses": [
+	    ]
+    }
 }
