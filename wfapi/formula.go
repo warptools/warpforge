@@ -78,7 +78,7 @@ func init() {
 		})))
 	TypeSystem.Accumulate(schema.SpawnStruct("FormulaInputComplex",
 		[]schema.StructField{
-			schema.SpawnStructField("input", "FormulaInputSimple", false, false),
+			schema.SpawnStructField("basis", "FormulaInputSimple", false, false),
 			schema.SpawnStructField("filters", "FilterMap", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
@@ -96,8 +96,8 @@ type FormulaInputSimple struct {
 }
 
 type FormulaInputComplex struct {
-	input   FormulaInputSimple
-	filters FilterMap
+	Basis   FormulaInputSimple
+	Filters FilterMap
 }
 
 func init() {

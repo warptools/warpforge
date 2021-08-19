@@ -14,7 +14,8 @@ func TestParseFormulaAndContext(t *testing.T) {
 	"formula": {
 		"inputs": {
 			"/mount/path": "ware:tar:qwerasdf",
-			"$ENV_VAR": "literal:hello"
+			"$ENV_VAR": "literal:hello",
+			"/more/mounts": {"basis": "ware:tar:fghjkl", "filters":{"uid":"10"}}
 		},
 		"action": {
 			"exec": {
@@ -33,7 +34,8 @@ func TestParseFormulaAndContext(t *testing.T) {
 	},
 	"context": {
 		"warehouses": {
-			"tar:qwerasdf": "ca+file:///somewhere/"
+			"tar:qwerasdf": "ca+file:///somewhere/",
+			"tar:fghjkl": "ca+file:///elsewhere/"
 		}
 	}
 }`
