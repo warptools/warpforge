@@ -1,12 +1,11 @@
 package wfapi
 
 import (
-	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
 )
 
 func TestParseFormulaAndContext(t *testing.T) {
@@ -40,10 +39,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 	}
 }`
 
-	np := bindnode.Prototype((*FormulaAndContext)(nil), TypeSystem.TypeByName("FormulaAndContext"))
-	nb := np.Representation().NewBuilder()
-	err := json.Decode(nb, strings.NewReader(serial))
+	frmAndCtx := FormulaAndContext{}
+	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, TypeSystem.TypeByName("FormulaAndContext"))
 	qt.Assert(t, err, qt.IsNil)
-	n := bindnode.Unwrap(nb.Build()).(*FormulaAndContext)
-	_ = n
 }

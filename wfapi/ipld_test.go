@@ -1,12 +1,11 @@
 package wfapi
 
 import (
-	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
 )
 
 // Critical lament with this testing style: this validation doesn't happen before other tests.
@@ -52,10 +51,7 @@ func TestCatalogSerialForm(t *testing.T) {
 	}
 }`
 
-	np := bindnode.Prototype((*CatalogLineageEnvelope)(nil), TypeSystem.TypeByName("CatalogLineageEnvelope"))
-	nb := np.Representation().NewBuilder()
-	err := json.Decode(nb, strings.NewReader(serial))
+	catLin := CatalogLineageEnvelope{}
+	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &catLin, TypeSystem.TypeByName("CatalogLineageEnvelope"))
 	qt.Assert(t, err, qt.IsNil)
-	n := bindnode.Unwrap(nb.Build()).(*CatalogLineageEnvelope)
-	_ = n
 }
