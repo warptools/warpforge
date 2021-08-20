@@ -78,6 +78,7 @@ func get_base_config() specs.Spec {
 
 	// set up fake root -- this is not actually used since it is replaced with an overlayfs
 	_ = os.RemoveAll("/tmp/fakeroot")
+		// TODO make this a random path
 	_ = os.Mkdir("/tmp/fakeroot", 0755)
 
 	root := specs.Root{
@@ -244,17 +245,17 @@ func invoke_runc(s specs.Spec) string {
 	return stdout.String()
 }
 
-func rio_pack(s specs.Spec, o FormulaOutput) string {
+func rio_pack(s specs.Spec, path string) string {
 	s.Process.Args = []string{
 		"/warpforge/bin/rio",
 		"pack",
 		"--format=json",
 		"--target=ca+file:///warpforge/warehouse",
 		"tar",
-		o.Path,
+		path,
 	}
 
-	log.Println("invoking runc for pack", o.Path)
+	log.Println("invoking runc for pack", path)
 	out_str := invoke_runc(s)
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
@@ -327,11 +328,17 @@ func Exec(fc wfapi.FormulaAndContext) error {
 	fmt.Printf("%s\n", out)
 
 	// collect outputs
-	for key, gather := range formula.Outputs.Values {
-		// TODO
-		//ware_id := rio_pack(s, output)
-		//log.Println("packed", output.Path, "->", ware_id)
-		log.Println(key, gather)
+	for name, gather := range formula.Outputs.Values {
+		switch {
+			case (gather.From.SandboxPath != nil):
+				path := string(*gather.From.SandboxPath)
+				ware_id := rio_pack(s, path)
+				log.Println("packed", name, "(", path, "->", ware_id, ")")
+			case gather.From.VariableName != nil:
+				log.Fatal("unsupported output type")
+			default:
+				log.Fatal("invalid output spec")
+		}
 	}
 	return nil
 }
