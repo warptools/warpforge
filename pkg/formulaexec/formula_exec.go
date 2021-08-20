@@ -23,32 +23,6 @@ type RioOutput struct {
 	Result RioResult `json:"result"`
 }
 
-type FormulaInput struct {
-	Source      string `json:"src"`
-	Destination string `json:"dest"`
-}
-type FormulaExec struct {
-	Args []string `json:"args"`
-}
-type FormulaOutput struct {
-	Path string
-}
-
-type Formula struct {
-	Inputs  []FormulaInput  `json:"inputs"`
-	Exec    FormulaExec     `json:"exec"`
-	Outputs []FormulaOutput `json:"outputs"`
-}
-
-type Warehouse struct {
-	Ware string `json:"ware"`
-	Url  string `json:"url"`
-}
-
-type FormulaContext struct {
-	Warehouses []Warehouse `json:"warehouses"`
-}
-
 func warpforge_dir() string {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
