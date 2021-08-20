@@ -62,3 +62,55 @@ It's the minimal document that will parse.
 and "action" is a union type, so it has to have _some_ member, which in this case was the "exec" member.)
 
 ---
+
+Formulas usually have inputs.  And the most common type is a "ware", which will be mounted to some directory.
+
+[testmark]:# (hello-input/formula)
+```json
+{
+	"formula": {
+		"inputs": {
+			"/mount/path": "ware:tar:qwerasdf",
+			"/other/place": "ware:git:abcd1234"
+		},
+		"action": {
+			"exec": {
+				"command": []
+			}
+		},
+		"outputs": {}
+	}
+}
+```
+
+---
+
+Inputs can also be targetted at variables, rather than filesystems.
+And in this case, they also are more likely to use a "literal" form.
+
+[testmark]:# (hello-input-vars/formula)
+```json
+{
+	"formula": {
+		"inputs": {
+			"$USER": "literal:hello",
+			"$HOME": "literal:/home/hello",
+			"$PATH": "literal:/bin:/usr/bin:/local/bin"
+		},
+		"action": {
+			"exec": {
+				"command": []
+			}
+		},
+		"outputs": {}
+	}
+}
+```
+
+(Note that while parsing inputs, one looks for ":" as a delimiter,
+you don't want to _split_ on that... at some point the parser needs to
+stop matching on this after it's figured out what input type the value is,
+and then the rest of the string can contain more characters that shouldnt be parser specially.
+You can see this in the `$PATH` variable's value above.)
+
+---
