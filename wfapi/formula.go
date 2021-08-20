@@ -46,9 +46,11 @@ func init() {
 	TypeSystem.Accumulate(schema.SpawnString("SandboxVar"))
 }
 
-type SandboxPort struct {
-	SandboxPath  *SandboxPath
-	SandboxVar *SandboxVar
+type SandboxPort struct { // ... dude.  this isn't actually a viable map key.
+	// You're gonna need to go back into bindnode and put integer indicators back in.
+	// And then, apparently, just make the pointers here... optional.
+	SandboxPath *SandboxPath
+	SandboxVar  *SandboxVar
 }
 
 type SandboxPath string
