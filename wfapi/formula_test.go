@@ -14,11 +14,20 @@ func TestParseFormulaAndContext(t *testing.T) {
 		"inputs": {
 			"/mount/path": "ware:tar:qwerasdf",
 			"$ENV_VAR": "literal:hello",
-			"/more/mounts": {"basis": "ware:tar:fghjkl", "filters":{"uid":"10"}}
+			"/more/mounts": {
+				"basis": "ware:tar:fghjkl",
+				"filters": {
+					"uid": "10"
+				}
+			}
 		},
 		"action": {
 			"exec": {
-				"command": ["/bin/bash", "-c", "echo hey there"]
+				"command": [
+					"/bin/bash",
+					"-c",
+					"echo hey there"
+				]
 			}
 		},
 		"outputs": {
@@ -27,7 +36,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 				"packtype": "tar"
 			},
 			"another": {
-				"from": "$VAR",
+				"from": "$VAR"
 			}
 		}
 	},
@@ -37,7 +46,8 @@ func TestParseFormulaAndContext(t *testing.T) {
 			"tar:fghjkl": "ca+file:///elsewhere/"
 		}
 	}
-}`
+}
+`
 
 	frmAndCtx := FormulaAndContext{}
 	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, TypeSystem.TypeByName("FormulaAndContext"))
@@ -68,4 +78,9 @@ func TestParseFormulaAndContext(t *testing.T) {
 			},
 		}},
 	)
+
+	reserial, err := ipld.Marshal(json.Encode, &frmAndCtx, TypeSystem.TypeByName("FormulaAndContext"))
+	qt.Assert(t, err, qt.IsNil)
+
+	qt.Assert(t, string(reserial), qt.CmpEquals(), serial)
 }
