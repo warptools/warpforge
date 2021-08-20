@@ -1,21 +1,20 @@
-{ "formula": { "inputs": [ {
-		    "dest": "/",
-		    "src": "tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
-		}
-	    ],
-	    "exec": {
-		"network": true,
-		"args": [
-		    "/bin/sh",
-		    "-c",
-		    "echo 'hello from warpforge!'"
-		]
-	    },
-	    "outputs": [
-	    ]
+{
+    "formula": {
+        "inputs": {
+            "/": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+        },
+        "action": {
+            "exec": {
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    "echo hello from warpforge!"
+                ]
+            }
+        },
+        "outputs": {}
     },
     "context": {
-	    "warehouses": [
-	    ]
+        "warehouses": {}
     }
 }
