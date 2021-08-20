@@ -1,11 +1,16 @@
 package wfapi
 
 import (
+	"strings"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/warpfork/go-testmark"
 )
 
@@ -28,7 +33,7 @@ func TestFormulaParseFixtures(t *testing.T) {
 				// Unmarshal.  Assert it works.
 				t.Run("unmarshal", func(t *testing.T) {
 					frmAndCtx := FormulaAndContext{}
-					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, TypeSystem.TypeByName("FormulaAndContext"))
+					n, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
 
 					// Remarshal.  Assert it works.
@@ -41,6 +46,23 @@ func TestFormulaParseFixtures(t *testing.T) {
 							qt.Assert(t, string(reserial), qt.CmpEquals(), string(serial))
 						})
 					})
+
+					// If there's a link datum: Create a CID of the formula and see what's up.
+					// (Also encodes, implicitly.  So will probably fail if the above was broken.)
+					// Path into the Formula before doing this -- we don't want to hash the context or the envelope type.
+					if dir.Children["cid"] != nil {
+						nFormula, _ := n.LookupByString("formula")
+						lsys := cidlink.DefaultLinkSystem()
+						lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+							Version:  1,    // Usually '1'.
+							Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+							MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+							MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+						}}, nFormula.(schema.TypedNode).Representation())
+						qt.Assert(t, err, qt.IsNil)
+						expect := strings.TrimSpace(string(dir.Children["cid"].Hunk.Body))
+						qt.Assert(t, expect, qt.Equals, lnk.String())
+					}
 				})
 			case dir.Children["runrecord"] != nil:
 				// TODO

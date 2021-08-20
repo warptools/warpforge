@@ -61,6 +61,14 @@ It's the minimal document that will parse.
 (You can't have fewer fields than this because per the Schema, none of these are optional fields;
 and "action" is a union type, so it has to have _some_ member, which in this case was the "exec" member.)
 
+Formulas can be hashed.  This is the CID of the above formula
+(using the DAG-CBOR code, and sha2-512 as a hash):
+
+[testmark]:# (zero-formula/cid)
+```
+bafyrgqelzywg34w5h55k5tqw6zn4beeeonglldq5q7oihmdlpalav4imqco3zkdf5llnpncdwmlgjdk7o6rwema2dg34qp4hhwocxjwk6y4a4
+```
+
 ---
 
 Formulas usually have inputs.  And the most common type is a "ware", which will be mounted to some directory.
