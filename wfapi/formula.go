@@ -36,24 +36,24 @@ func init() {
 	TypeSystem.Accumulate(schema.SpawnUnion("SandboxPort",
 		[]schema.TypeName{
 			"SandboxPath",
-			"VariableName",
+			"SandboxVar",
 		},
 		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
 			"/": "SandboxPath",
-			"$": "VariableName",
+			"$": "SandboxVar",
 		})))
 	TypeSystem.Accumulate(schema.SpawnString("SandboxPath"))
-	TypeSystem.Accumulate(schema.SpawnString("VariableName"))
+	TypeSystem.Accumulate(schema.SpawnString("SandboxVar"))
 }
 
 type SandboxPort struct {
 	SandboxPath  *SandboxPath
-	VariableName *VariableName
+	SandboxVar *SandboxVar
 }
 
 type SandboxPath string
 
-type VariableName string
+type SandboxVar string
 
 func init() {
 	TypeSystem.Accumulate(schema.SpawnUnion("FormulaInput",
@@ -115,8 +115,8 @@ type OutputName string
 
 type GatherDirective struct {
 	From     SandboxPort
-	Packtype *Packtype  // 'optional': should be absent iff SandboxPort is a VariableName.
-	Filters  *FilterMap // 'optional': must be absent if SandboxPort is a VariableName.
+	Packtype *Packtype  // 'optional': should be absent iff SandboxPort is a SandboxVar.
+	Filters  *FilterMap // 'optional': must be absent if SandboxPort is a SandboxVar.
 }
 
 func init() {

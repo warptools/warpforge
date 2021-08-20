@@ -55,7 +55,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 
 	ports := []SandboxPort{
 		SandboxPort{SandboxPath: func() *SandboxPath { v := SandboxPath("mount/path"); return &v }()},
-		SandboxPort{VariableName: func() *VariableName { v := VariableName("ENV_VAR"); return &v }()},
+		SandboxPort{SandboxVar: func() *SandboxVar { v := SandboxVar("ENV_VAR"); return &v }()},
 		SandboxPort{SandboxPath: func() *SandboxPath { v := SandboxPath("more/mounts"); return &v }()},
 	}
 	inputs := frmAndCtx.Formula.Inputs

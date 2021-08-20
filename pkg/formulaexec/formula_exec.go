@@ -315,7 +315,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 			path := string(*gather.From.SandboxPath)
 			ware_id := rio_pack(s, path)
 			log.Println("packed", name, "(", path, "->", ware_id, ")")
-		case gather.From.VariableName != nil:
+		case gather.From.SandboxVar != nil:
 			log.Fatal("unsupported output type")
 		default:
 			log.Fatal("invalid output spec")
