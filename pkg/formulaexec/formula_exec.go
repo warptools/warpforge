@@ -35,7 +35,7 @@ func warpforge_run_dir() string {
 	return (warpforge_dir() + "/run")
 }
 
-func get_base_config() specs.Spec {
+func get_base_config(rootdir string) specs.Spec {
 	_ = os.Remove("config.json")
 	cmd := exec.Command(warpforge_dir()+"/bin/runc", "spec", "--rootless")
 	err := cmd.Run()
@@ -50,14 +50,9 @@ func get_base_config() specs.Spec {
 	s := specs.Spec{}
 	err = json.Unmarshal([]byte(config_file), &s)
 
-	// set up fake root -- this is not actually used since it is replaced with an overlayfs
-	_ = os.RemoveAll("/tmp/fakeroot")
-		// TODO make this a random path
-	_ = os.Mkdir("/tmp/fakeroot", 0755)
-
+	// set up root -- this is not actually used since it is replaced with an overlayfs
 	root := specs.Root{
-		// TODO make this a random path
-		Path: "/tmp/fakeroot",
+		Path: rootdir,
 		// if root is readonly, the overlayfs mount at '/' will also be readonly
 		// force as rw for now
 		Readonly: false,
@@ -76,13 +71,16 @@ func get_base_config() specs.Spec {
 }
 
 func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext) specs.Mount {
-	s := get_base_config()
+	rootdir, _ := ioutil.TempDir(warpforge_run_dir(), "exec")
+	defer os.RemoveAll(rootdir)
+	s := get_base_config(rootdir)
 
 	// default warehouse to unpack from
 	src := "ca+file:///warpforge/warehouse"
 	// check to see if this ware should be fetched from a different warehouse
 	for wareid, src := range context.Warehouses.Values {
 		log.Println(wareid, src)
+		log.Println("WARNING: context warehouses are not supported yet")
 		/* TODO context warehouses
 		if w.Ware == ware_id {
 			src = w.Url
@@ -263,7 +261,9 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		return errors.New("failed to cd to run dir")
 	}
 
-	s := get_base_config()
+	rootdir, _ := ioutil.TempDir(warpforge_run_dir(), "exec")
+	defer os.RemoveAll(rootdir)
+	s := get_base_config(rootdir)
 
 	for dest, src := range formula.Inputs.Values {
 		var input *wfapi.FormulaInputSimple
@@ -272,6 +272,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		} else if src.FormulaInputComplex != nil {
 			input = &src.FormulaInputComplex.Basis
 			// TODO deal with complex input fields
+			log.Println("WARNING: ignoring complex input (not supported)")
 		} else {
 			return errors.New(fmt.Sprintf("invalid input spec for dest %s", *dest.SandboxPath))
 		}
@@ -279,10 +280,10 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		var mnt specs.Mount
 		if input.Mount != nil {
 			// TODO do something with Mount.Mode
-			mnt = make_path_mount(input.Mount.HostPath, "/" + string(*dest.SandboxPath))
+			mnt = make_path_mount(input.Mount.HostPath, "/"+string(*dest.SandboxPath))
 		} else if input.WareID != nil {
 			wareid := fmt.Sprintf("%s:%s", input.WareID.Packtype, input.WareID.Hash)
-			mnt = make_ware_mount(wareid, "/" + string(*dest.SandboxPath), context)
+			mnt = make_ware_mount(wareid, "/"+string(*dest.SandboxPath), context)
 		}
 
 		// root mount must come first
@@ -295,23 +296,29 @@ func Exec(fc wfapi.FormulaAndContext) error {
 	}
 
 	// run the exec action
-	s.Process.Args = formula.Action.Exec.Command // TODO handle other actions
-	s.Process.Cwd = "/"
-	log.Println("invoking runc for exec")
-	out := invoke_runc(s)
-	fmt.Printf("%s\n", out)
+	switch {
+	case formula.Action.Exec != nil:
+		s.Process.Args = formula.Action.Exec.Command
+		s.Process.Cwd = "/"
+		log.Println("invoking runc for exec")
+		out := invoke_runc(s)
+		fmt.Printf("%s\n", out)
+	default:
+		// TODO handle other actions
+		log.Fatal("unsupported action")
+	}
 
 	// collect outputs
 	for name, gather := range formula.Outputs.Values {
 		switch {
-			case (gather.From.SandboxPath != nil):
-				path := string(*gather.From.SandboxPath)
-				ware_id := rio_pack(s, path)
-				log.Println("packed", name, "(", path, "->", ware_id, ")")
-			case gather.From.VariableName != nil:
-				log.Fatal("unsupported output type")
-			default:
-				log.Fatal("invalid output spec")
+		case gather.From.SandboxPath != nil:
+			path := string(*gather.From.SandboxPath)
+			ware_id := rio_pack(s, path)
+			log.Println("packed", name, "(", path, "->", ware_id, ")")
+		case gather.From.VariableName != nil:
+			log.Fatal("unsupported output type")
+		default:
+			log.Fatal("invalid output spec")
 		}
 	}
 	return nil
