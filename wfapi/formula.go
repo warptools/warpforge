@@ -191,3 +191,28 @@ type FormulaAndContext struct {
 	Formula Formula
 	Context *FormulaContext
 }
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnStruct("RunRecord",
+		[]schema.StructField{
+			schema.SpawnStructField("guid", "String", false, false),
+			schema.SpawnStructField("time", "Int", false, false),
+			schema.SpawnStructField("formulaID", "String", false, false),
+			schema.SpawnStructField("exitcode", "Int", false, false),
+			schema.SpawnStructField("results", "Map__OutputName__FormulaInputSimple", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__OutputName__FormulaInputSimple",
+		"OutputName", "FormulaInputSimple", false))
+}
+
+type RunRecord struct {
+	Guid      string
+	Time      int
+	FormulaID string
+	Exitcode  int
+	Results   struct {
+		Keys   []OutputName
+		Values map[OutputName]FormulaInputSimple
+	}
+}

@@ -84,3 +84,26 @@ func TestParseFormulaAndContext(t *testing.T) {
 
 	qt.Assert(t, string(reserial), qt.CmpEquals(), serial)
 }
+
+func TestParseRunRecord(t *testing.T) {
+	serial := `{
+	"guid": "asefjghr-34jg5nhj-12jfb5jk",
+	"time": 1245869935,
+	"formulaID": "Qfm2kJElwkJElfkej5gH",
+	"exitcode": 0,
+	"results": {
+		"theoutputlabel": "ware:tar:qwerasdferguih",
+		"another": "literal:some content hello yes"
+	}
+}
+`
+
+	rr := RunRecord{}
+	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &rr, TypeSystem.TypeByName("RunRecord"))
+	qt.Assert(t, err, qt.IsNil)
+
+	reserial, err := ipld.Marshal(json.Encode, &rr, TypeSystem.TypeByName("RunRecord"))
+	qt.Assert(t, err, qt.IsNil)
+
+	qt.Assert(t, string(reserial), qt.CmpEquals(), serial)
+}
