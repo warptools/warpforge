@@ -210,7 +210,7 @@ func init() {
 
 type RunRecord struct {
 	Guid      string
-	Time      int
+	Time      int64
 	FormulaID string
 	Exitcode  int
 	Results   struct {

@@ -11,7 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/ipld/go-ipld-prime"
+	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -136,7 +140,7 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 	}
 
 	log.Println("invoking runc for rio unpack", ware_id)
-	out_str := invoke_runc(s)
+	out_str, _ := invoke_runc(s)
 
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
@@ -196,7 +200,7 @@ func make_path_mount(path string, dest string) specs.Mount {
 	}
 }
 
-func invoke_runc(s specs.Spec) string {
+func invoke_runc(s specs.Spec) (string, int) {
 	config, err := json.Marshal(s)
 	if err != nil {
 		log.Fatal(err)
@@ -214,10 +218,11 @@ func invoke_runc(s specs.Spec) string {
 		log.Println("error running runc:", stdout.String(), stderr.String())
 		log.Fatal(err)
 	}
-	return stdout.String()
+	// TODO what exitcode do we care about? 
+	return stdout.String(), 0
 }
 
-func rio_pack(s specs.Spec, path string) string {
+func rio_pack(s specs.Spec, path string) wfapi.WareID {
 	s.Process.Args = []string{
 		"/warpforge/bin/rio",
 		"pack",
@@ -228,7 +233,7 @@ func rio_pack(s specs.Spec, path string) string {
 	}
 
 	log.Println("invoking runc for pack", path)
-	out_str := invoke_runc(s)
+	out_str, _ := invoke_runc(s)
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
 		err := json.Unmarshal([]byte(line), &out)
@@ -244,7 +249,10 @@ func rio_pack(s specs.Spec, path string) string {
 		log.Fatal("no ware_id output from rio!")
 	}
 
-	return out.Result.WareId
+	ware_id := wfapi.WareID{}
+	ware_id.Packtype = wfapi.Packtype(strings.Split(out.Result.WareId, ":")[0])
+	ware_id.Hash = strings.Split(out.Result.WareId, ":")[1]
+	return ware_id
 }
 
 func Exec(fc wfapi.FormulaAndContext) error {
@@ -295,25 +303,34 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		}
 	}
 
+	rr := wfapi.RunRecord{}
+	rr.Guid = uuid.New().String()
+	rr.Time = time.Now().Unix()
+
 	// run the exec action
 	switch {
 	case formula.Action.Exec != nil:
 		s.Process.Args = formula.Action.Exec.Command
 		s.Process.Cwd = "/"
 		log.Println("invoking runc for exec")
-		out := invoke_runc(s)
+		out, code := invoke_runc(s)
+		rr.Exitcode = code
 		fmt.Printf("%s\n", out)
 	default:
 		// TODO handle other actions
 		log.Fatal("unsupported action")
 	}
 
+
 	// collect outputs
+	rr.Results.Values = make(map[wfapi.OutputName]wfapi.FormulaInputSimple)
 	for name, gather := range formula.Outputs.Values {
 		switch {
 		case gather.From.SandboxPath != nil:
 			path := string(*gather.From.SandboxPath)
 			ware_id := rio_pack(s, path)
+			rr.Results.Keys = append(rr.Results.Keys, name)
+			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &ware_id}
 			log.Println("packed", name, "(", path, "->", ware_id, ")")
 		case gather.From.SandboxVar != nil:
 			log.Fatal("unsupported output type")
@@ -321,5 +338,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 			log.Fatal("invalid output spec")
 		}
 	}
+	serial, err := ipld.Marshal(ipldjson.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
+	fmt.Println(string(serial))
 	return nil
 }
