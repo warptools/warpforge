@@ -13,11 +13,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/warpfork/warpforge/wfapi"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 )
 
 type RioResult struct {
@@ -306,6 +311,22 @@ func Exec(fc wfapi.FormulaAndContext) error {
 	rr := wfapi.RunRecord{}
 	rr.Guid = uuid.New().String()
 	rr.Time = time.Now().Unix()
+	nFormula, err := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
+	if err != nil {
+		return err
+	}
+	lsys := cidlink.DefaultLinkSystem()
+	lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+		Version:  1,    // Usually '1'.
+		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+	}}, nFormula.(schema.TypedNode).Representation())
+	if err != nil {
+		return err
+	}
+	rr.FormulaID = lnk.String()
+
 
 	// run the exec action
 	switch {
