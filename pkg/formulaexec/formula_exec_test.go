@@ -103,11 +103,11 @@ func TestContextWarehouse(t *testing.T) {
 	"formula": {
 		"inputs": {
 			"/": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB",
-			"/empty": "ware:tar:fake"
+			"/empty": "ware:tar:7omHHaRUV3TcPYLk7VWTQgFSAWJa3HTRVwiZwESBy65w8rbrtVqdtZPg2nL1zXWPmR"
 		},
 		"action": {
 			"exec": {
-				"command": ["/bin/sh", "-c", "ls -al /test"]
+				"command": ["/bin/sh", "-c", "echo TestContextWarehouse"]
 			}
 		},
 		"outputs": {
@@ -115,7 +115,7 @@ func TestContextWarehouse(t *testing.T) {
 	},
 	"context": {
 		"warehouses": {
-			"tar:fake": "file:///fake/file.tar.gz"
+			"tar:7omHHaRUV3TcPYLk7VWTQgFSAWJa3HTRVwiZwESBy65w8rbrtVqdtZPg2nL1zXWPmR": "file:///warpforge/warehouse/7om/HHa/7omHHaRUV3TcPYLk7VWTQgFSAWJa3HTRVwiZwESBy65w8rbrtVqdtZPg2nL1zXWPmR"
 		}
 	}
 }`
@@ -126,5 +126,5 @@ func TestContextWarehouse(t *testing.T) {
 	err = Exec(frmAndCtx)
 
 	// this should error on the rio unpack since the .tar.gz file does not exist
-	qt.Assert(t, err, qt.IsNotNil)
+	qt.Assert(t, err, qt.IsNil)
 }
