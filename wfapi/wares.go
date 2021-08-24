@@ -2,6 +2,7 @@ package wfapi
 
 import (
 	"github.com/ipld/go-ipld-prime/schema"
+	"fmt"
 )
 
 func init() {
@@ -19,6 +20,10 @@ func init() {
 type WareID struct {
 	Packtype Packtype // f.eks. "tar", "git"
 	Hash     string   // what it says on the tin.
+}
+
+func (w WareID) String() string {
+	return fmt.Sprintf("%s:%s", w.Packtype, w.Hash)
 }
 
 type Packtype string

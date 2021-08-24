@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"path"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -37,11 +38,11 @@ func warpforge_dir() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return (homedir + "/.warpforge")
+	return path.Join(homedir, ".warpforge")
 }
 
 func warpforge_run_dir() string {
-	return (warpforge_dir() + "/run")
+	return path.Join(warpforge_dir() + "/run")
 }
 
 func get_base_config(rootdir string) (specs.Spec, error) {
@@ -104,14 +105,11 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 	// default warehouse to unpack from
 	src := "ca+file:///warpforge/warehouse"
 	// check to see if this ware should be fetched from a different warehouse
-	for wareid, src := range context.Warehouses.Values {
-		log.Println(wareid, src)
-		log.Println("WARNING: context warehouses are not supported yet")
-		/* TODO context warehouses
-		if w.Ware == ware_id {
-			src = w.Url
+	for k, v := range context.Warehouses.Values {
+		if k.String() == ware_id {
+			log.Printf("using warehouse %s for ware %s", v, ware_id)
+			src = string(v)
 		}
-		*/
 	}
 
 	// unpacking may require fetching from a remote source, which may
@@ -234,9 +232,10 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 }
 
 func make_path_mount(path string, dest string) (specs.Mount, error) {
-	uid := strings.Replace(path, "/", "-", -1)
-	upperdir_path := warpforge_dir() + "/overlays/upper-" + uid
-	workdir_path := warpforge_dir() + "/overlays/work-" + uid
+	mount_id := strings.Replace(path, "/", "-", -1)
+	mount_id = strings.Replace(mount_id, ".", "-", -1)
+	upperdir_path := warpforge_dir() + "/overlays/upper-" + mount_id
+	workdir_path := warpforge_dir() + "/overlays/work-" + mount_id
 
 	// remove then (re)create upper and work dirs
 	err := os.RemoveAll(upperdir_path)
@@ -283,7 +282,7 @@ func invoke_runc(s specs.Spec) (string, error) {
 	cmd.Stdout = &stdout
 	err = cmd.Run()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %s %s", err, stdout.String(), stderr.String())
 	}
 	// TODO what exitcode do we care about?
 	return stdout.String(), nil
@@ -330,8 +329,14 @@ func Exec(fc wfapi.FormulaAndContext) error {
 	formula := fc.Formula
 	context := fc.Context
 
+	// get the directory this executable is in for relative paths
+	exec_dir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working dir: %s", err)
+	}
+
 	// create and cd to working dir
-	err := os.MkdirAll(warpforge_run_dir(), 0755)
+	err = os.MkdirAll(warpforge_run_dir(), 0755)
 	if err != nil {
 		return errors.New("failed to create run dir")
 	}
@@ -365,13 +370,14 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		var mnt specs.Mount
 		if input.Mount != nil {
 			// TODO do something with Mount.Mode
-			mnt, err = make_path_mount(input.Mount.HostPath, "/"+string(*dest.SandboxPath))
+			log.Println("WARNING: mount mode is currently ignored, all mounts are overlay")
+			// mount uses relative path
+			mnt, err = make_path_mount(path.Join(exec_dir, input.Mount.HostPath), "/"+string(*dest.SandboxPath))
 			if err != nil {
 				return err
 			}
 		} else if input.WareID != nil {
-			wareid := fmt.Sprintf("%s:%s", input.WareID.Packtype, input.WareID.Hash)
-			mnt, err = make_ware_mount(wareid, "/"+string(*dest.SandboxPath), context)
+			mnt, err = make_ware_mount(input.WareID.String(), "/"+string(*dest.SandboxPath), context)
 			if err != nil {
 				return err
 			}
@@ -444,5 +450,12 @@ func Exec(fc wfapi.FormulaAndContext) error {
 	}
 	serial, err := ipld.Marshal(ipldjson.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
 	fmt.Println(string(serial))
+
+	// cd back to original directory
+	err = os.Chdir(exec_dir)
+	if err != nil {
+		return errors.New("failed to cd to run dir")
+	}
+
 	return nil
 }
