@@ -13,16 +13,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
-	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/warpfork/warpforge/wfapi"
-	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 )
 
 type RioResult struct {
@@ -44,20 +44,27 @@ func warpforge_run_dir() string {
 	return (warpforge_dir() + "/run")
 }
 
-func get_base_config(rootdir string) specs.Spec {
-	_ = os.Remove("config.json")
-	cmd := exec.Command(warpforge_dir()+"/bin/runc", "spec", "--rootless")
-	err := cmd.Run()
+func get_base_config(rootdir string) (specs.Spec, error) {
+	s := specs.Spec{}
+
+	// generate a runc rootless config, then read the resulting config
+	err := os.Remove("config.json")
 	if err != nil {
-		log.Fatal(err)
+		return s, fmt.Errorf("failed to delete existing runc config: %s", err)
+	}
+	cmd := exec.Command(warpforge_dir()+"/bin/runc", "spec", "--rootless")
+	err = cmd.Run()
+	if err != nil {
+		return s, fmt.Errorf("failed to generate runc config: %s", err)
 	}
 	config_file, err := ioutil.ReadFile("config.json")
 	if err != nil {
-		log.Fatal(err)
+		return s, fmt.Errorf("failed to read runc config: %s", err)
 	}
-
-	s := specs.Spec{}
 	err = json.Unmarshal([]byte(config_file), &s)
+	if err != nil {
+		return s, fmt.Errorf("failed to parse runc config: %s", err)
+	}
 
 	// set up root -- this is not actually used since it is replaced with an overlayfs
 	root := specs.Root{
@@ -68,6 +75,9 @@ func get_base_config(rootdir string) specs.Spec {
 	}
 	s.Root = &root
 
+	// mount warpforge directory into the container
+	// TODO: this should probably be removed for the exec step,
+	// only needed for pack/unpack
 	wf_mount := specs.Mount{
 		Source:      warpforge_dir(),
 		Destination: "/warpforge",
@@ -76,13 +86,20 @@ func get_base_config(rootdir string) specs.Spec {
 	}
 	s.Mounts = append(s.Mounts, wf_mount)
 
-	return s
+	return s, nil
 }
 
-func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext) specs.Mount {
-	rootdir, _ := ioutil.TempDir(warpforge_run_dir(), "exec")
+func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext) (specs.Mount, error) {
+	rootdir, err := ioutil.TempDir(warpforge_run_dir(), "exec")
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to create exec directory: %s", err)
+	}
 	defer os.RemoveAll(rootdir)
-	s := get_base_config(rootdir)
+
+	s, err := get_base_config(rootdir)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to get base runc config: %s", err)
+	}
 
 	// default warehouse to unpack from
 	src := "ca+file:///warpforge/warehouse"
@@ -103,13 +120,28 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 	// for trusted CAs
 
 	// copy host's resolv.conf so we can mount it
-	_ = os.Mkdir(warpforge_dir()+"/etc", 0755)
-	dest_resolv, _ := os.Create(warpforge_dir() + "/etc/resolv.conf")
+	err = os.MkdirAll(warpforge_dir()+"/etc", 0755)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to create etc directory: %s", err)
+	}
+	dest_resolv, err := os.Create(warpforge_dir() + "/etc/resolv.conf")
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to create resolv.conf file: %s", err)
+	}
 	defer dest_resolv.Close()
-	src_resolv, _ := os.Open("/etc/resolv.conf")
+	src_resolv, err := os.Open("/etc/resolv.conf")
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to open host resolv.conf: %s", err)
+	}
 	defer src_resolv.Close()
-	io.Copy(dest_resolv, src_resolv)
-	dest_resolv.Sync()
+	_, err = io.Copy(dest_resolv, src_resolv)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to copy resolv.conf: %s", err)
+	}
+	err = dest_resolv.Sync()
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("failed to sync resolv.conf: %s", err)
+	}
 
 	// add mounts for resolv.conf and ssl certificates
 	etc_mount := specs.Mount{
@@ -145,7 +177,10 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 	}
 
 	log.Println("invoking runc for rio unpack", ware_id)
-	out_str, _ := invoke_runc(s)
+	out_str, err := invoke_runc(s)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", ware_id, err)
+	}
 
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
@@ -168,10 +203,24 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 	upperdir_path := warpforge_dir() + "/overlays/upper-" + cache_ware_id
 	workdir_path := warpforge_dir() + "/overlays/work-" + cache_ware_id
 
-	_ = os.RemoveAll(upperdir_path)
-	_ = os.MkdirAll(upperdir_path, 0755)
-	_ = os.RemoveAll(workdir_path)
-	_ = os.MkdirAll(workdir_path, 0755)
+	// remove then (re)create upper and work dirs
+	err = os.RemoveAll(upperdir_path)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("removal of upperdir failed: %s", err)
+	}
+	err = os.MkdirAll(upperdir_path, 0755)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("creation of upperdir failed: %s", err)
+	}
+	err = os.RemoveAll(workdir_path)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("removal of workdir failed: %s", err)
+	}
+	err = os.MkdirAll(workdir_path, 0755)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("creation of workdir failed: %s", err)
+	}
+
 	return specs.Mount{
 		Destination: dest,
 		Source:      "none",
@@ -181,18 +230,32 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 			"upperdir=" + upperdir_path,
 			"workdir=" + workdir_path,
 		},
-	}
+	}, nil
 }
 
-func make_path_mount(path string, dest string) specs.Mount {
+func make_path_mount(path string, dest string) (specs.Mount, error) {
 	uid := strings.Replace(path, "/", "-", -1)
 	upperdir_path := warpforge_dir() + "/overlays/upper-" + uid
 	workdir_path := warpforge_dir() + "/overlays/work-" + uid
 
-	_ = os.RemoveAll(upperdir_path)
-	_ = os.MkdirAll(upperdir_path, 0755)
-	_ = os.RemoveAll(workdir_path)
-	_ = os.MkdirAll(workdir_path, 0755)
+	// remove then (re)create upper and work dirs
+	err := os.RemoveAll(upperdir_path)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("removal of upperdir failed: %s", err)
+	}
+	err = os.MkdirAll(upperdir_path, 0755)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("creation of upperdir failed: %s", err)
+	}
+	err = os.RemoveAll(workdir_path)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("removal of workdir failed: %s", err)
+	}
+	err = os.MkdirAll(workdir_path, 0755)
+	if err != nil {
+		return specs.Mount{}, fmt.Errorf("creation of workdir failed: %s", err)
+	}
+
 	return specs.Mount{
 		Destination: dest,
 		Source:      "none",
@@ -202,13 +265,13 @@ func make_path_mount(path string, dest string) specs.Mount {
 			"upperdir=" + upperdir_path,
 			"workdir=" + workdir_path,
 		},
-	}
+	}, nil
 }
 
-func invoke_runc(s specs.Spec) (string, int) {
+func invoke_runc(s specs.Spec) (string, error) {
 	config, err := json.Marshal(s)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	err = ioutil.WriteFile("config.json", config, 0644)
@@ -220,14 +283,13 @@ func invoke_runc(s specs.Spec) (string, int) {
 	cmd.Stdout = &stdout
 	err = cmd.Run()
 	if err != nil {
-		log.Println("error running runc:", stdout.String(), stderr.String())
-		log.Fatal(err)
+		return "", err
 	}
-	// TODO what exitcode do we care about? 
-	return stdout.String(), 0
+	// TODO what exitcode do we care about?
+	return stdout.String(), nil
 }
 
-func rio_pack(s specs.Spec, path string) wfapi.WareID {
+func rio_pack(s specs.Spec, path string) (wfapi.WareID, error) {
 	s.Process.Args = []string{
 		"/warpforge/bin/rio",
 		"pack",
@@ -238,7 +300,11 @@ func rio_pack(s specs.Spec, path string) wfapi.WareID {
 	}
 
 	log.Println("invoking runc for pack", path)
-	out_str, _ := invoke_runc(s)
+	out_str, err := invoke_runc(s)
+	if err != nil {
+		return wfapi.WareID{}, fmt.Errorf("invoke runc for rio pack of %s failed: %s", path, err)
+	}
+
 	out := RioOutput{}
 	for _, line := range strings.Split(out_str, "\n") {
 		err := json.Unmarshal([]byte(line), &out)
@@ -257,7 +323,7 @@ func rio_pack(s specs.Spec, path string) wfapi.WareID {
 	ware_id := wfapi.WareID{}
 	ware_id.Packtype = wfapi.Packtype(strings.Split(out.Result.WareId, ":")[0])
 	ware_id.Hash = strings.Split(out.Result.WareId, ":")[1]
-	return ware_id
+	return ware_id, nil
 }
 
 func Exec(fc wfapi.FormulaAndContext) error {
@@ -274,9 +340,15 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		return errors.New("failed to cd to run dir")
 	}
 
-	rootdir, _ := ioutil.TempDir(warpforge_run_dir(), "exec")
+	rootdir, err := ioutil.TempDir(warpforge_run_dir(), "exec")
+	if err != nil {
+		return fmt.Errorf("failed to create temp root directory: %s", err)
+	}
 	defer os.RemoveAll(rootdir)
-	s := get_base_config(rootdir)
+	s, err := get_base_config(rootdir)
+	if err != nil {
+		return err
+	}
 
 	for dest, src := range formula.Inputs.Values {
 		var input *wfapi.FormulaInputSimple
@@ -293,10 +365,16 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		var mnt specs.Mount
 		if input.Mount != nil {
 			// TODO do something with Mount.Mode
-			mnt = make_path_mount(input.Mount.HostPath, "/"+string(*dest.SandboxPath))
+			mnt, err = make_path_mount(input.Mount.HostPath, "/"+string(*dest.SandboxPath))
+			if err != nil {
+				return err
+			}
 		} else if input.WareID != nil {
 			wareid := fmt.Sprintf("%s:%s", input.WareID.Packtype, input.WareID.Hash)
-			mnt = make_ware_mount(wareid, "/"+string(*dest.SandboxPath), context)
+			mnt, err = make_ware_mount(wareid, "/"+string(*dest.SandboxPath), context)
+			if err != nil {
+				return err
+			}
 		}
 
 		// root mount must come first
@@ -327,21 +405,23 @@ func Exec(fc wfapi.FormulaAndContext) error {
 	}
 	rr.FormulaID = lnk.String()
 
-
 	// run the exec action
 	switch {
 	case formula.Action.Exec != nil:
 		s.Process.Args = formula.Action.Exec.Command
 		s.Process.Cwd = "/"
 		log.Println("invoking runc for exec")
-		out, code := invoke_runc(s)
-		rr.Exitcode = code
+		out, err := invoke_runc(s)
+		if err != nil {
+			return fmt.Errorf("invoke runc for exec failed: %s", err)
+		}
+		// TODO exit code?
+		rr.Exitcode = 0
 		fmt.Printf("%s\n", out)
 	default:
 		// TODO handle other actions
 		log.Fatal("unsupported action")
 	}
-
 
 	// collect outputs
 	rr.Results.Values = make(map[wfapi.OutputName]wfapi.FormulaInputSimple)
@@ -349,7 +429,10 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		switch {
 		case gather.From.SandboxPath != nil:
 			path := string(*gather.From.SandboxPath)
-			ware_id := rio_pack(s, path)
+			ware_id, err := rio_pack(s, path)
+			if err != nil {
+				return err
+			}
 			rr.Results.Keys = append(rr.Results.Keys, name)
 			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &ware_id}
 			log.Println("packed", name, "(", path, "->", ware_id, ")")
