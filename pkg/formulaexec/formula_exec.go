@@ -49,7 +49,7 @@ func get_base_config(rootdir string) (specs.Spec, error) {
 	s := specs.Spec{}
 
 	// generate a runc rootless config, then read the resulting config
-	err := os.Remove("config.json")
+	err := os.RemoveAll("config.json")
 	if err != nil {
 		return s, fmt.Errorf("failed to delete existing runc config: %s", err)
 	}
