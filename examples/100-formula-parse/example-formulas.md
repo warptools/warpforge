@@ -122,3 +122,79 @@ and then the rest of the string can contain more characters that shouldnt be par
 You can see this in the `$PATH` variable's value above.)
 
 ---
+
+Let's show how these values are being parsed.
+
+[testmark]:# (hello-and-debug/formula)
+```json
+{
+	"formula": {
+		"inputs": {
+			"$HOME": "literal:/home/hello",
+			"/mount/me": "ware:tar:qwerasdf",
+			"/fancy/stuff": {
+				"basis": "ware:tar:asdfzxcv",
+				"filters": {
+					"demo": "value"
+				}
+			}
+		},
+		"action": {
+			"exec": {
+				"command": []
+			}
+		},
+		"outputs": {}
+	}
+}
+```
+
+Here's a debug representation that shows how those things are parsed using the Warpforge API schema,
+and what types we see after parsing the information:
+
+[testmark]:# (hello-and-debug/formula.debug)
+```text
+struct<FormulaAndContext>{
+	formula: struct<Formula>{
+		inputs: map<Map__SandboxPort__FormulaInput>{
+			union<SandboxPort>{string<SandboxVar>{"HOME"}}: union<FormulaInput>{union<FormulaInputSimple>{string<String>{"/home/hello"}}}
+			union<SandboxPort>{string<SandboxPath>{"mount/me"}}: union<FormulaInput>{union<FormulaInputSimple>{struct<WareID>{
+				packtype: string<Packtype>{"tar"}
+				hash: string<String>{"qwerasdf"}
+			}}}
+			union<SandboxPort>{string<SandboxPath>{"fancy/stuff"}}: union<FormulaInput>{struct<FormulaInputComplex>{
+				basis: union<FormulaInputSimple>{struct<WareID>{
+					packtype: string<Packtype>{"tar"}
+					hash: string<String>{"asdfzxcv"}
+				}}
+				filters: map<FilterMap>{
+					string<String>{"demo"}: string<String>{"value"}
+				}
+			}}
+		}
+		action: union<Action>{struct<Action_Exec>{
+			command: list<List__String>{
+			}
+		}}
+		outputs: map<Map__OutputName__GatherDirective>{
+		}
+	}
+	context: absent
+}
+```
+
+As you can see, unions (sometimes also called sum types, or variants, or other terms like that in some literature) are used heavily here.
+
+- The type of the formula's `inputs` map keys is a union type called `SandboxPort`.
+	- We can see it containing member types `SandboxVar` and `SandboxPath` in this example.
+	- Notice how each of those is missing their leading character from the JSON.  That's because those were the indicators for which type to see that data as!
+- The type `FormulaInputSimple` is seen, containing both `WareID` types and simple string literals.
+	- These are indicated again by string prefix, although it's a little more obvious: "`literal:`" and "`ware:`".
+	- ... Notice that the `WareID` type has been further parsed into a struct with two fields!  This used a "`:`" as a delimiter again, but is a slightly different kind of parse than the union was (this one will extract any two strings, rather than having a known fixed list of options).
+- The type `FormulaInput` wraps where we see `FormulaInputSimple`.  And in the third input, we see another option: `FormulaInputComplex`.
+	- These were indicated a totally different way: this is called a "kinded union".  The fact that a map is used in the JSON is what indicates a `FormulaInputComplex`, vs a string in the JSON indicating `FormulaInputSimple`!
+- In the formula's `action` field, we see another union type, named `Action`.  The value we see in it is of type `Action_Exec`.
+	- This morphs from JSON in yet another way: this one was indicated by the key in the JSON map.
+
+Unions are used wherever there's an exclusive choice (such as: `SandboxPath` and `SandboxVar` for whether something is a mount path or a variable name),
+or, whenever we need an extension mechanism (that's what `Action` and its various possible members are for: so we can add new ones in the future).

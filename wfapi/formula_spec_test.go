@@ -10,6 +10,7 @@ import (
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/warpfork/go-testmark"
 )
@@ -35,6 +36,13 @@ func TestFormulaParseFixtures(t *testing.T) {
 					frmAndCtx := FormulaAndContext{}
 					n, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
+
+					// If there was data about debug forms, check that matches.
+					if dir.Children["formula.debug"] != nil {
+						printed := printer.Sprint(n)
+						printer.Print(n)
+						qt.Assert(t, printed+"\n", qt.CmpEquals(), string(dir.Children["formula.debug"].Hunk.Body))
+					}
 
 					// Remarshal.  Assert it works.
 					t.Run("remarshal", func(t *testing.T) {
