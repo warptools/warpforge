@@ -1,8 +1,8 @@
 package wfapi
 
 import (
-	"github.com/ipld/go-ipld-prime/schema"
 	"fmt"
+	"github.com/ipld/go-ipld-prime/schema"
 )
 
 func init() {
