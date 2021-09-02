@@ -38,7 +38,7 @@ and what exactly the inputs and outputs are, and how they're labeled, are a bit 
 Here is a relatively simple plot, which has a single step:
 
 [testmark]:# (simple-plot/plot)
-```
+```json
 {
 	"inputs": {
 		"thingy": "ware:tar:qwerasdf"
@@ -85,7 +85,7 @@ There's actually *several* new concepts here.
 The debug dump of this data may be illustrative:
 
 [testmark]:# (simple-plot/plot.debug)
-```
+```text
 struct<Plot>{
 	inputs: map<Map__LocalLabel__PlotInput>{
 		string<LocalLabel>{"thingy"}: union<PlotInput>{union<PlotInputSimple>{struct<WareID>{
