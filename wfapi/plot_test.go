@@ -18,7 +18,8 @@ func TestParsePlot(t *testing.T) {
 			"protoformula": {
 				"inputs": {
 					"/": "ware:tar:hash",
-					"/catalog": "catalog:a:b:c"
+					"/catalog": "catalog:a:b:c",
+					"/pipe": "pipe:step:name"
 				},
 				"action": {
 					"exec": {
@@ -38,7 +39,7 @@ func TestParsePlot(t *testing.T) {
 		}
 	},
 	"outputs": {
-		"test": "one:test"
+		"test": "pipe:one:test"
 	}
 }
 `
