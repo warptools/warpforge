@@ -40,7 +40,6 @@ func TestFormulaParseFixtures(t *testing.T) {
 					// If there was data about debug forms, check that matches.
 					if dir.Children["formula.debug"] != nil {
 						printed := printer.Sprint(n)
-						printer.Print(n)
 						qt.Assert(t, printed+"\n", qt.CmpEquals(), string(dir.Children["formula.debug"].Hunk.Body))
 					}
 

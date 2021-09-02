@@ -13,9 +13,6 @@ They're just for asserting that the API parsers and serializers work.
 
 These documents should all round-trip.
 
-FUTURE: we should add sections that contain the debug printout format for the same datum too,
-which may help human readers of this file see what's going on more clearly.
-
 FUTURE: we should add fixtures of the hash outputs to each datum.
 
 FUTURE: optionally add some fixtures that path into the parsed data and pluck out parts of it?
@@ -38,6 +35,9 @@ If editing this document:
   for things like the hash, etc, that are matched with the main document in that "directory".
 
 ---
+
+The Empty Formula
+-----------------
 
 Here's about the simplest formula one could have:
 
@@ -70,6 +70,9 @@ bafyrgqelzywg34w5h55k5tqw6zn4beeeonglldq5q7oihmdlpalav4imqco3zkdf5llnpncdwmlgjdk
 ```
 
 ---
+
+A Formula With Inputs
+---------------------
 
 Formulas usually have inputs.  And the most common type is a "ware", which will be mounted to some directory.
 
@@ -122,6 +125,9 @@ and then the rest of the string can contain more characters that shouldnt be par
 You can see this in the `$PATH` variable's value above.)
 
 ---
+
+How Formulas are Parsed
+-----------------------
 
 Let's show how these values are being parsed.
 
