@@ -67,7 +67,7 @@ Here is a relatively simple plot, which has a single step:
 		}
 	},
 	"outputs": {
-		"test": "one:stuff"
+		"test": "pipe:one:stuff"
 	}
 }
 ```
@@ -116,11 +116,11 @@ struct<Plot>{
 			}
 		}}
 	}
-	outputs: map<Map__LocalLabel__Pipe>{
-		string<LocalLabel>{"test"}: struct<Pipe>{
+	outputs: map<Map__LocalLabel__PlotOutput>{
+		string<LocalLabel>{"test"}: union<PlotOutput>{union<PlotOutputSimple>{struct<Pipe>{
 			stepName: string<StepName>{"one"}
 			label: string<LocalLabel>{"stuff"}
-		}
+		}}}
 	}
 }
 ```

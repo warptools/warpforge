@@ -75,7 +75,6 @@ func init() {
 			"String",
 			"Pipe",
 			"CatalogRef",
-			"Pipe",
 			// ... TODO ...
 		},
 		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
@@ -84,7 +83,6 @@ func init() {
 			"literal:": "String",
 			"pipe:":    "Pipe",
 			"catalog:": "CatalogRef",
-			"pipe:":    "Pipe",
 			// ... TODO ...
 		})))
 	TypeSystem.Accumulate(schema.SpawnStruct("PlotInputComplex",
@@ -106,7 +104,6 @@ type PlotInputSimple struct {
 	Literal    *string
 	Pipe       *Pipe
 	CatalogRef *CatalogRef
-	Pipe       *Pipe
 }
 
 type PlotInputComplex struct {
