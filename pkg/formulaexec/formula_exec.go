@@ -10,9 +10,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"time"
-	"path"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"

@@ -97,7 +97,6 @@ func TestDirMount(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil)
 }
 
-
 func TestContextWarehouse(t *testing.T) {
 	serial := `{
 	"formula": {

@@ -166,7 +166,7 @@ type Protoformula struct {
 func init() {
 	TypeSystem.Accumulate(schema.SpawnStruct("CatalogRef",
 		[]schema.StructField{
-			schema.SpawnStructField("moduleName", "ModuleName", false, false), // Ideally an enum, punting on that for now.
+			schema.SpawnStructField("moduleName", "ModuleName", false, false),
 			schema.SpawnStructField("releaseName", "String", false, false),
 			schema.SpawnStructField("itemName", "String", false, false),
 		},
