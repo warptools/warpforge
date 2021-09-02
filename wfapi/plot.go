@@ -73,6 +73,7 @@ func init() {
 			"WareID",
 			"Mount",
 			"String",
+			"Pipe",
 			"CatalogRef",
 			// ... TODO ...
 		},
@@ -80,6 +81,7 @@ func init() {
 			"ware:":    "WareID",
 			"mount:":   "Mount",
 			"literal:": "String",
+			"pipe:":    "Pipe",
 			"catalog:": "CatalogRef",
 			// ... TODO ...
 		})))
@@ -100,6 +102,7 @@ type PlotInputSimple struct {
 	WareID     *WareID
 	Mount      *Mount
 	Literal    *string
+	Pipe       *Pipe
 	CatalogRef *CatalogRef
 	// ... TODO ...
 }
