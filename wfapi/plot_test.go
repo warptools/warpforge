@@ -17,7 +17,8 @@ func TestParsePlot(t *testing.T) {
 		"one": {
 			"protoformula": {
 				"inputs": {
-					"/": "ware:tar:hash"
+					"/": "ware:tar:hash",
+					"/catalog": "catalog:a:b:c"
 				},
 				"action": {
 					"exec": {

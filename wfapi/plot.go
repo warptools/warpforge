@@ -97,9 +97,10 @@ type PlotInput struct {
 }
 
 type PlotInputSimple struct {
-	WareID  *WareID
-	Mount   *Mount
-	Literal *string
+	WareID     *WareID
+	Mount      *Mount
+	Literal    *string
+	CatalogRef *CatalogRef
 	// ... TODO ...
 }
 
