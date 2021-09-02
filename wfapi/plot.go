@@ -10,15 +10,15 @@ func init() {
 		[]schema.StructField{
 			schema.SpawnStructField("inputs", "Map__LocalLabel__PlotInput", false, false),
 			schema.SpawnStructField("steps", "Map__StepName__Step", false, false),
-			schema.SpawnStructField("outputs", "Map__LocalLabel__Pipe", false, false),
+			schema.SpawnStructField("outputs", "Map__LocalLabel__PlotOutput", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnMap("Map__LocalLabel__PlotInput",
 		"LocalLabel", "PlotInput", false))
 	TypeSystem.Accumulate(schema.SpawnMap("Map__StepName__Step",
 		"StepName", "Step", false))
-	TypeSystem.Accumulate(schema.SpawnMap("Map__LocalLabel__Pipe",
-		"LocalLabel", "Pipe", false))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__LocalLabel__PlotOutput",
+		"LocalLabel", "PlotOutput", false))
 	TypeSystem.Accumulate(schema.SpawnString("StepName"))
 	TypeSystem.Accumulate(schema.SpawnString("LocalLabel"))
 
@@ -35,7 +35,7 @@ type Plot struct {
 	}
 	Outputs struct {
 		Keys   []LocalLabel
-		Values map[LocalLabel]Pipe
+		Values map[LocalLabel]PlotOutput
 	}
 }
 
@@ -74,6 +74,7 @@ func init() {
 			"Mount",
 			"String",
 			"CatalogRef",
+			"Pipe",
 			// ... TODO ...
 		},
 		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
@@ -81,6 +82,7 @@ func init() {
 			"mount:":   "Mount",
 			"literal:": "String",
 			"catalog:": "CatalogRef",
+			"pipe:":    "Pipe",
 			// ... TODO ...
 		})))
 	TypeSystem.Accumulate(schema.SpawnStruct("PlotInputComplex",
@@ -101,11 +103,50 @@ type PlotInputSimple struct {
 	Mount      *Mount
 	Literal    *string
 	CatalogRef *CatalogRef
-	// ... TODO ...
+	Pipe       *Pipe
 }
 
 type PlotInputComplex struct {
 	Basis   PlotInputSimple
+	Filters FilterMap
+}
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnUnion("PlotOutput",
+		[]schema.TypeName{
+			"PlotOutputSimple",
+			"PlotOutputComplex",
+		},
+		schema.SpawnUnionRepresentationKinded(map[ipld.Kind]schema.TypeName{
+			ipld.Kind_String: "PlotOutputSimple",
+			ipld.Kind_Map:    "PlotOutputComplex",
+		})))
+	TypeSystem.Accumulate(schema.SpawnUnion("PlotOutputSimple",
+		[]schema.TypeName{
+			"Pipe",
+		},
+		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
+			"pipe:": "Pipe",
+		})))
+	TypeSystem.Accumulate(schema.SpawnStruct("PlotOutputComplex",
+		[]schema.StructField{
+			schema.SpawnStructField("basis", "PlotOutputSimple", false, false),
+			schema.SpawnStructField("filters", "FilterMap", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+}
+
+type PlotOutput struct {
+	PlotOutputSimple  *PlotOutputSimple
+	PlotOutputComplex *PlotOutputComplex
+}
+
+type PlotOutputSimple struct {
+	Pipe *Pipe
+}
+
+type PlotOutputComplex struct {
+	Basis   PlotOutputSimple
 	Filters FilterMap
 }
 
