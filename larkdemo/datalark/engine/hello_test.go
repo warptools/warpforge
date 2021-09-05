@@ -82,7 +82,7 @@ Answers:
 
 */
 
-func Example_hello() {
+func eval(src string, tsname string, npts []schema.TypedPrototype) {
 	thread := &starlark.Thread{
 		Name: "thethreadname",
 		Print: func(thread *starlark.Thread, msg string) {
@@ -91,20 +91,37 @@ func Example_hello() {
 			fmt.Printf("%s\n", msg)
 		},
 	}
-	_, err := starlark.ExecFile(thread, "thefilename.star", `
-print(ConstructString)
-print(ConstructString("yo"))
-x = {"bz": "zoo"}
-print(ConstructMap(hey="hai", zonk="wot", **x))
-#print(ConstructMap({ConstructString("fun"): "heeey"}))
-`,
+	_, err := starlark.ExecFile(thread, "thefilename.star", src,
 		starlark.StringDict{
-			"ConstructString": &Prototype{basicnode.Prototype.String}, // TODO i'd kinda like to give this a more specific name again.
-			"ConstructMap":    &Prototype{basicnode.Prototype.Map},
-		})
+			"String": &Prototype{basicnode.Prototype.String},
+			"Map":    &Prototype{basicnode.Prototype.Map},
+			tsname:   constructorMap(npts),
+		},
+	)
 	if err != nil {
 		panic(err)
 	}
+}
+
+// You can't just range over a schema.TypeSystem and do everything -- because we need to know what the implementation and memory layout is going to be.
+// That means we need prototypes.  And those prototypes can't just be pulled out of thin air.
+func constructorMap(npts []schema.TypedPrototype) *starlark.Dict {
+	d := starlark.NewDict(len(npts))
+	for _, npt := range npts {
+		d.SetKey(starlark.String(npt.Type().Name()), &Prototype{npt})
+	}
+	d.Freeze()
+	return d
+}
+
+func Example_hello() {
+	eval(`
+print(String)
+print(String("yo"))
+x = {"bz": "zoo"}
+print(Map(hey="hai", zonk="wot", **x))
+#print(Map({String("fun"): "heeey"}))
+`, "", nil)
 
 	// Output:
 	// <built-in function datalark.Prototype>
@@ -125,24 +142,15 @@ func Example_structs() {
 		}, nil),
 	)
 	type FooBar struct{ Foo, Bar string }
-	npt := bindnode.Prototype((*FooBar)(nil), ts.TypeByName("FooBar"))
 
-	thread := &starlark.Thread{
-		Name: "thethreadname",
-		Print: func(thread *starlark.Thread, msg string) {
-			fmt.Printf("%s\n", msg)
-		},
-	}
-	_, err := starlark.ExecFile(thread, "thefilename.star", `
-print(ConstructStructFoo)
-print(ConstructStructFoo(foo="hai", bar="wot"))
-`,
-		starlark.StringDict{
-			"ConstructStructFoo": &Prototype{npt},
-		})
-	if err != nil {
-		panic(err)
-	}
+	// TODO I wanted dotted access, not map-style access.
+	eval(`
+#print(dir(ts))
+print(ts["FooBar"])
+print(ts["FooBar"](foo="hai", bar="wot"))
+`, "ts", []schema.TypedPrototype{
+		bindnode.Prototype((*FooBar)(nil), ts.TypeByName("FooBar")),
+	})
 
 	// Output:
 	// <built-in function datalark.Prototype<FooBar>>
