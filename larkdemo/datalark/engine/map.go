@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
@@ -41,10 +42,28 @@ func ConstructMap(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	// 	return nil, err
 	// }
 
-	fmt.Printf("::%v\n", args)
-	fmt.Printf("::%v\n", kwargs)
-
-	return starlark.None, nil
+	nb := basicnode.Prototype.Map.NewBuilder() // TODO: this should be configurable.
+	ma, err := nb.BeginMap(int64(len(kwargs))) // FUTURE: this could... need to take into account more things.
+	if len(args) > 0 {
+		panic("positional args nyi")
+	}
+	if len(kwargs) > 0 {
+		if err != nil {
+			return starlark.None, err
+		}
+		for _, kwarg := range kwargs {
+			if err := assignish(ma.AssembleKey(), kwarg[0]); err != nil {
+				return starlark.None, err
+			}
+			if err := assignish(ma.AssembleValue(), kwarg[1]); err != nil {
+				return starlark.None, err
+			}
+		}
+	}
+	if err := ma.Finish(); err != nil {
+		return starlark.None, err
+	}
+	return &Map{nb.Build()}, nil
 }
 
 var _ starlark.Mapping = (*Map)(nil)

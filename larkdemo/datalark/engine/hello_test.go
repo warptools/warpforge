@@ -18,11 +18,7 @@ func Example_hello() {
 	_, err := starlark.ExecFile(thread, "thefilename.star", `
 print(ConstructString("yo"))
 x = {"bz": "zoo"}
-
-def uwot():
-	return {"ay": "zee"}
-
-print(ConstructMap(hey="hai", zonk="wot", **uwot()))
+print(ConstructMap(hey="hai", zonk="wot", **x))
 #print(ConstructMap({ConstructString("fun"): "heeey"}))
 `,
 		// FUTURE: may want to make a module, interpret it first, and then make it available in the globals...
@@ -38,7 +34,9 @@ print(ConstructMap(hey="hai", zonk="wot", **uwot()))
 
 	// Output:
 	// string{"yo"}
-	// ::()
-	// ::[("hey", "hai") ("zonk", "wot") ("ay", "zee")]
-	// None
+	// map{
+	// 	string{"hey"}: string{"hai"}
+	// 	string{"zonk"}: string{"wot"}
+	// 	string{"bz"}: string{"zoo"}
+	// }
 }
