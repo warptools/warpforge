@@ -105,8 +105,8 @@ func eval(src string, tsname string, npts []schema.TypedPrototype) {
 
 // You can't just range over a schema.TypeSystem and do everything -- because we need to know what the implementation and memory layout is going to be.
 // That means we need prototypes.  And those prototypes can't just be pulled out of thin air.
-func constructorMap(npts []schema.TypedPrototype) *starlark.Dict {
-	d := starlark.NewDict(len(npts))
+func constructorMap(npts []schema.TypedPrototype) *Object {
+	d := NewObject(len(npts))
 	for _, npt := range npts {
 		d.SetKey(starlark.String(npt.Type().Name()), &Prototype{npt})
 	}
@@ -143,11 +143,10 @@ func Example_structs() {
 	)
 	type FooBar struct{ Foo, Bar string }
 
-	// TODO I wanted dotted access, not map-style access.
 	eval(`
 #print(dir(ts))
-print(ts["FooBar"])
-print(ts["FooBar"](foo="hai", bar="wot"))
+print(ts.FooBar)
+print(ts.FooBar(foo="hai", bar="wot"))
 `, "ts", []schema.TypedPrototype{
 		bindnode.Prototype((*FooBar)(nil), ts.TypeByName("FooBar")),
 	})
