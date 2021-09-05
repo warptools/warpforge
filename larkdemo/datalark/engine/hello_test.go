@@ -120,7 +120,7 @@ print(String)
 print(String("yo"))
 x = {"bz": "zoo"}
 print(Map(hey="hai", zonk="wot", **x))
-#print(Map({String("fun"): "heeey"}))
+print(Map({String("fun"): "heeey"}))
 `, "", nil)
 
 	// Output:
@@ -130,6 +130,9 @@ print(Map(hey="hai", zonk="wot", **x))
 	// 	string{"hey"}: string{"hai"}
 	// 	string{"zonk"}: string{"wot"}
 	// 	string{"bz"}: string{"zoo"}
+	// }
+	// map{
+	// 	string{"fun"}: string{"heeey"}
 	// }
 }
 

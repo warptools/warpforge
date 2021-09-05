@@ -95,11 +95,14 @@ func Unwrap(sval starlark.Value) datamodel.Node {
 // If we see it's one of our own wrapped types, yank it back out and use AssignNode.
 // If it's a starlark string, take that and use AssignString.
 // Other starlark primitives, similarly.
-// For starlark recursives, error; that's too much to try to coerce, and almost surely you've made a mistake by asking.
+// Dicts and lists are also handled.
 //
-// This can't attempt to be nice to foreign/user-defined "types" in starlark, either, unfortunately;
+// This makes some attempt to be nice to foreign/user-defined "types" in starlark as well;
+// in particular, anything implementing `starlark.IterableMapping` will be converted into map-building assignments,
+// and anything implementing just `starlark.Iterable` (and not `starlark.IterableMapping`) will be converted into list-building assignments.
+// However, there is no support for primitives unless they're one of the concrete types from the starlark package;
 // starlark doesn't have a concept of a data model where you can ask what "kind" something is,
-// so if it's not *literally* one of the concrete types from starlark that we can recognize, well, we're outta luck.
+// so if it's not *literally* one of the concrete types that we can match on, well, we're outta luck.
 func assignish(na datamodel.NodeAssembler, sval starlark.Value) error {
 	// Unwrap an existing datamodel value if there is one.
 	w := Unwrap(sval)
@@ -122,8 +125,50 @@ func assignish(na datamodel.NodeAssembler, sval starlark.Value) error {
 		return na.AssignString(string(s2))
 	case starlark.Bytes:
 		return na.AssignBytes([]byte(s2))
+	case starlark.IterableMapping:
+		size := -1
+		if s3, ok := s2.(starlark.Sequence); ok {
+			size = s3.Len()
+		}
+		ma, err := na.BeginMap(int64(size))
+		if err != nil {
+			return err
+		}
+		itr := s2.Iterate()
+		defer itr.Done()
+		var k starlark.Value
+		for itr.Next(&k) {
+			if err := assignish(ma.AssembleKey(), k); err != nil {
+				return err
+			}
+			v, _, err := s2.Get(k)
+			if err != nil {
+				return err
+			}
+			if err := assignish(ma.AssembleValue(), v); err != nil {
+				return err
+			}
+		}
+		return ma.Finish()
+	case starlark.Iterable:
+		size := -1
+		if s3, ok := s2.(starlark.Sequence); ok {
+			size = s3.Len()
+		}
+		la, err := na.BeginList(int64(size))
+		if err != nil {
+			return err
+		}
+		itr := s2.Iterate()
+		defer itr.Done()
+		var v starlark.Value
+		for itr.Next(&v) {
+			if err := assignish(la.AssembleValue(), v); err != nil {
+				return err
+			}
+		}
+		return la.Finish()
 	}
-	// TODO: okay, maybe we should actually detect iterables here and handle calmly too.  Or make variants of this function, at least some of which will.
 
 	// No joy yet?  Okay.  Bail.
 	return fmt.Errorf("unwilling to coerce starlark value of type %q into ipld datamodel", sval.Type())

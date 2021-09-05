@@ -1,7 +1,6 @@
 package datalarkengine
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
@@ -44,5 +43,6 @@ func (g *String) Truth() starlark.Bool {
 	return true
 }
 func (g *String) Hash() (uint32, error) {
-	return 0, errors.New("TODO")
+	s, _ := g.val.AsString()
+	return starlark.String(s).Hash()
 }
