@@ -5,15 +5,12 @@ import (
 	"fmt"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
 )
 
-func ConstructMap(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// TODO grab the type info we bound earlier (somehow) into 'b'?
-
+func ConstructMap(np datamodel.NodePrototype, _ *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// TODO should have several different options:
 	//  - accept a single arg of a starlark dict and bounce it in.
 	//    - maybe even multiple, and merge them?  maybe.
@@ -44,7 +41,7 @@ func ConstructMap(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 
 	// FUTURE: (*far* future...) We could also try to accept a `starlark.Callable` as a positional arg, and hand it assemblers.  May be nice for performance since it can build in-place and do less allocs and less copying (same reasons as in direct golang).
 
-	nb := basicnode.Prototype.Map.NewBuilder() // TODO: this should be configurable.
+	nb := np.NewBuilder()
 	ma, err := nb.BeginMap(int64(len(kwargs))) // FUTURE: this could... need to take into account more things.
 	if len(args) > 0 {
 		panic("positional args nyi")
@@ -70,13 +67,6 @@ func ConstructMap(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 
 var _ starlark.Mapping = (*Map)(nil)
 
-func WrapMap(val datamodel.Node) (*Map, error) {
-	if val.Kind() != datamodel.Kind_Map {
-		return nil, fmt.Errorf("WrapMap must be used on a node of kind 'map'!")
-	}
-	return &Map{val}, nil
-}
-
 type Map struct {
 	val datamodel.Node
 }
@@ -86,9 +76,9 @@ func (g *Map) Node() datamodel.Node {
 }
 func (g *Map) Type() string {
 	if tn, ok := g.val.(schema.TypedNode); ok {
-		return fmt.Sprintf("datalark_map<%T>", tn.Type().Name())
+		return fmt.Sprintf("datalark.Map<%T>", tn.Type().Name())
 	}
-	return fmt.Sprintf("datalark_map")
+	return fmt.Sprintf("datalark.Map")
 }
 func (g *Map) String() string {
 	return printer.Sprint(g.val)

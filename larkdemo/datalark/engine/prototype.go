@@ -19,6 +19,8 @@ type Prototype struct {
 
 // -- starlark.Value -->
 
+var _ starlark.Value = (*Prototype)(nil)
+
 func (g *Prototype) Type() string {
 	if npt, ok := g.np.(schema.TypedPrototype); ok {
 		return fmt.Sprintf("datalark.Prototype<%s>", npt.Type().Name())
@@ -37,6 +39,8 @@ func (g *Prototype) Hash() (uint32, error) {
 }
 
 // -- starlark.Callable -->
+
+var _ starlark.Callable = (*Prototype)(nil)
 
 func (g *Prototype) Name() string {
 	return g.String()
@@ -65,8 +69,7 @@ func (g *Prototype) CallInternal(thread *starlark.Thread, args starlark.Tuple, k
 		// TODO list
 		panic("nyi")
 	case len(kwargs) > 0:
-		// TODO map
-		panic("nyi")
+		return ConstructMap(g.np, thread, args, kwargs)
 	}
 	return Wrap(nb.Build())
 }

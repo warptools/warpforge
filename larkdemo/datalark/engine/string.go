@@ -5,28 +5,22 @@ import (
 	"fmt"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
 )
 
-func ConstructString(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// TODO optionally, grab the type info we bound earlier (somehow) into 'b'?
-
-	var str string
-	if err := starlark.UnpackPositionalArgs("datalark.String", args, kwargs, 1, &str); err != nil {
+func ConstructString(np datamodel.NodePrototype, _ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var val string
+	if err := starlark.UnpackPositionalArgs("datalark.String", args, kwargs, 1, &val); err != nil {
 		return nil, err
 	}
 
-	return WrapString(basicnode.NewString(str))
-}
-
-func WrapString(val datamodel.Node) (*String, error) {
-	if val.Kind() != datamodel.Kind_String {
-		return nil, fmt.Errorf("WrapString must be used on a node of kind 'string'!")
+	nb := np.NewBuilder()
+	if err := nb.AssignString(val); err != nil {
+		return nil, err
 	}
-	return &String{val}, nil
+	return Wrap(nb.Build())
 }
 
 type String struct {
@@ -38,9 +32,9 @@ func (g *String) Node() datamodel.Node {
 }
 func (g *String) Type() string {
 	if tn, ok := g.val.(schema.TypedNode); ok {
-		return fmt.Sprintf("datalark_string<%T>", tn.Type().Name())
+		return fmt.Sprintf("datalark.String<%T>", tn.Type().Name())
 	}
-	return fmt.Sprintf("datalark_string")
+	return fmt.Sprintf("datalark.String")
 }
 func (g *String) String() string {
 	return printer.Sprint(g.val)

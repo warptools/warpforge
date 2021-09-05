@@ -67,7 +67,7 @@ func (g *Struct) Node() datamodel.Node {
 	return g.val
 }
 func (g *Struct) Type() string {
-	return fmt.Sprintf("datalark_struct<%T>", g.val.(schema.TypedNode).Type().Name())
+	return fmt.Sprintf("datalark.Struct<%T>", g.val.(schema.TypedNode).Type().Name())
 }
 func (g *Struct) String() string {
 	return printer.Sprint(g.val)

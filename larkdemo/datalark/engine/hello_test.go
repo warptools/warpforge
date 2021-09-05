@@ -3,6 +3,7 @@ package datalarkengine
 import (
 	"fmt"
 
+	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
@@ -97,19 +98,16 @@ x = {"bz": "zoo"}
 print(ConstructMap(hey="hai", zonk="wot", **x))
 #print(ConstructMap({ConstructString("fun"): "heeey"}))
 `,
-		// FUTURE: may want to make a module, interpret it first, and then make it available in the globals...
-		//  as a sheer way of getting dotted notation in a consistent way.
-		//   We can also probably do this with a map and achieve similar effects, but that seems less cool.
 		starlark.StringDict{
-			"ConstructString": starlark.NewBuiltin("ConstructString", ConstructString),
-			"ConstructMap":    starlark.NewBuiltin("ConstructMap", ConstructMap),
+			"ConstructString": &Prototype{basicnode.Prototype.String}, // TODO i'd kinda like to give this a more specific name again.
+			"ConstructMap":    &Prototype{basicnode.Prototype.Map},
 		})
 	if err != nil {
 		panic(err)
 	}
 
 	// Output:
-	// <built-in function ConstructString>
+	// <built-in function datalark.Prototype>
 	// string{"yo"}
 	// map{
 	// 	string{"hey"}: string{"hai"}

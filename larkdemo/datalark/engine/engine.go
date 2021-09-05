@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
 )
 
@@ -20,9 +21,63 @@ type Value interface {
 	Node() datamodel.Node
 }
 
-func Wrap(val datamodel.Node) (Value, error) {
-	// TODO the usual big honking switch about kinds or typekinds.
-	panic("nyi")
+func Wrap(n datamodel.Node) (Value, error) {
+	if nt, ok := n.(schema.TypedNode); ok {
+		switch nt.Type().TypeKind() {
+		case schema.TypeKind_Struct:
+			return &Struct{n}, nil
+		case schema.TypeKind_Union:
+			panic("nyi")
+		case schema.TypeKind_Enum:
+			panic("nyi")
+		case schema.TypeKind_Map:
+			// fall down to plain data model behavior
+		case schema.TypeKind_List:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Unit:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Bool:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Int:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Float:
+			// fall down to plain data model behavior
+		case schema.TypeKind_String:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Bytes:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Link:
+			// fall down to plain data model behavior
+		case schema.TypeKind_Invalid:
+			panic("uninitialized memory?")
+		default:
+			panic("unreachable")
+		}
+	}
+	switch n.Kind() {
+	case datamodel.Kind_Map:
+		return &Map{n}, nil
+	case datamodel.Kind_List:
+		panic("nyi")
+	case datamodel.Kind_Null:
+		panic("nyi")
+	case datamodel.Kind_Bool:
+		panic("nyi")
+	case datamodel.Kind_Int:
+		panic("nyi")
+	case datamodel.Kind_Float:
+		panic("nyi")
+	case datamodel.Kind_String:
+		return &String{n}, nil
+	case datamodel.Kind_Bytes:
+		panic("nyi")
+	case datamodel.Kind_Link:
+		panic("nyi")
+	case datamodel.Kind_Invalid:
+		panic("uninitialized memory?")
+	default:
+		panic("unreachable")
+	}
 }
 
 // Unwrap peeks at a starlark Value and see if it is implemented by one of the wrappers in this package;
@@ -30,16 +85,10 @@ func Wrap(val datamodel.Node) (Value, error) {
 // Otherwise, it returns nil.
 // (Unwrap does not attempt to coerce other starlark values _into_ ipld Nodes.)
 func Unwrap(sval starlark.Value) datamodel.Node {
-	switch g := sval.(type) {
-	case *Map:
-		return g.val
-	case *Struct:
-		return g.val
-	case *String:
-		return g.val
-	default:
-		return nil
+	if g, ok := sval.(Value); ok {
+		return g.Node()
 	}
+	return nil
 }
 
 // Attempt to put the starlark Value into the ipld NodeAssembler.
