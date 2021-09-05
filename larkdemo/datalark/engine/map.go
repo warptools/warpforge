@@ -42,6 +42,8 @@ func ConstructMap(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	// 	return nil, err
 	// }
 
+	// FUTURE: (*far* future...) We could also try to accept a `starlark.Callable` as a positional arg, and hand it assemblers.  May be nice for performance since it can build in-place and do less allocs and less copying (same reasons as in direct golang).
+
 	nb := basicnode.Prototype.Map.NewBuilder() // TODO: this should be configurable.
 	ma, err := nb.BeginMap(int64(len(kwargs))) // FUTURE: this could... need to take into account more things.
 	if len(args) > 0 {

@@ -64,7 +64,7 @@ func assignish(na datamodel.NodeAssembler, sval starlark.Value) error {
 	case starlark.Int:
 		i, err := s2.Int64()
 		if err {
-			return fmt.Errorf("datalark: cannot convert starlark value down into int64")
+			return fmt.Errorf("cannot convert starlark value down into int64")
 		}
 		return na.AssignInt(i)
 	case starlark.Float:
@@ -74,6 +74,8 @@ func assignish(na datamodel.NodeAssembler, sval starlark.Value) error {
 	case starlark.Bytes:
 		return na.AssignBytes([]byte(s2))
 	}
+	// TODO: okay, maybe we should actually detect iterables here and handle calmly too.  Or make variants of this function, at least some of which will.
+
 	// No joy yet?  Okay.  Bail.
-	return fmt.Errorf("datalark: unwilling to coerce starlark value of type %q into ipld datamodel", sval.Type())
+	return fmt.Errorf("unwilling to coerce starlark value of type %q into ipld datamodel", sval.Type())
 }

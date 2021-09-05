@@ -10,20 +10,9 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type StructPrototype struct {
-	np schema.TypedPrototype
-}
-
-func (g *StructPrototype) Type() string {
-	return fmt.Sprintf("datalark_prototype_struct<%T>", g.np.Type().Name())
-}
-func (g *StructPrototype) String() string        { return g.Type() }
-func (g *StructPrototype) Freeze()               {}
-func (g *StructPrototype) Truth() starlark.Bool  { return true }
-func (g *StructPrototype) Hash() (uint32, error) { return 0, nil }
-
-func ConstructStruct(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	npt := b.Receiver().(*StructPrototype).np
+func ConstructStruct(npt schema.TypedPrototype, _ *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// Parsing args for struct construction is *very* similar to for maps...
+	//  Except structs also allow positional arguments; maps can't make sense of that.
 
 	// Try parsing two different ways: either positional, or kwargs (but not both).
 	switch {
