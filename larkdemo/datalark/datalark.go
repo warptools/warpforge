@@ -89,7 +89,7 @@ func ObjOfConstructorsForPrimitives() *datalarkengine.Object {
 // rather than `schema.Type`, is because prototypes contain information about how to actually construct values.
 // (A `schema.Type` value only describes the shape of data, but doesn't say how we want to work with it in memory,
 // so it's not enough information to create constructor functions out of.)
-func ObjOfConstructorsForPrototypes(prototypes []schema.TypedPrototype) *datalarkengine.Object {
+func ObjOfConstructorsForPrototypes(prototypes ...schema.TypedPrototype) *datalarkengine.Object {
 	obj := datalarkengine.NewObject(len(prototypes))
 	for _, npt := range prototypes {
 		obj.SetKey(starlark.String(npt.Type().Name()), &datalarkengine.Prototype{npt})

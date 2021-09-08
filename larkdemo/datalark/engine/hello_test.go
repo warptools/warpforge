@@ -91,7 +91,7 @@ Answers:
 func eval(src string, tsname string, npts []schema.TypedPrototype) {
 	globals := starlark.StringDict{}
 	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrimitives())
-	globals[tsname] = datalark.ObjOfConstructorsForPrototypes(npts)
+	globals[tsname] = datalark.ObjOfConstructorsForPrototypes(npts...)
 
 	thread := &starlark.Thread{
 		Name: "thethreadname",

@@ -2,32 +2,45 @@ package larkdemo
 
 import (
 	"fmt"
-	"testing"
 
+	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/warpfork/warpforge/larkdemo/datalark"
 	"go.starlark.net/starlark"
+
+	"github.com/warpfork/warpforge/wfapi"
 )
 
-func TestHello(t *testing.T) {
+func ExampleHello() {
+	// Build the globals map that makes our API's surfaces available in starlark.
+	globals := starlark.StringDict{}
+	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrimitives())
+	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrototypes(
+		bindnode.Prototype((*wfapi.Plot)(nil), wfapi.TypeSystem.TypeByName("Plot")),
+	))
+
 	// Execute Starlark program in a file.
 	thread := &starlark.Thread{Name: "thethreadname"}
 	globals, err := starlark.ExecFile(thread, "thefilename.star", `
-def fibonacci(n):
-	res = list(range(n))
-	for i in res[2:]:
-		res[i] = res[i-2] + res[i-1]
-	return res
-`, nil)
+result = Plot(
+	inputs={},
+	steps={},
+	outputs={},
+)
+`, globals)
 	if err != nil {
 		panic(err)
 	}
 
-	// Retrieve a module global.
-	fibonacci := globals["fibonacci"]
+	// Retrieve a module global.  (This is probably not how we'll have warpforge's system extract results, but it's interesting.)
+	fmt.Printf("result = %v\n", globals["result"])
 
-	// Call Starlark function from Go.
-	v, err := starlark.Call(thread, fibonacci, starlark.Tuple{starlark.MakeInt(10)}, nil)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("fibonacci(10) = %v\n", v)
+	// Output:
+	// result = struct<Plot>{
+	// 	inputs: map<Map__LocalLabel__PlotInput>{
+	// 	}
+	// 	steps: map<Map__StepName__Step>{
+	// 	}
+	// 	outputs: map<Map__LocalLabel__PlotOutput>{
+	// 	}
+	// }
 }

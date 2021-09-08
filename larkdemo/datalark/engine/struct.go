@@ -14,17 +14,12 @@ func ConstructStruct(npt schema.TypedPrototype, _ *starlark.Thread, args starlar
 	//  Except structs also allow positional arguments; maps can't make sense of that.
 
 	// Try parsing two different ways: either positional, or kwargs (but not both).
+	nb := npt.NewBuilder()
 	switch {
 	case len(args) > 0 && len(kwargs) > 0:
 		return starlark.None, fmt.Errorf("datalark.Struct: can either use positional or keyword arguments, but not both")
 
-	case len(args) > 0:
-		// TODO dang, can't use starlark.UnpackPositionalArgs generically either.
-		//  ... maybe, with clever use of "unpacker" wrappers?  unsure, maybe worth looking into.
-		panic("positional args nyi")
-
 	case len(kwargs) > 0:
-		nb := npt.NewBuilder()
 		ma, err := nb.BeginMap(int64(len(kwargs)))
 		if err != nil {
 			return starlark.None, err
@@ -40,11 +35,30 @@ func ConstructStruct(npt schema.TypedPrototype, _ *starlark.Thread, args starlar
 		if err := ma.Finish(); err != nil {
 			return starlark.None, err
 		}
-		return &Struct{nb.Build()}, nil
+
+	case len(args) == 0:
+		// Well, okay.  Hope the whole struct is optional fields though, or you're probably gonna get a schema validation error.
+		ma, err := nb.BeginMap(0)
+		if err != nil {
+			return starlark.None, err
+		}
+		if err := ma.Finish(); err != nil {
+			return starlark.None, err
+		}
+
+	case len(args) == 1:
+		// If there's one arg, and it's a starlark dict, 'assignish' will do the right thing and restructure that into us.
+		if err := assignish(nb, args[0]); err != nil {
+			return starlark.None, fmt.Errorf("datalark.Struct: %w", err)
+		}
+
+	case len(args) > 1:
+		return starlark.None, fmt.Errorf("datalark.Struct: if using positional arguments, only one is expected: a dict which we can restructure to match this type")
 
 	default:
 		panic("unreachable")
 	}
+	return &Struct{nb.Build()}, nil
 }
 
 func WrapStruct(val datamodel.Node) (*Struct, error) {
