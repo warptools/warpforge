@@ -161,3 +161,32 @@ print(ts.FooBar(foo="hai", bar="wot"))
 	// 	bar: string<String>{"wot"}
 	// }
 }
+
+func Example_mapWithStructKeys() {
+	ts := schema.MustTypeSystem(
+		schema.SpawnString("String"),
+		schema.SpawnStruct("FooBar", []schema.StructField{
+			schema.SpawnStructField("foo", "String", false, false),
+			schema.SpawnStructField("bar", "String", false, false),
+		}, schema.SpawnStructRepresentationStringjoin(":")),
+		schema.SpawnMap("Map__FooBar__String", "FooBar", "String", false),
+	)
+	type FooBar struct{ Foo, Bar string }
+	type M struct {
+		Keys   []FooBar
+		Values map[FooBar]string
+	}
+
+	eval(`
+#print(ts.Map__FooBar__String({"f:b": "wot"})) # I want this to work someday, but it's not quite that magic yet.
+print(ts.Map__FooBar__String({ts.FooBar(foo="f", bar="b"): "wot"}))
+`, "ts", []schema.TypedPrototype{
+		bindnode.Prototype((*FooBar)(nil), ts.TypeByName("FooBar")),
+		bindnode.Prototype((*M)(nil), ts.TypeByName("Map__FooBar__String")),
+	})
+
+	// Output:
+	// map<Map__FooBar__String>{
+	// 	struct<FooBar>{foo: string<String>{"f"}, bar: string<String>{"b"}}: string<String>{"wot"}
+	// }
+}

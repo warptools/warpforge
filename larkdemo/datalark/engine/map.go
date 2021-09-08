@@ -41,12 +41,23 @@ func ConstructMap(np datamodel.NodePrototype, _ *starlark.Thread, args starlark.
 
 	// FUTURE: (*far* future...) We could also try to accept a `starlark.Callable` as a positional arg, and hand it assemblers.  May be nice for performance since it can build in-place and do less allocs and less copying (same reasons as in direct golang).
 
+	if len(args) > 0 && len(kwargs) > 0 {
+		return starlark.None, fmt.Errorf("datalark.Map: can either use positional or keyword arguments, but not both")
+	}
+
 	nb := np.NewBuilder()
-	ma, err := nb.BeginMap(int64(len(kwargs))) // FUTURE: this could... need to take into account more things.
-	if len(args) > 0 {
-		panic("positional args nyi")
+	if len(args) > 1 {
+		return starlark.None, fmt.Errorf("datalark.Map: if using positional arguments, only one is expected")
+	}
+	if len(args) == 1 {
+		// If there's one arg, and it's a starlark dict, 'assignish' will do the right thing and restructure that into us.
+		// FUTURE: I'd like this to also be clever enough to, if the map key type is a struct or something (but with stringy representation), have this also magic that into rightness.  Unclear where exactly that magic should live, though.
+		if err := assignish(nb, args[0]); err != nil {
+			return starlark.None, fmt.Errorf("datalark.Map: %w", err)
+		}
 	}
 	if len(kwargs) > 0 {
+		ma, err := nb.BeginMap(int64(len(kwargs))) // FUTURE: this could... need to take into account more things.
 		if err != nil {
 			return starlark.None, err
 		}
@@ -58,9 +69,9 @@ func ConstructMap(np datamodel.NodePrototype, _ *starlark.Thread, args starlark.
 				return starlark.None, err
 			}
 		}
-	}
-	if err := ma.Finish(); err != nil {
-		return starlark.None, err
+		if err := ma.Finish(); err != nil {
+			return starlark.None, err
+		}
 	}
 	return &Map{nb.Build()}, nil
 }

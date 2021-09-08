@@ -1,7 +1,6 @@
 package datalarkengine
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
@@ -17,7 +16,7 @@ func ConstructStruct(npt schema.TypedPrototype, _ *starlark.Thread, args starlar
 	// Try parsing two different ways: either positional, or kwargs (but not both).
 	switch {
 	case len(args) > 0 && len(kwargs) > 0:
-		return starlark.None, fmt.Errorf("ConstructStruct: can either use positional or keyword arguments, but not both")
+		return starlark.None, fmt.Errorf("datalark.Struct: can either use positional or keyword arguments, but not both")
 
 	case len(args) > 0:
 		// TODO dang, can't use starlark.UnpackPositionalArgs generically either.
@@ -77,7 +76,26 @@ func (g *Struct) Truth() starlark.Bool {
 	return true
 }
 func (g *Struct) Hash() (uint32, error) {
-	return 0, errors.New("TODO")
+	// Riffing off Starlark's algorithm for Tuple, which is in turn riffing off Python.
+	var x, mult uint32 = 0x345678, 1000003
+	l := g.val.Length()
+	for itr := g.val.MapIterator(); !itr.Done(); {
+		_, v, err := itr.Next()
+		if err != nil {
+			return 0, err
+		}
+		w, err := Wrap(v)
+		if err != nil {
+			return 0, err
+		}
+		y, err := w.Hash()
+		if err != nil {
+			return 0, err
+		}
+		x = x ^ y*mult
+		mult += 82520 + uint32(l+l)
+	}
+	return x, nil
 }
 
 func (g *Struct) Attr(name string) (starlark.Value, error) {

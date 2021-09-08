@@ -52,6 +52,8 @@ func (g *Prototype) CallInternal(thread *starlark.Thread, args starlark.Tuple, k
 		switch npt.Type().TypeKind() {
 		case schema.TypeKind_Struct:
 			return ConstructStruct(npt, thread, args, kwargs)
+		case schema.TypeKind_Map:
+			return ConstructMap(npt, thread, args, kwargs)
 		default:
 			panic(fmt.Errorf("nyi: datalark.Prototype.CallInternal for typed nodes with typekind %s", npt.Type().TypeKind()))
 		}
