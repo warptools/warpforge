@@ -14,7 +14,7 @@ import (
 // There is only one Prototype type, and its behavior varies based on
 // the `datamodel.NodePrototype` its bound to.
 type Prototype struct {
-	np datamodel.NodePrototype
+	Np datamodel.NodePrototype
 }
 
 // -- starlark.Value -->
@@ -22,7 +22,7 @@ type Prototype struct {
 var _ starlark.Value = (*Prototype)(nil)
 
 func (g *Prototype) Type() string {
-	if npt, ok := g.np.(schema.TypedPrototype); ok {
+	if npt, ok := g.Np.(schema.TypedPrototype); ok {
 		return fmt.Sprintf("datalark.Prototype<%s>", npt.Type().Name())
 	}
 	return fmt.Sprintf("datalark.Prototype")
@@ -48,7 +48,7 @@ func (g *Prototype) Name() string {
 
 func (g *Prototype) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// If we have a TypedPrototype, try the appropriate constructors for its typekind.
-	if npt, ok := g.np.(schema.TypedPrototype); ok {
+	if npt, ok := g.Np.(schema.TypedPrototype); ok {
 		switch npt.Type().TypeKind() {
 		case schema.TypeKind_Struct:
 			return ConstructStruct(npt, thread, args, kwargs)
@@ -59,7 +59,7 @@ func (g *Prototype) CallInternal(thread *starlark.Thread, args starlark.Tuple, k
 		}
 	}
 	// If we have an untyped NodePrototype... just try whatever our args look like.
-	nb := g.np.NewBuilder()
+	nb := g.Np.NewBuilder()
 	switch {
 	case len(args) > 0 && len(kwargs) > 0:
 		return starlark.None, fmt.Errorf("datalark.Prototype.__call__: can either use positional or keyword arguments, but not both")
@@ -71,7 +71,7 @@ func (g *Prototype) CallInternal(thread *starlark.Thread, args starlark.Tuple, k
 		// TODO list
 		panic("nyi")
 	case len(kwargs) > 0:
-		return ConstructMap(g.np, thread, args, kwargs)
+		return ConstructMap(g.Np, thread, args, kwargs)
 	}
 	return Wrap(nb.Build())
 }

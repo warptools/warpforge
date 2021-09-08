@@ -1,9 +1,10 @@
-package datalarkengine
+package datalarkengine_test
 
 import (
 	"fmt"
 
-	"github.com/ipld/go-ipld-prime/node/basicnode"
+	"github.com/warpfork/warpforge/larkdemo/datalark"
+
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
@@ -32,6 +33,7 @@ Remarks on starlark modules:
 - It perturbs me a great deal that `starlark.StringDict` doesn't bother to implement `starlark.Value`, and thus nesting is weird.
 	- It just... didn't have to be?
 	- Whatever.
+	- Update: we dealt with this by creating `datalark.InjectGlobals`.
 
 ---
 
@@ -55,6 +57,7 @@ Couple things about this:
 	- If we can make something callable, but also have attributes, in starlark: then definitely, go for that.  Why not?
 		- I don't think we can do this, to my disappointment.  The `starlark.Builtin` type is... not powerful enough.
 			- ... at least, not by itself.  There is a `starlark.Callable` interface.  Maybe we can make a custom type that does what we want, here.
+				- Update: this happened.  Callable is good and cool.
 	- I think if we had a module that could reason about schemas and compile them itself, it would return Prototype values, yeah.
 	- I don't know if the above is an argument that wrapped constructors handed in from outside need to be attached to a Prototype.
 		- I just... can't really see a reason for someone to want to inspect this from starlark.
@@ -72,17 +75,24 @@ Answers:
 
 - Let's try the `Callable` heavy-firepower approach.  I like it.  It gives us the most power and the most future extensibility.
 	- (Bonus: more control about what the debug string methods say than just using a builtin bare, which is very poor on that front.)
+	- Update: it worked, swimmingly.  `datalarkengine.Prototype` is now this.
 - Let's give up and make one megatype.  There seems to be a lot of boilerplate if making a separate one per typekind.
 	- (At some point, I thought having more golang types would result in better debuggability, but ... no, actually, it doesn't really seem to help in practice.)
 	- N.B. we can do one megatype for the prototypes.  We still need individual types for the read wrappers, because starlark is doing feature detection on what methods they expose, rather than having a method where we can *say* what kind we are.
+	- Update: it worked, swimmingly.  `datalarkengine.Prototype` is now this.
 - Naming is hard, let's just start rolling and see where we can get.  Let's be liberal with dots and prefixes for now and we can iterate and trim later.
 	- The name for anything that's a builtin should be long-ish, and the name we bind it to can be much shorter.
 	- The name on builtins will matter a lot less given our heavy-firepower approach to the first question.
 	- (If we allow user-generated schemas, at some point we'll have to wrangle how we differentiate types of the same name but from different universes.  But... we've actually not dealt with that anywhere in IPLD yet, so let's not get hung up here prematurely either.)
+	- Update: we handled this by creating `datalarkengine.Object`.  And now the user can create as many of those as desired, and put them in the globals StringDict (or wherever else they like), freely, and thus namespace however they want with no guff nor special support from us.
 
 */
 
 func eval(src string, tsname string, npts []schema.TypedPrototype) {
+	globals := starlark.StringDict{}
+	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrimitives())
+	globals[tsname] = datalark.ObjOfConstructorsForPrototypes(npts)
+
 	thread := &starlark.Thread{
 		Name: "thethreadname",
 		Print: func(thread *starlark.Thread, msg string) {
@@ -91,27 +101,11 @@ func eval(src string, tsname string, npts []schema.TypedPrototype) {
 			fmt.Printf("%s\n", msg)
 		},
 	}
-	_, err := starlark.ExecFile(thread, "thefilename.star", src,
-		starlark.StringDict{
-			"String": &Prototype{basicnode.Prototype.String},
-			"Map":    &Prototype{basicnode.Prototype.Map},
-			tsname:   constructorMap(npts),
-		},
-	)
+
+	_, err := starlark.ExecFile(thread, "thefilename.star", src, globals)
 	if err != nil {
 		panic(err)
 	}
-}
-
-// You can't just range over a schema.TypeSystem and do everything -- because we need to know what the implementation and memory layout is going to be.
-// That means we need prototypes.  And those prototypes can't just be pulled out of thin air.
-func constructorMap(npts []schema.TypedPrototype) *Object {
-	d := NewObject(len(npts))
-	for _, npt := range npts {
-		d.SetKey(starlark.String(npt.Type().Name()), &Prototype{npt})
-	}
-	d.Freeze()
-	return d
 }
 
 func Example_hello() {
