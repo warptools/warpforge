@@ -114,40 +114,15 @@ type PlotInputComplex struct {
 func init() {
 	TypeSystem.Accumulate(schema.SpawnUnion("PlotOutput",
 		[]schema.TypeName{
-			"PlotOutputSimple",
-			"PlotOutputComplex",
-		},
-		schema.SpawnUnionRepresentationKinded(map[ipld.Kind]schema.TypeName{
-			ipld.Kind_String: "PlotOutputSimple",
-			ipld.Kind_Map:    "PlotOutputComplex",
-		})))
-	TypeSystem.Accumulate(schema.SpawnUnion("PlotOutputSimple",
-		[]schema.TypeName{
 			"Pipe",
 		},
 		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
 			"pipe:": "Pipe",
 		})))
-	TypeSystem.Accumulate(schema.SpawnStruct("PlotOutputComplex",
-		[]schema.StructField{
-			schema.SpawnStructField("basis", "PlotOutputSimple", false, false),
-			schema.SpawnStructField("filters", "FilterMap", false, false),
-		},
-		schema.SpawnStructRepresentationMap(nil)))
 }
 
 type PlotOutput struct {
-	PlotOutputSimple  *PlotOutputSimple
-	PlotOutputComplex *PlotOutputComplex
-}
-
-type PlotOutputSimple struct {
 	Pipe *Pipe
-}
-
-type PlotOutputComplex struct {
-	Basis   PlotOutputSimple
-	Filters FilterMap
 }
 
 func init() {
@@ -222,4 +197,14 @@ type CatalogRef struct {
 	ModuleName  ModuleName
 	ReleaseName string
 	ItemName    string
+}
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnMap("PlotResults",
+		"LocalLabel", "WareID", false))
+}
+
+type PlotResults struct {
+	Keys   []LocalLabel
+	Values map[LocalLabel]WareID
 }

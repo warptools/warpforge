@@ -3,7 +3,6 @@ package formulaexec
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,9 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
-	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
@@ -192,7 +189,7 @@ func make_ware_mount(ware_id string, dest string, context *wfapi.FormulaContext)
 		}
 	}
 	if out.Result.WareId == "" {
-		log.Fatal("no ware_id output from rio!")
+		return specs.Mount{}, fmt.Errorf("no ware_id output from rio when unpacking %s", ware_id)
 	}
 	ware_type := strings.SplitN(out.Result.WareId, ":", 2)[0]
 	cache_ware_id := strings.SplitN(out.Result.WareId, ":", 2)[1]
@@ -274,6 +271,9 @@ func invoke_runc(s specs.Spec) (string, error) {
 	}
 
 	err = ioutil.WriteFile("config.json", config, 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to write config.json: %s", err)
+	}
 
 	cmd := exec.Command(warpforge_dir()+"/bin/runc", "run", "container-id")
 	var stderr bytes.Buffer
@@ -325,34 +325,35 @@ func rio_pack(s specs.Spec, path string) (wfapi.WareID, error) {
 	return ware_id, nil
 }
 
-func Exec(fc wfapi.FormulaAndContext) error {
+func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	formula := fc.Formula
 	context := fc.Context
+	rr := wfapi.RunRecord{}
 
 	// get the directory this executable is in for relative paths
 	exec_dir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get working dir: %s", err)
+		return rr, fmt.Errorf("failed to get working dir: %s", err)
 	}
 
 	// create and cd to working dir
 	err = os.MkdirAll(warpforge_run_dir(), 0755)
 	if err != nil {
-		return errors.New("failed to create run dir")
+		return rr, fmt.Errorf("failed to create run dir")
 	}
 	err = os.Chdir(warpforge_run_dir())
 	if err != nil {
-		return errors.New("failed to cd to run dir")
+		return rr, fmt.Errorf("failed to cd to run dir")
 	}
 
 	rootdir, err := ioutil.TempDir(warpforge_run_dir(), "exec")
 	if err != nil {
-		return fmt.Errorf("failed to create temp root directory: %s", err)
+		return rr, fmt.Errorf("failed to create temp root directory: %s", err)
 	}
 	defer os.RemoveAll(rootdir)
 	s, err := get_base_config(rootdir)
 	if err != nil {
-		return err
+		return rr, err
 	}
 
 	for dest, src := range formula.Inputs.Values {
@@ -364,7 +365,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 			// TODO deal with complex input fields
 			log.Println("WARNING: ignoring complex input (not supported)")
 		} else {
-			return errors.New(fmt.Sprintf("invalid input spec for dest %s", *dest.SandboxPath))
+			return rr, fmt.Errorf("invalid formula input for %s", *dest.SandboxPath)
 		}
 
 		var mnt specs.Mount
@@ -374,12 +375,12 @@ func Exec(fc wfapi.FormulaAndContext) error {
 			// mount uses relative path
 			mnt, err = make_path_mount(path.Join(exec_dir, input.Mount.HostPath), "/"+string(*dest.SandboxPath))
 			if err != nil {
-				return err
+				return rr, err
 			}
 		} else if input.WareID != nil {
 			mnt, err = make_ware_mount(input.WareID.String(), "/"+string(*dest.SandboxPath), context)
 			if err != nil {
-				return err
+				return rr, err
 			}
 		}
 
@@ -392,12 +393,11 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		}
 	}
 
-	rr := wfapi.RunRecord{}
 	rr.Guid = uuid.New().String()
 	rr.Time = time.Now().Unix()
 	nFormula, err := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
 	if err != nil {
-		return err
+		return rr, err
 	}
 	lsys := cidlink.DefaultLinkSystem()
 	lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
@@ -407,7 +407,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
 	}}, nFormula.(schema.TypedNode).Representation())
 	if err != nil {
-		return err
+		return rr, err
 	}
 	rr.FormulaID = lnk.String()
 
@@ -419,7 +419,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 		log.Println("invoking runc for exec")
 		out, err := invoke_runc(s)
 		if err != nil {
-			return fmt.Errorf("invoke runc for exec failed: %s", err)
+			return rr, fmt.Errorf("invoke runc for exec failed: %s", err)
 		}
 		// TODO exit code?
 		rr.Exitcode = 0
@@ -437,7 +437,7 @@ func Exec(fc wfapi.FormulaAndContext) error {
 			path := string(*gather.From.SandboxPath)
 			ware_id, err := rio_pack(s, path)
 			if err != nil {
-				return err
+				return rr, err
 			}
 			rr.Results.Keys = append(rr.Results.Keys, name)
 			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &ware_id}
@@ -448,14 +448,12 @@ func Exec(fc wfapi.FormulaAndContext) error {
 			log.Fatal("invalid output spec")
 		}
 	}
-	serial, err := ipld.Marshal(ipldjson.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
-	fmt.Println(string(serial))
 
 	// cd back to original directory
 	err = os.Chdir(exec_dir)
 	if err != nil {
-		return errors.New("failed to cd to run dir")
+		return rr, fmt.Errorf("failed to cd to run dir")
 	}
 
-	return nil
+	return rr, nil
 }

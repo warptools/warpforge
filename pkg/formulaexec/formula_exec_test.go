@@ -1,6 +1,7 @@
 package formulaexec
 
 import (
+	"fmt"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -33,8 +34,13 @@ func TestEcho(t *testing.T) {
 	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 	qt.Assert(t, err, qt.IsNil)
 
-	err = Exec(frmAndCtx)
+	rr, err := Exec(frmAndCtx)
 	qt.Assert(t, err, qt.IsNil)
+
+	rr_serial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
+	qt.Assert(t, err, qt.IsNil)
+	fmt.Println(string(rr_serial))
+
 }
 
 func TestPack(t *testing.T) {
@@ -65,8 +71,12 @@ func TestPack(t *testing.T) {
 	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 	qt.Assert(t, err, qt.IsNil)
 
-	err = Exec(frmAndCtx)
+	rr, err := Exec(frmAndCtx)
 	qt.Assert(t, err, qt.IsNil)
+
+	rr_serial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
+	qt.Assert(t, err, qt.IsNil)
+	fmt.Println(string(rr_serial))
 }
 
 func TestDirMount(t *testing.T) {
@@ -93,7 +103,7 @@ func TestDirMount(t *testing.T) {
 	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 	qt.Assert(t, err, qt.IsNil)
 
-	err = Exec(frmAndCtx)
+	_, err = Exec(frmAndCtx)
 	qt.Assert(t, err, qt.IsNil)
 }
 
@@ -122,7 +132,7 @@ func TestContextWarehouse(t *testing.T) {
 	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 	qt.Assert(t, err, qt.IsNil)
 
-	err = Exec(frmAndCtx)
+	_, err = Exec(frmAndCtx)
 
 	// this should error on the rio unpack since the .tar.gz file does not exist
 	qt.Assert(t, err, qt.IsNil)
