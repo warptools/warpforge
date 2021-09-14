@@ -267,7 +267,7 @@ func invoke_runc(wsPath string, s specs.Spec) (string, error) {
 		return "", fmt.Errorf("failed to write config.json: %s", err)
 	}
 
-	cmd := exec.Command(filepath.Join(wsPath, "bin/runc"), "run", "-b", wsRunPath, "container-id")
+	cmd := exec.Command(filepath.Join(wsPath, "bin/runc"), "run", "-b", wsRunPath, fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixMicro()))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	var stdout bytes.Buffer
