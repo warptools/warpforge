@@ -31,70 +31,80 @@ type RioOutput struct {
 	Result RioResult `json:"result"`
 }
 
-func getBaseConfig(wsPath string, rootDir string) (specs.Spec, error) {
-	s := specs.Spec{}
+type runConfig struct {
+	spec    specs.Spec
+	runPath string
+	wsPath  string
+}
+
+func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
+	rc := runConfig{
+		runPath: runPath,
+		wsPath:  wsPath,
+	}
 
 	// generate a runc rootless config, then read the resulting config
-	configFile := filepath.Join(wsPath, "run", "config.json")
+	configFile := filepath.Join(runPath, "config.json")
 	err := os.RemoveAll(configFile)
 	if err != nil {
-		return s, fmt.Errorf("failed to delete existing runc config: %s", err)
+		return rc, fmt.Errorf("failed to remove config.json")
 	}
-	cmd := exec.Command(filepath.Join(wsPath, "bin/runc"), "spec", "--rootless", "-b", filepath.Join(wsPath, "run"))
+	cmd := exec.Command(filepath.Join(wsPath, "bin/runc"),
+		"spec",
+		"--rootless",
+		"-b", runPath)
 	err = cmd.Run()
 	if err != nil {
-		return s, fmt.Errorf("failed to generate runc config: %s", err)
+		return rc, fmt.Errorf("failed to generate runc config: %s", err)
 	}
-	config_file, err := ioutil.ReadFile(configFile)
+	configFileBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return s, fmt.Errorf("failed to read runc config: %s", err)
+		return rc, fmt.Errorf("failed to read runc config: %s", err)
 	}
-	err = json.Unmarshal([]byte(config_file), &s)
+	err = json.Unmarshal(configFileBytes, &rc.spec)
 	if err != nil {
-		return s, fmt.Errorf("failed to parse runc config: %s", err)
+		return rc, fmt.Errorf("failed to parse runc config: %s", err)
 	}
 
 	// set up root -- this is not actually used since it is replaced with an overlayfs
+	rootPath := filepath.Join(runPath, "root")
+	err = os.MkdirAll(rootPath, 0755)
+	if err != nil {
+		return rc, fmt.Errorf("failed to create root directory: %s", err)
+	}
+
 	root := specs.Root{
-		Path: rootDir,
+		Path: rootPath,
 		// if root is readonly, the overlayfs mount at '/' will also be readonly
 		// force as rw for now
 		Readonly: false,
 	}
-	s.Root = &root
+	rc.spec.Root = &root
 
 	// mount warpforge directory into the container
 	// TODO: this should probably be removed for the exec step,
 	// only needed for pack/unpack
-	wf_mount := specs.Mount{
+	wfMount := specs.Mount{
 		Source:      wsPath,
 		Destination: "/warpforge",
 		Type:        "none",
 		Options:     []string{"rbind"},
 	}
-	s.Mounts = append(s.Mounts, wf_mount)
+	rc.spec.Mounts = append(rc.spec.Mounts, wfMount)
 
-	return s, nil
+	// required for executing on systems without a tty (e.g., github actions)
+	rc.spec.Process.Terminal = false
+
+	return rc, nil
 }
 
-func makeWareMount(wsPath string, ware_id string, dest string, context *wfapi.FormulaContext) (specs.Mount, error) {
-	rootDir, err := ioutil.TempDir(filepath.Join(wsPath, "run"), "exec")
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to create exec directory: %s", err)
-	}
-	defer os.RemoveAll(rootDir)
-
-	s, err := getBaseConfig(wsPath, rootDir)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to get base runc config: %s", err)
-	}
-
+func makeWareMount(config runConfig, wareId string, dest string, context *wfapi.FormulaContext) (specs.Mount, error) {
 	// default warehouse to unpack from
 	src := "ca+file:///warpforge/warehouse"
 	// check to see if this ware should be fetched from a different warehouse
 	for k, v := range context.Warehouses.Values {
-		if k.String() == ware_id {
-			log.Printf("using warehouse %s for ware %s", v, ware_id)
+		if k.String() == wareId {
+			log.Printf("using warehouse %s for ware %s", v, wareId)
 			src = string(v)
 		}
 	}
@@ -105,11 +115,11 @@ func makeWareMount(wsPath string, ware_id string, dest string, context *wfapi.Fo
 	// for trusted CAs
 
 	// copy host's resolv.conf so we can mount it
-	err = os.MkdirAll(filepath.Join(wsPath, "/etc"), 0755)
+	err := os.MkdirAll(filepath.Join(config.wsPath, "/etc"), 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("failed to create etc directory: %s", err)
 	}
-	destResolv, err := os.Create(filepath.Join(wsPath, "etc/resolv.conf"))
+	destResolv, err := os.Create(filepath.Join(config.wsPath, "etc/resolv.conf"))
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("failed to create resolv.conf file: %s", err)
 	}
@@ -129,23 +139,23 @@ func makeWareMount(wsPath string, ware_id string, dest string, context *wfapi.Fo
 	}
 
 	// add mounts for resolv.conf and ssl certificates
-	etc_mount := specs.Mount{
-		Source:      filepath.Join(wsPath, "/etc"),
+	etcMount := specs.Mount{
+		Source:      filepath.Join(config.wsPath, "/etc"),
 		Destination: "/etc",
 		Type:        "none",
 		Options:     []string{"rbind"},
 	}
-	ca_mount := specs.Mount{
+	caMount := specs.Mount{
 		Source:      "/etc/ssl/certs",
 		Destination: "/etc/ssl/certs",
 		Type:        "none",
 		Options:     []string{"rbind", "readonly"},
 	}
-	s.Mounts = append(s.Mounts, etc_mount)
-	s.Mounts = append(s.Mounts, ca_mount)
+	config.spec.Mounts = append(config.spec.Mounts, etcMount)
+	config.spec.Mounts = append(config.spec.Mounts, caMount)
 
-	s.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
-	s.Process.Args = []string{
+	config.spec.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
+	config.spec.Process.Args = []string{
 		"/warpforge/bin/rio",
 		"unpack",
 		fmt.Sprintf("--source=%s", src),
@@ -157,51 +167,42 @@ func makeWareMount(wsPath string, ware_id string, dest string, context *wfapi.Fo
 		"--filters=uid=0,gid=0,mtime=follow",
 		"--placer=none",
 		"--format=json",
-		ware_id,
+		wareId,
 		"/null",
 	}
 
-	log.Println("invoking runc for rio unpack", ware_id, s.Process.Args)
-	out_str, err := invoke_runc(wsPath, s)
+	outStr, err := invokeRunc(config)
 	if err != nil {
-		return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", ware_id, err)
+		return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", wareId, err)
 	}
 
 	out := RioOutput{}
-	for _, line := range strings.Split(out_str, "\n") {
+	for _, line := range strings.Split(outStr, "\n") {
 		err := json.Unmarshal([]byte(line), &out)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if out.Result.WareId != "" {
-			// found ware_id
+			// found wareId
 			break
 		}
 	}
 	if out.Result.WareId == "" {
-		return specs.Mount{}, fmt.Errorf("no ware_id output from rio when unpacking %s", ware_id)
+		return specs.Mount{}, fmt.Errorf("no wareId output from rio when unpacking %s", wareId)
 	}
-	ware_type := strings.SplitN(out.Result.WareId, ":", 2)[0]
-	cache_ware_id := strings.SplitN(out.Result.WareId, ":", 2)[1]
+	wareType := strings.SplitN(out.Result.WareId, ":", 2)[0]
+	cacheWareId := strings.SplitN(out.Result.WareId, ":", 2)[1]
 
-	cache_path := filepath.Join(wsPath, "cache", ware_type, "fileset", cache_ware_id[0:3], cache_ware_id[3:6], cache_ware_id)
-	upperdir_path := filepath.Join(wsPath, "/overlays/upper-", cache_ware_id)
-	workdir_path := filepath.Join(wsPath, "/overlays/work-", cache_ware_id)
+	cachePath := filepath.Join(config.wsPath, "cache", wareType, "fileset", cacheWareId[0:3], cacheWareId[3:6], cacheWareId)
+	upperdirPath := filepath.Join(config.runPath, "/overlays/upper", cacheWareId)
+	workdirPath := filepath.Join(config.runPath, "/overlays/work", cacheWareId)
 
 	// remove then (re)create upper and work dirs
-	err = os.RemoveAll(upperdir_path)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("removal of upperdir failed: %s", err)
-	}
-	err = os.MkdirAll(upperdir_path, 0755)
+	err = os.MkdirAll(upperdirPath, 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("creation of upperdir failed: %s", err)
 	}
-	err = os.RemoveAll(workdir_path)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("removal of workdir failed: %s", err)
-	}
-	err = os.MkdirAll(workdir_path, 0755)
+	err = os.MkdirAll(workdirPath, 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("creation of workdir failed: %s", err)
 	}
@@ -211,33 +212,25 @@ func makeWareMount(wsPath string, ware_id string, dest string, context *wfapi.Fo
 		Source:      "none",
 		Type:        "overlay",
 		Options: []string{
-			"lowerdir=" + cache_path,
-			"upperdir=" + upperdir_path,
-			"workdir=" + workdir_path,
+			"lowerdir=" + cachePath,
+			"upperdir=" + upperdirPath,
+			"workdir=" + workdirPath,
 		},
 	}, nil
 }
 
-func makePathMount(wsPath string, path string, dest string) (specs.Mount, error) {
-	mount_id := strings.Replace(path, "/", "-", -1)
-	mount_id = strings.Replace(mount_id, ".", "-", -1)
-	upperdir_path := filepath.Join(wsPath, "overlays/upper-", mount_id)
-	workdir_path := filepath.Join(wsPath, "overlays/work-", mount_id)
+func makePathMount(config runConfig, path string, dest string) (specs.Mount, error) {
+	mountId := strings.Replace(path, "/", "-", -1)
+	mountId = strings.Replace(mountId, ".", "-", -1)
+	upperdirPath := filepath.Join(config.runPath, "overlays/upper-", mountId)
+	workdirPath := filepath.Join(config.runPath, "overlays/work-", mountId)
 
-	// remove then (re)create upper and work dirs
-	err := os.RemoveAll(upperdir_path)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("removal of upperdir failed: %s", err)
-	}
-	err = os.MkdirAll(upperdir_path, 0755)
+	// create upper and work dirs
+	err := os.MkdirAll(upperdirPath, 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("creation of upperdir failed: %s", err)
 	}
-	err = os.RemoveAll(workdir_path)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("removal of workdir failed: %s", err)
-	}
-	err = os.MkdirAll(workdir_path, 0755)
+	err = os.MkdirAll(workdirPath, 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("creation of workdir failed: %s", err)
 	}
@@ -248,26 +241,33 @@ func makePathMount(wsPath string, path string, dest string) (specs.Mount, error)
 		Type:        "overlay",
 		Options: []string{
 			"lowerdir=" + path,
-			"upperdir=" + upperdir_path,
-			"workdir=" + workdir_path,
+			"upperdir=" + upperdirPath,
+			"workdir=" + workdirPath,
 		},
 	}, nil
 }
 
-func invoke_runc(wsPath string, s specs.Spec) (string, error) {
-	config, err := json.Marshal(s)
+func invokeRunc(config runConfig) (string, error) {
+	configBytes, err := json.Marshal(config.spec)
 	if err != nil {
 		return "", err
 	}
 
-	wsRunPath := filepath.Join(wsPath, "run")
-
-	err = ioutil.WriteFile(filepath.Join(wsRunPath, "config.json"), config, 0644)
+	bundlePath, err := ioutil.TempDir(config.runPath, "bundle-")
+	if err != nil {
+		return "", fmt.Errorf("failed to create bundle directory: %s", err)
+	}
+	err = ioutil.WriteFile(filepath.Join(bundlePath, "config.json"), configBytes, 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write config.json: %s", err)
 	}
 
-	cmd := exec.Command(filepath.Join(wsPath, "bin/runc"), "run", "-b", wsRunPath, fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixMicro()))
+	cmd := exec.Command(filepath.Join(config.wsPath, "bin/runc"),
+		"--root", filepath.Join(config.wsPath, "runc-root"),
+		"run",
+		"-b", bundlePath, // bundle path
+		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixMicro()), // container id
+	)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	var stdout bytes.Buffer
@@ -280,8 +280,8 @@ func invoke_runc(wsPath string, s specs.Spec) (string, error) {
 	return stdout.String(), nil
 }
 
-func rio_pack(wsPath string, s specs.Spec, path string) (wfapi.WareID, error) {
-	s.Process.Args = []string{
+func rioPack(config runConfig, path string) (wfapi.WareID, error) {
+	config.spec.Process.Args = []string{
 		"/warpforge/bin/rio",
 		"pack",
 		"--format=json",
@@ -290,31 +290,30 @@ func rio_pack(wsPath string, s specs.Spec, path string) (wfapi.WareID, error) {
 		path,
 	}
 
-	log.Println("invoking runc for pack", path)
-	out_str, err := invoke_runc(wsPath, s)
+	outStr, err := invokeRunc(config)
 	if err != nil {
 		return wfapi.WareID{}, fmt.Errorf("invoke runc for rio pack of %s failed: %s", path, err)
 	}
 
 	out := RioOutput{}
-	for _, line := range strings.Split(out_str, "\n") {
+	for _, line := range strings.Split(outStr, "\n") {
 		err := json.Unmarshal([]byte(line), &out)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if out.Result.WareId != "" {
-			// found ware_id
+			// found wareId
 			break
 		}
 	}
 	if out.Result.WareId == "" {
-		log.Fatal("no ware_id output from rio!")
+		log.Fatal("no wareId output from rio!")
 	}
 
-	ware_id := wfapi.WareID{}
-	ware_id.Packtype = wfapi.Packtype(strings.Split(out.Result.WareId, ":")[0])
-	ware_id.Hash = strings.Split(out.Result.WareId, ":")[1]
-	return ware_id, nil
+	wareId := wfapi.WareID{}
+	wareId.Packtype = wfapi.Packtype(strings.Split(out.Result.WareId, ":")[0])
+	wareId.Hash = strings.Split(out.Result.WareId, ":")[1]
+	return wareId, nil
 }
 
 func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
@@ -322,7 +321,6 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	context := fc.Context
 	rr := wfapi.RunRecord{}
 
-	// get the directory this executable is in for relative paths
 	pwd, err := os.Getwd()
 	if err != nil {
 		return rr, fmt.Errorf("failed to get working dir: %s", err)
@@ -339,23 +337,27 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	_, wsPath := ws.Path()
 	wsPath = filepath.Join("/", wsPath, ".warpforge")
 
-	// create run path
+	// each formula execution gets a unique run directory
+	// this is used to store working files and is destroyed upon completion
 	wsRunPath := filepath.Join(wsPath, "run")
 	err = os.MkdirAll(wsRunPath, 0755)
 	if err != nil {
 		return rr, fmt.Errorf("failed to create run dir")
 	}
-
-	rootDir, err := ioutil.TempDir(wsRunPath, "exec")
+	runPath, err := ioutil.TempDir(wsRunPath, "run-")
 	if err != nil {
-		return rr, fmt.Errorf("failed to create temp root directory: %s", err)
+		return rr, fmt.Errorf("failed to create temp run directory: %s", err)
 	}
-	defer os.RemoveAll(rootDir)
-	s, err := getBaseConfig(wsPath, rootDir)
+	defer os.RemoveAll(runPath)
+
+	// get our configuration for the exec step
+	// this config will collect the various input mounts as each is set up
+	execConfig, err := getBaseConfig(wsPath, runPath)
 	if err != nil {
 		return rr, err
 	}
 
+	// loop over formula inputs
 	for dest, src := range formula.Inputs.Values {
 		var input *wfapi.FormulaInputSimple
 		if src.FormulaInputSimple != nil {
@@ -369,16 +371,21 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 		}
 
 		var mnt specs.Mount
+		// create a temporary config for setting up each mount
+		config, err := getBaseConfig(wsPath, runPath)
+		if err != nil {
+			return rr, err
+		}
 		if input.Mount != nil {
 			// TODO do something with Mount.Mode
 			log.Println("WARNING: mount mode is currently ignored, all mounts are overlay")
 			// mount uses relative path
-			mnt, err = makePathMount(wsPath, filepath.Join(pwd, input.Mount.HostPath), filepath.Join("/", string(*dest.SandboxPath)))
+			mnt, err = makePathMount(config, filepath.Join(pwd, input.Mount.HostPath), filepath.Join("/", string(*dest.SandboxPath)))
 			if err != nil {
 				return rr, err
 			}
 		} else if input.WareID != nil {
-			mnt, err = makeWareMount(wsPath, input.WareID.String(), "/"+string(*dest.SandboxPath), context)
+			mnt, err = makeWareMount(config, input.WareID.String(), filepath.Join("/", string(*dest.SandboxPath)), context)
 			if err != nil {
 				return rr, err
 			}
@@ -387,12 +394,13 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 		// root mount must come first
 		// leading slash is removed during parsing, so `"/"` will result in `""`
 		if *dest.SandboxPath == wfapi.SandboxPath("") {
-			s.Mounts = append([]specs.Mount{mnt}, s.Mounts...)
+			execConfig.spec.Mounts = append([]specs.Mount{mnt}, execConfig.spec.Mounts...)
 		} else {
-			s.Mounts = append(s.Mounts, mnt)
+			execConfig.spec.Mounts = append(execConfig.spec.Mounts, mnt)
 		}
 	}
 
+	// set up the runrecord result
 	rr.Guid = uuid.New().String()
 	rr.Time = time.Now().Unix()
 	nFormula, err := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
@@ -414,10 +422,9 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	// run the exec action
 	switch {
 	case formula.Action.Exec != nil:
-		s.Process.Args = formula.Action.Exec.Command
-		s.Process.Cwd = "/"
-		log.Println("invoking runc for exec")
-		out, err := invoke_runc(wsPath, s)
+		execConfig.spec.Process.Args = formula.Action.Exec.Command
+		execConfig.spec.Process.Cwd = "/"
+		out, err := invokeRunc(execConfig)
 		if err != nil {
 			return rr, fmt.Errorf("invoke runc for exec failed: %s", err)
 		}
@@ -435,13 +442,13 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 		switch {
 		case gather.From.SandboxPath != nil:
 			path := string(*gather.From.SandboxPath)
-			ware_id, err := rio_pack(wsPath, s, path)
+			wareId, err := rioPack(execConfig, path)
 			if err != nil {
 				return rr, err
 			}
 			rr.Results.Keys = append(rr.Results.Keys, name)
-			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &ware_id}
-			log.Println("packed", name, "(", path, "->", ware_id, ")")
+			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &wareId}
+			log.Println("packed", name, "(", path, "->", wareId, ")")
 		case gather.From.SandboxVar != nil:
 			log.Fatal("unsupported output type")
 		default:

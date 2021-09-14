@@ -15,7 +15,7 @@ import (
 func TestExecSingleStepPlot(t *testing.T) {
 	serial := `{
 	"inputs": {
-		"rootfs": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 	},
 	"steps": {
 		"one": {
@@ -58,7 +58,7 @@ func TestExecSingleStepPlot(t *testing.T) {
 func TestExecMultiStepPlot(t *testing.T) {
 	serial := `{
 	"inputs": {
-		"rootfs": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 	},
 	"steps": {
 		"zero": {
@@ -124,13 +124,13 @@ func TestExecMultiStepPlot(t *testing.T) {
 func TestNestedPlot(t *testing.T) {
 	serial := `{
 	"inputs": {
-		"rootfs": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 	},
 	"steps": {
 		"zero-outer": {
 			"plot": {
 				"inputs": {
-					"rootfs": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+					"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 				},
 				"steps": {
 					"zero-inner": {

@@ -15,7 +15,7 @@ func TestEcho(t *testing.T) {
 	serial := `{
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 		},
 		"action": {
 			"exec": {
@@ -47,7 +47,7 @@ func TestPack(t *testing.T) {
 	serial := `{
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB"
+			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 		},
 		"action": {
 			"exec": {
@@ -83,7 +83,7 @@ func TestDirMount(t *testing.T) {
 	serial := `{
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB",
+			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS",
 			"/work": "mount:type:."
 		},
 		"action": {
@@ -104,36 +104,5 @@ func TestDirMount(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil)
 
 	_, err = Exec(frmAndCtx)
-	qt.Assert(t, err, qt.IsNil)
-}
-
-func TestContextWarehouse(t *testing.T) {
-	serial := `{
-	"formula": {
-		"inputs": {
-			"/": "ware:tar:47Yg1Sdq21rPyDw9X9sCmRubQUADhFKe9G7qZCJRe61RhWPCxcQysCFzyCHffBKRjB",
-			"/empty": "ware:tar:7omHHaRUV3TcPYLk7VWTQgFSAWJa3HTRVwiZwESBy65w8rbrtVqdtZPg2nL1zXWPmR"
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "echo TestContextWarehouse"]
-			}
-		},
-		"outputs": {
-		}
-	},
-	"context": {
-		"warehouses": {
-			"tar:7omHHaRUV3TcPYLk7VWTQgFSAWJa3HTRVwiZwESBy65w8rbrtVqdtZPg2nL1zXWPmR": "file:///warpforge/warehouse/7om/HHa/7omHHaRUV3TcPYLk7VWTQgFSAWJa3HTRVwiZwESBy65w8rbrtVqdtZPg2nL1zXWPmR"
-		}
-	}
-}`
-	frmAndCtx := wfapi.FormulaAndContext{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
-	qt.Assert(t, err, qt.IsNil)
-
-	_, err = Exec(frmAndCtx)
-
-	// this should error on the rio unpack since the .tar.gz file does not exist
 	qt.Assert(t, err, qt.IsNil)
 }
