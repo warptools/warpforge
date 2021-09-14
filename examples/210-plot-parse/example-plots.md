@@ -117,10 +117,10 @@ struct<Plot>{
 		}}
 	}
 	outputs: map<Map__LocalLabel__PlotOutput>{
-		string<LocalLabel>{"test"}: union<PlotOutput>{union<PlotOutputSimple>{struct<Pipe>{
+		string<LocalLabel>{"test"}: union<PlotOutput>{struct<Pipe>{
 			stepName: string<StepName>{"one"}
 			label: string<LocalLabel>{"stuff"}
-		}}}
+		}}
 	}
 }
 ```
