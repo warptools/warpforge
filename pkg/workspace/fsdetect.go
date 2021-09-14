@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -51,6 +52,7 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 	//  Keep the given searchPath in hand; we might need it for an error report.
 	searchAt := searchPath
 	for {
+		fmt.Println(filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
 		// Assume the search path exists and is a dir (we'll get a reasonable error anyway if it's not);
 		//  join that path with our search target and try to open it.
 		f, err := fsys.Open(filepath.Join(basisPath, searchAt, magicWorkspaceDirname))

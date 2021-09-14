@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -22,8 +23,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = formulaexec.Exec(frmAndCtx)
+	rr, err := formulaexec.Exec(frmAndCtx)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(rr)
 }
