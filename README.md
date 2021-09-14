@@ -1,5 +1,6 @@
 warpforge
 =========
+[![tests](https://github.com/warpfork/warpforge/actions/workflows/tests.yml/badge.svg)](https://github.com/warpfork/warpforge/actions/workflows/tests.yml)
 
 Putting things together.  Consistently.
 
