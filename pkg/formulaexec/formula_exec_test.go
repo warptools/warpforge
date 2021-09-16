@@ -8,101 +8,57 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 
+	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-func TestEcho(t *testing.T) {
-	serial := `{
-	"formula": {
-		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "echo hello from warpforge!"]
-			}
-		},
-		"outputs": {
-		}
-	},
-	"context": {
-		"warehouses": {
-		}
+// Test example formulas.
+func TestFormulaExecFixtures(t *testing.T) {
+	doc, err := testmark.ReadFile("../../examples/110-formula-usage/example-formula-exec.md")
+	if err != nil {
+		t.Fatalf("spec file parse failed?!: %s", err)
 	}
-}`
-	frmAndCtx := wfapi.FormulaAndContext{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
-	qt.Assert(t, err, qt.IsNil)
 
-	rr, err := Exec(frmAndCtx)
-	qt.Assert(t, err, qt.IsNil)
+	// Data hunk in this spec file are in "directories" of a test scenario each.
+	doc.BuildDirIndex()
+	for _, dir := range doc.DirEnt.ChildrenList {
+		t.Run(dir.Name, func(t *testing.T) {
+			// Each "directory" should contain at least either "formula" or "runrecord".
+			switch {
+			case dir.Children["formula"] != nil:
+				// Nab the bytes.
+				serial := dir.Children["formula"].Hunk.Body
 
-	rr_serial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
-	qt.Assert(t, err, qt.IsNil)
-	fmt.Println(string(rr_serial))
+				t.Run("exec-formula", func(t *testing.T) {
+					frmAndCtx := wfapi.FormulaAndContext{}
+					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
+					qt.Assert(t, err, qt.IsNil)
 
-}
+					rr, err := Exec(frmAndCtx)
+					qt.Assert(t, err, qt.IsNil)
 
-func TestPack(t *testing.T) {
-	serial := `{
-	"formula": {
-		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "mkdir /out; echo hello from warpforge! > /out/test"]
+					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
+					qt.Assert(t, err, qt.IsNil)
+
+					fmt.Println(string(rrSerial))
+
+					// if an example RunRecord is present, compare it
+					if dir.Children["runrecord"] != nil {
+						rrExample := wfapi.RunRecord{}
+						_, err := ipld.Unmarshal(dir.Children["runrecord"].Hunk.Body, json.Decode, &rrExample, wfapi.TypeSystem.TypeByName("RunRecord"))
+						qt.Assert(t, err, qt.IsNil)
+
+						// ensure the non-deterministic parts of the runrecord are set to known values
+						rr.Guid = "abcd"
+						rrExample.Guid = "abcd"
+						rr.Time = 1234
+						rrExample.Time = 1234
+						// assert the example is correct
+						qt.Assert(t, rr, qt.CmpEquals(), rrExample)
+					}
+
+				})
 			}
-		},
-		"outputs": {
-			"test": {
-				"from": "/out",
-				"packtype": "tar"
-			},
-
-		}
-	},
-	"context": {
-		"warehouses": {
-		}
+		})
 	}
-}`
-	frmAndCtx := wfapi.FormulaAndContext{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
-	qt.Assert(t, err, qt.IsNil)
-
-	rr, err := Exec(frmAndCtx)
-	qt.Assert(t, err, qt.IsNil)
-
-	rr_serial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
-	qt.Assert(t, err, qt.IsNil)
-	fmt.Println(string(rr_serial))
-}
-
-func TestDirMount(t *testing.T) {
-	serial := `{
-	"formula": {
-		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS",
-			"/work": "mount:type:."
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "ls -al /work"]
-			}
-		},
-		"outputs": {
-		}
-	},
-	"context": {
-		"warehouses": {
-		}
-	}
-}`
-	frmAndCtx := wfapi.FormulaAndContext{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
-	qt.Assert(t, err, qt.IsNil)
-
-	_, err = Exec(frmAndCtx)
-	qt.Assert(t, err, qt.IsNil)
 }

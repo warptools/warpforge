@@ -7,224 +7,56 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
-	"github.com/ipld/go-ipld-prime/printer"
+	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-func TestExecSingleStepPlot(t *testing.T) {
-	serial := `{
-	"inputs": {
-		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-	},
-	"steps": {
-		"one": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo test > /test"
-						]
+// Test example plots.
+func TestFormulaExecFixtures(t *testing.T) {
+	doc, err := testmark.ReadFile("../../examples/220-plot-usage/example-plot-exec.md")
+	if err != nil {
+		t.Fatalf("spec file parse failed?!: %s", err)
+	}
+
+	// Data hunk in this spec file are in "directories" of a test scenario each.
+	doc.BuildDirIndex()
+	for _, dir := range doc.DirEnt.ChildrenList {
+		t.Run(dir.Name, func(t *testing.T) {
+			switch {
+			case dir.Children["plot"] != nil:
+				// Nab the bytes.
+				serial := dir.Children["plot"].Hunk.Body
+
+				t.Run("exec-plot", func(t *testing.T) {
+					plot := wfapi.Plot{}
+					_, err := ipld.Unmarshal(serial, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+					qt.Assert(t, err, qt.IsNil)
+
+					results, err := Exec(plot)
+					qt.Assert(t, err, qt.IsNil)
+
+					resultsSerial, err := ipld.Marshal(json.Encode, &results, wfapi.TypeSystem.TypeByName("PlotResults"))
+					qt.Assert(t, err, qt.IsNil)
+
+					fmt.Println(string(resultsSerial))
+
+					// if an example PlotResults is present, compare it
+					if dir.Children["plotresults"] != nil {
+						resultsExample := wfapi.PlotResults{}
+						_, err := ipld.Unmarshal(dir.Children["plotresults"].Hunk.Body, json.Decode, &resultsExample, wfapi.TypeSystem.TypeByName("PlotResults"))
+						qt.Assert(t, err, qt.IsNil)
+
+						qt.Assert(t, resultsExample, qt.CmpEquals(), results)
 					}
-				},
-				"outputs": {
-					"test": {
-						"from": "/test",
-						"packtype": "tar"
-					}
-				}
+
+				})
 			}
-		}
-	},
-	"outputs": {
-		"test": "pipe:one:test"
+		})
 	}
 }
-`
 
-	p := wfapi.Plot{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &p, wfapi.TypeSystem.TypeByName("Plot"))
-	qt.Assert(t, err, qt.IsNil)
-
-	_, err = Exec(p)
-	qt.Assert(t, err, qt.IsNil)
-}
-
-func TestExecMultiStepPlot(t *testing.T) {
-	serial := `{
-	"inputs": {
-		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-	},
-	"steps": {
-		"zero": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"mkdir /test; echo 'hello from step zero' > /test/file"
-						]
-					}
-				},
-				"outputs": {
-					"test": {
-						"from": "/test",
-						"packtype": "tar"
-					}
-				}
-			}
-		},
-		"one": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs",
-					"/test": "pipe:zero:test"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo 'in step one'; cat /test/file"
-						]
-					}
-				},
-				"outputs": {
-				}
-			}
-		}
-
-	},
-	"outputs": {
-	}
-}
-`
-
-	p := wfapi.Plot{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &p, wfapi.TypeSystem.TypeByName("Plot"))
-	qt.Assert(t, err, qt.IsNil)
-
-	order, err := OrderSteps(p)
-	qt.Assert(t, err, qt.IsNil)
-	fmt.Println(order)
-
-	_, err = Exec(p)
-	qt.Assert(t, err, qt.IsNil)
-}
-
-func TestNestedPlot(t *testing.T) {
-	serial := `{
-	"inputs": {
-		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-	},
-	"steps": {
-		"zero-outer": {
-			"plot": {
-				"inputs": {
-					"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-				},
-				"steps": {
-					"zero-inner": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs"
-							},
-							"action": {
-								"exec": {
-									"command": [
-										"/bin/sh",
-										"-c",
-										"mkdir /test; echo 'hello from step zero-inner' > /test/file"
-									]
-								}
-							},
-							"outputs": {
-								"test": {
-									"packtype": "tar",
-									"from": "/test"
-								}
-							}
-						}
-					}
-					"one-inner": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs"
-								"/test": "pipe:zero-inner:test"
-							},
-							"action": {
-								"exec": {
-									"command": [
-										"/bin/sh",
-										"-c",
-										"cat /test/file && echo 'hello from step one-inner' >> /test/file"
-									]
-								}
-							},
-							"outputs": {
-								"test": {
-									"packtype": "tar",
-									"from": "/test"
-								}
-							}
-						}
-					},
-				},
-				"outputs": {
-					"test": "pipe:one-inner:test"
-				}
-			}
-		},
-		"one-outer": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs",
-					"/test": "pipe:zero-outer:test"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo 'in one-outer'; cat /test/file"
-						]
-					}
-				},
-				"outputs": {}
-			}
-		}
-	},
-	"outputs": {
-		"test": "pipe:zero-outer:test"
-	}
-}
-`
-
-	p := wfapi.Plot{}
-	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &p, wfapi.TypeSystem.TypeByName("Plot"))
-	qt.Assert(t, err, qt.IsNil)
-
-	order, err := OrderSteps(p)
-	qt.Assert(t, err, qt.IsNil)
-	fmt.Println(order)
-
-	r, err := Exec(p)
-	qt.Assert(t, err, qt.IsNil)
-
-	nResults := bindnode.Wrap(&r, wfapi.TypeSystem.TypeByName("PlotResults"))
-	fmt.Println(printer.Sprint(nResults))
-
-}
-
+// Test that a plot with cyclic inputs fails. This should be detected as
+// a cylic graph and throw an error.
 func TestCycleFails(t *testing.T) {
 	serial := `{
 	"inputs": {},
