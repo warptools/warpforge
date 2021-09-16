@@ -32,12 +32,19 @@ func TestFormulaExecFixtures(t *testing.T) {
 					_, err := ipld.Unmarshal(serial, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
 					qt.Assert(t, err, qt.IsNil)
 
+					// determine step ordering and compare to example
+					steps, err := OrderStepsAll(plot)
+					qt.Assert(t, err, qt.IsNil)
+					if dir.Children["order"] != nil {
+						qt.Assert(t, string(dir.Children["order"].Hunk.Body), qt.CmpEquals(), fmt.Sprintf("%s\n", steps))
+					}
+
 					results, err := Exec(plot)
 					qt.Assert(t, err, qt.IsNil)
 
+					// print the serialized results, this can be copied into the testmark file
 					resultsSerial, err := ipld.Marshal(json.Encode, &results, wfapi.TypeSystem.TypeByName("PlotResults"))
 					qt.Assert(t, err, qt.IsNil)
-
 					fmt.Println(string(resultsSerial))
 
 					// if an example PlotResults is present, compare it

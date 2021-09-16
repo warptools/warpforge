@@ -59,6 +59,12 @@ This plot has a single protoformula step, which creates a file. This file is use
 }
 ```
 
+### Execution Order
+[testmark]:# (singlestep/order)
+```
+[one]
+```
+
 ### PlotResults
 
 [testmark]:# (singlestep/plotresults)
@@ -126,6 +132,12 @@ The execution order is automatically determined.
 	},
 	"outputs": {}
 }
+```
+
+### Execution Order
+[testmark]:# (multistep/order)
+```
+[zero one]
 ```
 
 ### PlotResults
@@ -232,6 +244,12 @@ The execution order is computed automatically.
 		"test": "pipe:zero-outer:test"
 	}
 }
+```
+
+### Execution Order
+[testmark]:# (nested/order)
+```
+[zero-outer zero-inner one-inner one-outer]
 ```
 
 ### PlotResults

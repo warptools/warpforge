@@ -7,6 +7,31 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
+// Return the ordered list of steps for a plot, recursing into nested plots.
+func OrderStepsAll(plot wfapi.Plot) ([]wfapi.StepName, error) {
+	var result []wfapi.StepName
+	ordered, err := OrderSteps(plot)
+	if err != nil {
+		return result, err
+	}
+
+	for _, step := range ordered {
+		// add this step to the results list
+		result = append(result, step)
+		if plot.Steps.Values[step].Plot != nil {
+			// recurse into subplot
+			subOrdered, err := OrderStepsAll(*plot.Steps.Values[step].Plot)
+			if err != nil {
+				return result, err
+			}
+			result = append(result, subOrdered...)
+		}
+	}
+
+	return result, nil
+}
+
+// Return the ordered list of steps for a single plot.
 func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 	// initialize results accumulator
 	result := make([]wfapi.StepName, 0, len(plot.Steps.Keys))
