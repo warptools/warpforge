@@ -12,8 +12,8 @@ These fixtures are executed by tests in the `pkg/plotexec` package.
 
 These fixtures are executable by parsing them using
 the [testmark](https://github.com/warpfork/go-testmark) format.
-Each example should have a `example/plot` value and optionally a 
-`example/plotresults` value. 
+Each example should have a `example/plot` value and optionally
+`example/order` and `example/plotresults` values. 
 
 ---
 
