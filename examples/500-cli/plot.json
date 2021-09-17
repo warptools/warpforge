@@ -1,0 +1,32 @@
+{
+	"inputs": {
+		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+	},
+	"steps": {
+		"one": {
+			"protoformula": {
+				"inputs": {
+					"/": "pipe::rootfs"
+				},
+				"action": {
+					"exec": {
+						"command": [
+							"/bin/sh",
+							"-c",
+							"echo test > /test"
+						]
+					}
+				},
+				"outputs": {
+					"test": {
+						"from": "/test",
+						"packtype": "tar"
+					}
+				}
+			}
+		}
+	},
+	"outputs": {
+		"test": "pipe:one:test"
+	}
+}
