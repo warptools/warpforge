@@ -3,8 +3,8 @@ package larkdemo
 import (
 	"fmt"
 
+	"github.com/ipld/go-datalark"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
-	"github.com/warpfork/warpforge/larkdemo/datalark"
 	"go.starlark.net/starlark"
 
 	"github.com/warpfork/warpforge/wfapi"
