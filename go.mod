@@ -8,8 +8,9 @@ require (
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipld/go-ipld-prime v0.12.1-0.20210901140105-00cc709f1610
 	github.com/opencontainers/runtime-spec v1.0.2
+	github.com/rogpeppe/go-internal v1.7.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/warpfork/go-testmark v0.3.0
 	go.starlark.net v0.0.0-20210901212718-87f333178d59
-	mvdan.cc/sh/v3 v3.3.0
+	golang.org/x/sys v0.0.0-20210503080704-8803ae5d1324 // indirect
 )
