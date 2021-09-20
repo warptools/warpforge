@@ -40,13 +40,19 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	app.After = afterFunc
 	app.Commands = []*cli.Command{
 		{
-			Name:  "formula",
-			Usage: "Formula subcommands",
+			Name:  "plot",
+			Usage: "Subcommands that operate on plots",
 			Subcommands: []*cli.Command{
 				{
-					Name:   "template",
-					Usage:  "Generate a minimal formula file",
-					Action: unimplemented,
+					Name:   "graph",
+					Usage:  "Generate a graph from a plot file",
+					Action: cmdPlotGraph,
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "png",
+							Usage: "Output graph PNG to `FILE`",
+						},
+					},
 				},
 			},
 		},

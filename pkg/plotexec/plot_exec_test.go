@@ -1,10 +1,12 @@
 package plotexec
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/goccy/go-graphviz"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/go-testmark"
@@ -46,6 +48,10 @@ func TestFormulaExecFixtures(t *testing.T) {
 					resultsSerial, err := ipld.Marshal(json.Encode, &results, wfapi.TypeSystem.TypeByName("PlotResults"))
 					qt.Assert(t, err, qt.IsNil)
 					fmt.Println(string(resultsSerial))
+
+					// test graphing of the plot
+					var buf bytes.Buffer
+					Graph(plot, graphviz.XDOT, &buf)
 
 					// if an example PlotResults is present, compare it
 					if dir.Children["plotresults"] != nil {
