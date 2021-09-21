@@ -194,10 +194,10 @@ func makeWareMount(config runConfig, wareId string, dest string, context *wfapi.
 	cacheWareId := strings.SplitN(out.Result.WareId, ":", 2)[1]
 
 	cachePath := filepath.Join(config.wsPath, "cache", wareType, "fileset", cacheWareId[0:3], cacheWareId[3:6], cacheWareId)
-	upperdirPath := filepath.Join(config.runPath, "/overlays/upper", cacheWareId)
-	workdirPath := filepath.Join(config.runPath, "/overlays/work", cacheWareId)
+	upperdirPath := filepath.Join(config.runPath, "overlays", fmt.Sprintf("upper-%s", cacheWareId))
+	workdirPath := filepath.Join(config.runPath, "overlays", fmt.Sprintf("work-%s", cacheWareId))
 
-	// remove then (re)create upper and work dirs
+	// create upper and work dirs
 	err = os.MkdirAll(upperdirPath, 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("creation of upperdir failed: %s", err)
