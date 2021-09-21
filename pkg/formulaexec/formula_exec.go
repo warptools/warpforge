@@ -266,7 +266,7 @@ func invokeRunc(config runConfig) (string, error) {
 		"--root", filepath.Join(config.wsPath, "runc-root"),
 		"run",
 		"-b", bundlePath, // bundle path
-		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixMicro()), // container id
+		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
