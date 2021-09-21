@@ -348,7 +348,11 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	if err != nil {
 		return rr, fmt.Errorf("failed to create temp run directory: %s", err)
 	}
-	defer os.RemoveAll(runPath)
+
+	_, keep := os.LookupEnv("WARPFORGE_KEEP_RUNDIR")
+	if !keep {
+		defer os.RemoveAll(runPath)
+	}
 
 	// get our configuration for the exec step
 	// this config will collect the various input mounts as each is set up
