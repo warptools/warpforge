@@ -54,3 +54,57 @@ type CatalogRelease struct {
 		Values map[string]string
 	}
 }
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnUnion("CatalogMirrorEnvelope",
+		[]schema.TypeName{
+			"CatalogMirror",
+		},
+		schema.SpawnUnionRepresentationKeyed(map[string]schema.TypeName{
+			"catalogMirror": "CatalogMirror",
+		})))
+
+	TypeSystem.Accumulate(schema.SpawnUnion("CatalogMirror",
+		[]schema.TypeName{
+			"CatalogMirrorByWare",
+			"CatalogMirrorByModule",
+		},
+		schema.SpawnUnionRepresentationKeyed(map[string]schema.TypeName{
+			"byWare":   "CatalogMirrorByWare",
+			"byModule": "CatalogMirrorByModule",
+		})))
+
+	TypeSystem.Accumulate(schema.SpawnMap("CatalogMirrorByWare", "WareID",
+		"List__WarehouseAddr", false))
+	TypeSystem.Accumulate(schema.SpawnList("List__WarehouseAddr",
+		"WarehouseAddr", false))
+
+	TypeSystem.Accumulate(schema.SpawnMap("CatalogMirrorByModule",
+		"ModuleName", "CatalogMirrorsByPacktype", false))
+	TypeSystem.Accumulate(schema.SpawnMap("CatalogMirrorsByPacktype",
+		"Packtype", "List__WarehouseAddr", false))
+}
+
+type CatalogMirrorEnvelope struct {
+	CatalogMirror *CatalogMirror
+}
+
+type CatalogMirrorByWare struct {
+	Keys   []WareID
+	Values map[WareID][]WarehouseAddr
+}
+
+type CatalogMirrorByModule struct {
+	Keys   []ModuleName
+	Values map[ModuleName]CatalogMirrorsByPacktype
+}
+
+type CatalogMirrorsByPacktype struct {
+	Keys   []Packtype
+	Values map[Packtype][]WarehouseAddr
+}
+
+type CatalogMirror struct {
+	ByWare   *CatalogMirrorByWare
+	ByModule *CatalogMirrorByModule
+}

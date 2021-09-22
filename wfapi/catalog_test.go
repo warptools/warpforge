@@ -50,3 +50,51 @@ func TestParseCatalog(t *testing.T) {
 
 	qt.Assert(t, string(reserial), qt.CmpEquals(), serial)
 }
+
+func TestParseCatalogMirror(t *testing.T) {
+	t.Run("parse-mirror-byWare", func(t *testing.T) {
+		serial := `{
+	"catalogMirror": {
+		"byWare": {
+			"tar:foo": [
+				"https://example.com/foo/bar/baz.gz"
+			]
+		}
+	}
+}
+`
+		catMir := CatalogMirrorEnvelope{}
+		_, err := ipld.Unmarshal([]byte(serial), json.Decode, &catMir, TypeSystem.TypeByName("CatalogMirrorEnvelope"))
+		qt.Assert(t, err, qt.IsNil)
+
+		reserial, err := ipld.Marshal(json.Encode, &catMir, TypeSystem.TypeByName("CatalogMirrorEnvelope"))
+		qt.Assert(t, err, qt.IsNil)
+
+		qt.Assert(t, string(reserial), qt.CmpEquals(), serial)
+
+	})
+
+	t.Run("parse-mirror-byModule", func(t *testing.T) {
+		serial := `{
+	"catalogMirror": {
+		"byModule": {
+			"module.org/test": {
+				"tar": [
+					"ca+https://example.com/warehouse/"
+				]
+			}
+		}
+	}
+}
+`
+		catMir := CatalogMirrorEnvelope{}
+		_, err := ipld.Unmarshal([]byte(serial), json.Decode, &catMir, TypeSystem.TypeByName("CatalogMirrorEnvelope"))
+		qt.Assert(t, err, qt.IsNil)
+
+		reserial, err := ipld.Marshal(json.Encode, &catMir, TypeSystem.TypeByName("CatalogMirrorEnvelope"))
+		qt.Assert(t, err, qt.IsNil)
+
+		qt.Assert(t, string(reserial), qt.CmpEquals(), serial)
+
+	})
+}

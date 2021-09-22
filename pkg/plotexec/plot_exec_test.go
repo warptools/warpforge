@@ -3,6 +3,7 @@ package plotexec
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -10,6 +11,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/go-testmark"
+	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -41,7 +43,11 @@ func TestFormulaExecFixtures(t *testing.T) {
 						qt.Assert(t, string(dir.Children["order"].Hunk.Body), qt.CmpEquals(), fmt.Sprintf("%s\n", steps))
 					}
 
-					results, err := Exec(plot)
+					pwd, err := os.Getwd()
+					qt.Assert(t, err, qt.IsNil)
+					ws, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
+					qt.Assert(t, err, qt.IsNil)
+					results, err := Exec(ws, plot)
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file
@@ -51,7 +57,8 @@ func TestFormulaExecFixtures(t *testing.T) {
 
 					// test graphing of the plot
 					var buf bytes.Buffer
-					Graph(plot, graphviz.XDOT, &buf)
+					err = Graph(plot, graphviz.XDOT, &buf)
+					qt.Assert(t, err, qt.IsNil)
 
 					// if an example PlotResults is present, compare it
 					if dir.Children["plotresults"] != nil {

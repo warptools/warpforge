@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
+	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -30,12 +32,18 @@ func cmdRun(c *cli.Context) error {
 
 		switch t {
 		case "formula":
+			// unmarshal FormulaAndContext from file data
 			frmAndCtx := wfapi.FormulaAndContext{}
 			_, err = ipld.Unmarshal([]byte(f), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 			if err != nil {
 				return err
 			}
-			rr, err := formulaexec.Exec(frmAndCtx)
+
+			var err error
+			ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+
+			// run formula
+			rr, err := formulaexec.Exec(ws, frmAndCtx)
 			if err != nil {
 				return err
 			}

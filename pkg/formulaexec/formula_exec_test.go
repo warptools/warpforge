@@ -2,6 +2,7 @@ package formulaexec
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -9,6 +10,7 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 
 	"github.com/warpfork/go-testmark"
+	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -34,7 +36,10 @@ func TestFormulaExecFixtures(t *testing.T) {
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
 
-					rr, err := Exec(frmAndCtx)
+					qt.Assert(t, err, qt.IsNil)
+					ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+					qt.Assert(t, err, qt.IsNil)
+					rr, err := Exec(ws, frmAndCtx)
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))

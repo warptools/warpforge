@@ -1,6 +1,8 @@
 package wfapi
 
 import (
+	"fmt"
+
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/schema"
 )
@@ -197,6 +199,10 @@ type CatalogRef struct {
 	ModuleName  ModuleName
 	ReleaseName string
 	ItemName    string
+}
+
+func (c *CatalogRef) String() string {
+	return fmt.Sprintf("catalog:%s:%s:%s", c.ModuleName, c.ReleaseName, c.ItemName)
 }
 
 func init() {

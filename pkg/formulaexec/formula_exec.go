@@ -262,12 +262,13 @@ func invokeRunc(config runConfig) (string, error) {
 		return "", fmt.Errorf("failed to write config.json: %s", err)
 	}
 
-	cmd := exec.Command(filepath.Join(config.wsPath, "bin/runc"),
+	cmd := exec.Command(filepath.Join(config.wsPath, "bin", "runc"),
 		"--root", filepath.Join(config.wsPath, "runc-root"),
 		"run",
 		"-b", bundlePath, // bundle path
 		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
+
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	var stdout bytes.Buffer
@@ -316,7 +317,7 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 	return wareId, nil
 }
 
-func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
+func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	formula := fc.Formula
 	context := fc.Context
 	rr := wfapi.RunRecord{}
@@ -327,24 +328,12 @@ func Exec(fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
 	}
 
 	// get the workspace location
-	ws, _, err := workspace.FindWorkspace(os.DirFS("/"), "", pwd[1:])
-	if err != nil {
-		return rr, fmt.Errorf("failed to find workspace: %s", err)
-	}
-	if ws == nil {
-		return rr, fmt.Errorf("no workspace found")
-	}
 	_, wsPath := ws.Path()
 	wsPath = filepath.Join("/", wsPath, ".warpforge")
 
 	// each formula execution gets a unique run directory
 	// this is used to store working files and is destroyed upon completion
-	wsRunPath := filepath.Join(wsPath, "run")
-	err = os.MkdirAll(wsRunPath, 0755)
-	if err != nil {
-		return rr, fmt.Errorf("failed to create run dir")
-	}
-	runPath, err := ioutil.TempDir(wsRunPath, "run-")
+	runPath, err := ioutil.TempDir(os.TempDir(), "run-")
 	if err != nil {
 		return rr, fmt.Errorf("failed to create temp run directory: %s", err)
 	}

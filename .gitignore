@@ -1,5 +1,2 @@
 .gopath/*
 .vscode/*
-
-# ignore the .warpforge workspace dir for now
-.warpforge
