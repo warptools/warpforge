@@ -24,61 +24,9 @@
 					}
 				}
 			}
-		},
-		"two": {
-			"plot": {
-				"inputs": {
-					"rootfs": "pipe::rootfs",
-					"from-one": "pipe:one:test"
-				},
-				"steps": {
-					"inner1": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs",
-								"/foo": "pipe::from-one"
-							},
-							"action": {
-								"exec": {
-									"command": ["/bin/ls", "/foo"]
-								}
-							},
-							"outputs": {"final": {"from": "/foo", "packtype": "tar"}}
-						}
-					}
-				},
-				"outputs": {"final": "pipe:inner1:final"}
-			}
-		},
-		"three": {
-			"plot": {
-				"inputs": {
-					"rootfs": "pipe::rootfs",
-					"from-one": "pipe:one:test",
-					"from-two": "pipe:two:final"
-				},
-				"steps": {
-					"inner1": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs",
-								"/foo": "pipe::from-one",
-								"/bar": "pipe::from-two"
-							},
-							"action": {
-								"exec": {
-									"command": ["/bin/ls", "/bar"]
-								}
-							},
-							"outputs": {"final": {"from": "/bar", "packtype": "tar"}}
-						}
-					}
-				},
-				"outputs": {"final": "pipe:inner1:final"}
-			}
 		}
 	},
 	"outputs": {
-		"three": "pipe:three:final"
+		"test": "pipe:one:test"
 	}
 }

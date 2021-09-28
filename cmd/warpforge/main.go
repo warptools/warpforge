@@ -15,7 +15,7 @@ import (
 
 const VERSION = "0.0.1"
 
-func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
 	app := cli.NewApp()
 	app.Name = "warpforge"
 	app.Version = VERSION
@@ -68,7 +68,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		},
 	}
 	err := app.Run(args)
-	return err
+	return 0, err
 }
 
 // Called after a command returns an non-nil error value.
@@ -111,8 +111,6 @@ func afterFunc(c *cli.Context) error {
 }
 
 func main() {
-	err := Run(os.Args, os.Stdin, os.Stdout, os.Stderr)
-	if err != nil {
-		os.Exit(1)
-	}
+	exitCode, _ := Run(os.Args, os.Stdin, os.Stdout, os.Stderr)
+	os.Exit(exitCode)
 }

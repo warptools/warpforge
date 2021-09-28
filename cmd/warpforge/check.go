@@ -6,7 +6,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -43,7 +42,7 @@ func cmdCheck(c *cli.Context) error {
 			}
 		}
 		if c.Bool("verbose") {
-			fmt.Fprintf(c.App.ErrWriter, "%s parsed successfully:\n%s\n", file, printer.Sprint(n))
+			c.App.Metadata["result"] = n
 		}
 	}
 
