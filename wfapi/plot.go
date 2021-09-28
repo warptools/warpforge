@@ -100,6 +100,17 @@ type PlotInput struct {
 	PlotInputComplex *PlotInputComplex
 }
 
+func (pi *PlotInput) Basis() *PlotInputSimple {
+	switch {
+	case pi.PlotInputSimple != nil:
+		return pi.PlotInputSimple
+	case pi.PlotInputComplex != nil:
+		return &pi.PlotInputComplex.Basis
+	default:
+		panic("unreachable")
+	}
+}
+
 type PlotInputSimple struct {
 	WareID     *WareID
 	Mount      *Mount

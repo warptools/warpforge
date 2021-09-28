@@ -8,14 +8,14 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-type pipeMap map[wfapi.StepName]map[wfapi.LocalLabel]wfapi.WareID
+type pipeMap map[wfapi.StepName]map[wfapi.LocalLabel]wfapi.FormulaInput
 
 // Returns a WareID for a given StepName and LocalLabel, if it exists
-func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.WareID, error) {
+func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, error) {
 	if step, ok := m[stepName]; ok {
-		if ware, ok := step[label]; ok {
+		if input, ok := step[label]; ok {
 			// located a valid input
-			return &ware, nil
+			return &input, nil
 		} else {
 			// located step, but no input by label
 			if stepName == "" {
@@ -33,7 +33,29 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 // Resolves a PlotInput to a WareID and optionally a WarehouseAddr.
 // This will resolve various input types (Pipes, CatalogRefs, etc...)
 // to allow them to be used in a Formula.
-func plotInputToWare(wss []*workspace.Workspace, plotInput wfapi.PlotInput, pipeCtx pipeMap) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
+func plotInputToFormulaInput(wss []*workspace.Workspace, plotInput wfapi.PlotInput, pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, error) {
+	basis, addr, err := plotInputToFormulaInputSimple(wss, plotInput, pipeCtx)
+	if err != nil {
+		return wfapi.FormulaInput{}, nil, err
+	}
+
+	switch {
+	case plotInput.PlotInputSimple != nil:
+		return wfapi.FormulaInput{
+			FormulaInputSimple: &basis,
+		}, addr, nil
+	case plotInput.PlotInputComplex != nil:
+		return wfapi.FormulaInput{
+			FormulaInputComplex: &wfapi.FormulaInputComplex{
+				Basis:   basis,
+				Filters: plotInput.PlotInputComplex.Filters,
+			}}, addr, nil
+	default:
+		panic("unreachable")
+	}
+}
+
+func plotInputToFormulaInputSimple(wss []*workspace.Workspace, plotInput wfapi.PlotInput, pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, error) {
 	var basis wfapi.PlotInputSimple
 
 	switch {
@@ -42,13 +64,20 @@ func plotInputToWare(wss []*workspace.Workspace, plotInput wfapi.PlotInput, pipe
 	case plotInput.PlotInputComplex != nil:
 		basis = plotInput.PlotInputComplex.Basis
 	default:
-		return nil, nil, fmt.Errorf("invalid plot input")
+		return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid plot input")
 	}
 
 	switch {
 	case basis.WareID != nil:
-		// if it's just a WareID, we're done
-		return basis.WareID, nil, nil
+		// convert WareID PlotInput to FormulaInput
+		return wfapi.FormulaInputSimple{
+			WareID: basis.WareID,
+		}, nil, nil
+	case basis.Mount != nil:
+		// convert WareID PlotInput to FormulaInput
+		return wfapi.FormulaInputSimple{
+			Mount: basis.Mount,
+		}, nil, nil
 	case basis.CatalogRef != nil:
 		// search the warehouse stack for this CatalogRef
 		// this will return the WareID and WarehouseAddr to use
@@ -56,39 +85,27 @@ func plotInputToWare(wss []*workspace.Workspace, plotInput wfapi.PlotInput, pipe
 		for _, ws := range wss {
 			wareId, wareAddr, err := ws.GetCatalogWare(*basis.CatalogRef)
 			if err != nil {
-				return nil, nil, err
+				return wfapi.FormulaInputSimple{}, nil, err
 			}
 			if wareId != nil {
 				// found a matching ware in a catalog, stop searching
-				return wareId, wareAddr, nil
+				return wfapi.FormulaInputSimple{
+					WareID: wareId,
+				}, wareAddr, nil
 			}
 		}
 		if wareId == nil {
 			// failed to find a match in the catalog
-			return nil, nil, fmt.Errorf("no definition found for %q", basis.CatalogRef.String())
+			return wfapi.FormulaInputSimple{},
+				nil,
+				fmt.Errorf("no definition found for %q", basis.CatalogRef.String())
 		}
 	case basis.Pipe != nil:
 		// resolve the pipe to a WareID using the pipeCtx
-		wareId, err := pipeCtx.lookup(basis.Pipe.StepName, basis.Pipe.Label)
-		return wareId, nil, err
+		input, err := pipeCtx.lookup(basis.Pipe.StepName, basis.Pipe.Label)
+		return *input.Basis(), nil, err
 	}
-
-	// if filters exist, need to construct a FormulaInputComplex
-	// if there are no filters, use a FormulaInputSimple
-	/* TODO move this elsewhere!
-	if len(filters.Keys) == 0 {
-		return wfapi.FormulaInput{
-			FormulaInputSimple: simple,
-		}, nil
-	} else {
-		return wfapi.FormulaInput{
-			FormulaInputComplex: &wfapi.FormulaInputComplex{
-				Basis:   *simple,
-				Filters: filters,
-			}}, nil
-	}
-	*/
-	return nil, nil, fmt.Errorf("invalid type in plot input")
+	return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid type in plot input")
 }
 
 func execProtoformula(wss []*workspace.Workspace, pf wfapi.Protoformula, ctx wfapi.FormulaContext, pipeCtx pipeMap) (wfapi.RunRecord, error) {
@@ -111,20 +128,15 @@ func execProtoformula(wss []*workspace.Workspace, pf wfapi.Protoformula, ctx wfa
 	// convert Protoformula inputs (of type PlotInput) to FormulaInputs
 	for sbPort, plotInput := range pf.Inputs.Values {
 		formula.Inputs.Keys = append(formula.Inputs.Keys, sbPort)
-		wareId, wareAddr, err := plotInputToWare(wss, plotInput, pipeCtx)
+		input, wareAddr, err := plotInputToFormulaInput(wss, plotInput, pipeCtx)
 		if err != nil {
 			return wfapi.RunRecord{}, err
 		}
-		formula.Inputs.Values[sbPort] = wfapi.FormulaInput{
-			FormulaInputSimple: &wfapi.FormulaInputSimple{
-				WareID: wareId,
-			},
-		}
+		formula.Inputs.Values[sbPort] = input
 		if wareAddr != nil {
-			// input specifies a WarehouseAddr for this WareID
-			// add it to the formula's context
-			ctx.Warehouses.Keys = append(ctx.Warehouses.Keys, *wareId)
-			ctx.Warehouses.Values[*wareId] = *wareAddr
+			// input specifies a WarehouseAddr, add it to the formula's context
+			ctx.Warehouses.Keys = append(ctx.Warehouses.Keys, *input.Basis().WareID)
+			ctx.Warehouses.Values[*input.Basis().WareID] = *wareAddr
 		}
 	}
 
@@ -149,19 +161,19 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot) (wfapi.PlotResults, error
 
 	// collect the plot inputs
 	// these have an empty string for the step name (e.g., `pipe::foo`)
-	pipeCtx[""] = make(map[wfapi.LocalLabel]wfapi.WareID)
+	pipeCtx[""] = make(map[wfapi.LocalLabel]wfapi.FormulaInput)
 	inputContext := wfapi.FormulaContext{}
 	inputContext.Warehouses.Values = make(map[wfapi.WareID]wfapi.WarehouseAddr)
 	for name, input := range plot.Inputs.Values {
-		wareId, wareAddr, err := plotInputToWare(wss, input, pipeCtx)
+		input, wareAddr, err := plotInputToFormulaInput(wss, input, pipeCtx)
 		if err != nil {
 			return results, err
 		}
-		pipeCtx[""][name] = *wareId
+		pipeCtx[""][name] = input
 		if wareAddr != nil {
 			// input specifies an address, add it to the context
-			inputContext.Warehouses.Keys = append(inputContext.Warehouses.Keys, *wareId)
-			inputContext.Warehouses.Values[*wareId] = *wareAddr
+			inputContext.Warehouses.Keys = append(inputContext.Warehouses.Keys, *input.Basis().WareID)
+			inputContext.Warehouses.Values[*input.Basis().WareID] = *wareAddr
 		}
 	}
 
@@ -182,9 +194,11 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot) (wfapi.PlotResults, error
 				return results, fmt.Errorf("failed to execute protoformula for step %s: %s", name, err)
 			}
 			// accumulate the results of the Protoformula our map of Pipes
-			pipeCtx[name] = make(map[wfapi.LocalLabel]wfapi.WareID)
+			pipeCtx[name] = make(map[wfapi.LocalLabel]wfapi.FormulaInput)
 			for result, input := range rr.Results.Values {
-				pipeCtx[name][wfapi.LocalLabel(result)] = *input.WareID
+				pipeCtx[name][wfapi.LocalLabel(result)] = wfapi.FormulaInput{
+					FormulaInputSimple: &input,
+				}
 			}
 		case step.Plot != nil:
 			// execute plot step
@@ -193,9 +207,13 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot) (wfapi.PlotResults, error
 				return results, fmt.Errorf("failed to execute plot for step %s: %s", name, err)
 			}
 			// accumulate the results of the Plot into our map of Pipes
-			pipeCtx[name] = make(map[wfapi.LocalLabel]wfapi.WareID)
-			for result, input := range stepResults.Values {
-				pipeCtx[name][wfapi.LocalLabel(result)] = input
+			pipeCtx[name] = make(map[wfapi.LocalLabel]wfapi.FormulaInput)
+			for result, wareId := range stepResults.Values {
+				pipeCtx[name][wfapi.LocalLabel(result)] = wfapi.FormulaInput{
+					FormulaInputSimple: &wfapi.FormulaInputSimple{
+						WareID: &wareId,
+					},
+				}
 			}
 		default:
 			return results, fmt.Errorf("invalid step %s", name)
@@ -210,7 +228,7 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot) (wfapi.PlotResults, error
 			return results, err
 		}
 		results.Keys = append(results.Keys, name)
-		results.Values[name] = *result
+		results.Values[name] = *result.Basis().WareID
 	}
 	return results, nil
 }

@@ -91,6 +91,17 @@ type FormulaInput struct {
 	FormulaInputComplex *FormulaInputComplex
 }
 
+func (fi *FormulaInput) Basis() *FormulaInputSimple {
+	switch {
+	case fi.FormulaInputSimple != nil:
+		return fi.FormulaInputSimple
+	case fi.FormulaInputComplex != nil:
+		return &fi.FormulaInputComplex.Basis
+	default:
+		panic("unreachable")
+	}
+}
+
 type FormulaInputSimple struct {
 	WareID  *WareID
 	Mount   *Mount

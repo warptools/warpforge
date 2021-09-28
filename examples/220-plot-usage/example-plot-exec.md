@@ -27,7 +27,7 @@ This plot has a single protoformula step, which creates a file. This file is use
 ```json
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 	},
 	"steps": {
 		"one": {
@@ -259,4 +259,55 @@ The execution order is computed automatically.
 {
 	"test": "tar:3P7pTG7U7ezdpSJMKBHr6mVAUSC6yHsgYgXqwUkDJ9wcVeY4KT9okcZZnsvKwHhRH5"
 }
+```
+
+## Example: Multiple Input Types
+
+This plot uses the `catalog` and `mount` input types, then uses `pipe` to reference them in
+the protoformula.
+
+### Plot
+
+[testmark]:# (input-types/plot)
+```json
+{
+	"inputs": {
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64",
+		"pwd": "mount:overlay:."
+	},
+	"steps": {
+		"one": {
+			"protoformula": {
+				"inputs": {
+					"/": "pipe::rootfs",
+					"/pwd": "pipe::pwd"
+				},
+				"action": {
+					"exec": {
+						"command": [
+							"/bin/sh",
+							"-c",
+							"ls /pwd"
+						]
+					}
+				},
+				"outputs": {}
+			}
+		}
+	},
+	"outputs": {}
+}
+```
+
+### Execution Order
+[testmark]:# (input-types/order)
+```
+[one]
+```
+
+### PlotResults
+
+[testmark]:# (input-types/plotresults)
+```json
+{}
 ```
