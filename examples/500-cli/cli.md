@@ -1,52 +1,76 @@
-CLI
-===
+CLI Examples
+============
 
-## check
+## Check Input Files are Valid
 
-### Check a Formula is Valid
+This usage will infer the file's type based on its name, then check it for validity.
+Multiple files can be provided, and unrecoginzed filenames will be ignored.
 
+[testmark]:# (check/sequence)
+```
+warpforge check *
+```
+
+[testmark]:# (check/output)
+```
+```
+
+## Check a Formula is Valid
 [testmark]:# (checkformula/sequence)
 ```
-warpforge --verbose check formula.json
+warpforge --json --verbose formula check formula.json
 ```
 
 [testmark]:# (checkformula/output)
 ```
-ok: struct<FormulaAndContext>{
-	formula: struct<Formula>{
-		inputs: map<Map__SandboxPort__FormulaInput>{
-			union<SandboxPort>{string<SandboxPath>{""}}: union<FormulaInput>{union<FormulaInputSimple>{struct<WareID>{
-				packtype: string<Packtype>{"tar"}
-				hash: string<String>{"7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"}
-			}}}
-		}
-		action: union<Action>{struct<Action_Exec>{
-			command: list<List__String>{
-				0: string<String>{"/bin/sh"}
-				1: string<String>{"-c"}
-				2: string<String>{"echo hello from warpforge!"}
+{
+	"formula": {
+		"inputs": {
+			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+		},
+		"action": {
+			"exec": {
+				"command": [
+					"/bin/sh",
+					"-c",
+					"echo hello from warpforge!"
+				]
 			}
-		}}
-		outputs: map<Map__OutputName__GatherDirective>{
-		}
-	}
-	context: struct<FormulaContext>{
-		warehouses: map<Map__WareID__WarehouseAddr>{
-		}
+		},
+		"outputs": {}
+	},
+	"context": {
+		"warehouses": {}
 	}
 }
 ```
 
-### Check a Plot is Valid
+## Check a Module is Valid
+[testmark]:# (checkmodule/sequence)
+```
+warpforge --verbose module check module.json
+```
+
+[testmark]:# (checkmodule/output)
+```
+ok: struct<Module>{
+	name: string<ModuleName>{"test"}
+	plot: absent
+}
+```
+
+## Check a Plot is Valid
 
 [testmark]:# (checkplot/sequence)
 ```
-warpforge check plot.json
+warpforge plot check plot.json
 ```
 
-## run
+[testmark]:# (checkplot/output)
+```
+```
 
-### Execute a Formula
+## Execute a Formula
 
 [testmark]:# (runformula/sequence)
 ```
@@ -64,7 +88,7 @@ warpforge --json run formula.json
 }
 ```
 
-### Execute a Module
+## Execute a Module
 
 [testmark]:# (runmodule/sequence)
 ```
@@ -74,6 +98,14 @@ warpforge --json run module.json
 [testmark]:# (runmodule/output)
 ```
 {
-	"test": "tar:4mjq8TRFaprkK3pae5ZbjrJkWetGrEYszVW2WbcELd8vfpnwHpqkLzo4Q6wkfVRCGp"
+	"test": "tar:3P7pTG7U7ezdpSJMKBHr6mVAUSC6yHsgYgXqwUkDJ9wcVeY4KT9okcZZnsvKwHhRH5"
 }
 ```
+
+## Graph a Plot
+[testmark]:# (graphplot/sequence)
+```
+warpforge plot graph --png graph.png plot.json
+```
+
+![Plot Graph](graph.png)

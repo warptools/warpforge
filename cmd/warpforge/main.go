@@ -15,7 +15,7 @@ import (
 
 const VERSION = "0.0.1"
 
-func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 	app := cli.NewApp()
 	app.Name = "warpforge"
 	app.Version = VERSION
@@ -39,36 +39,13 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) 
 	app.ExitErrHandler = exitErrHandler
 	app.After = afterFunc
 	app.Commands = []*cli.Command{
-		{
-			Name:  "plot",
-			Usage: "Subcommands that operate on plots",
-			Subcommands: []*cli.Command{
-				{
-					Name:   "graph",
-					Usage:  "Generate a graph from a plot file",
-					Action: cmdPlotGraph,
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:  "png",
-							Usage: "Output graph PNG to `FILE`",
-						},
-					},
-				},
-			},
-		},
-		{
-			Name:   "run",
-			Usage:  "Run a module or formula",
-			Action: cmdRun,
-		},
-		{
-			Name:   "check",
-			Usage:  "Check an input file for syntax and sanity",
-			Action: cmdCheck,
-		},
+		&formulaCmdDef,
+		&moduleCmdDef,
+		&plotCmdDef,
+		&runCmdDef,
+		&checkCmdDef,
 	}
-	err := app.Run(args)
-	return 0, err
+	return app
 }
 
 // Called after a command returns an non-nil error value.
@@ -111,6 +88,8 @@ func afterFunc(c *cli.Context) error {
 }
 
 func main() {
-	exitCode, _ := Run(os.Args, os.Stdin, os.Stdout, os.Stderr)
-	os.Exit(exitCode)
+	err := makeApp(os.Stdin, os.Stdout, os.Stderr).Run(os.Args)
+	if err != nil {
+		os.Exit(1)
+	}
 }

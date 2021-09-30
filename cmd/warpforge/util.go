@@ -13,7 +13,8 @@ import (
 func getFileType(name string) (string, error) {
 	split := strings.Split(filepath.Base(name), ".")
 	if len(split) < 2 {
-		return "", fmt.Errorf("invalid filename %s", name)
+		// ignore files without extensions
+		return "", nil
 	}
 	return split[0], nil
 }

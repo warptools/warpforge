@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -10,33 +11,6 @@ import (
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
 )
-
-func TestFormulaExecFixtures(t *testing.T) {
-	os.Chdir("../../examples/500-cli")
-	doc, err := testmark.ReadFile("cli.md")
-	if err != nil {
-		t.Fatalf("spec file parse failed?!: %s", err)
-	}
-
-	// Data hunk in this spec file are in "directories" of a test scenario each.
-	doc.BuildDirIndex()
-	for _, dir := range doc.DirEnt.ChildrenList {
-		t.Run(dir.Name, func(t *testing.T) {
-			switch {
-			case dir.Children["cmd"] != nil:
-				// Nab the bytes.
-				command := strings.TrimSpace(string(dir.Children["cmd"].Hunk.Body))
-
-				t.Run("exec-cli", func(t *testing.T) {
-					// TODO capture stdout/stderr
-					exitCode, err := Run(strings.Split(command, " "), os.Stdin, os.Stdout, os.Stderr)
-					qt.Assert(t, exitCode, qt.Equals, 0)
-					qt.Assert(t, err, qt.IsNil)
-				})
-			}
-		})
-	}
-}
 
 func TestExecFixtures(t *testing.T) {
 	os.Chdir("../../examples/500-cli")
@@ -49,7 +23,7 @@ func TestExecFixtures(t *testing.T) {
 	patches := testmark.PatchAccumulator{}
 	for _, dir := range doc.DirEnt.ChildrenList {
 		test := testexec.Tester{
-			ExecFn:   Run,
+			ExecFn:   execFn,
 			Patches:  &patches,
 			AssertFn: assertFn,
 		}
@@ -69,6 +43,14 @@ func cleanRunRecord(str string) string {
 
 	// return value with whitespace trimmed
 	return strings.TrimSpace(str)
+}
+
+func execFn(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+	err := makeApp(stdin, stdout, stderr).Run(args)
+	if err != nil {
+		return 1, err
+	}
+	return 0, nil
 }
 
 func assertFn(t *testing.T, actual, expect string) {

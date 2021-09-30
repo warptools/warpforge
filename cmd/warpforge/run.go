@@ -16,6 +16,12 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
+var runCmdDef = cli.Command{
+	Name:   "run",
+	Usage:  "Run a module or formula",
+	Action: cmdRun,
+}
+
 func cmdRun(c *cli.Context) error {
 	if !c.Args().Present() {
 		return fmt.Errorf("no input files provided")

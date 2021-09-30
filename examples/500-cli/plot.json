@@ -3,30 +3,83 @@
 		"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
 	},
 	"steps": {
-		"one": {
+		"zero-outer": {
+			"plot": {
+				"inputs": {
+					"rootfs": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+				},
+				"steps": {
+					"zero-inner": {
+						"protoformula": {
+							"inputs": {
+								"/": "pipe::rootfs"
+							},
+							"action": {
+								"exec": {
+									"command": [
+										"/bin/sh",
+										"-c",
+										"mkdir /test; echo 'hello from step zero-inner' > /test/file"
+									]
+								}
+							},
+							"outputs": {
+								"test": {
+									"packtype": "tar",
+									"from": "/test"
+								}
+							}
+						}
+					},
+					"one-inner": {
+						"protoformula": {
+							"inputs": {
+								"/": "pipe::rootfs",
+								"/test": "pipe:zero-inner:test"
+							},
+							"action": {
+								"exec": {
+									"command": [
+										"/bin/sh",
+										"-c",
+										"cat /test/file && echo 'hello from step one-inner' >> /test/file"
+									]
+								}
+							},
+							"outputs": {
+								"test": {
+									"packtype": "tar",
+									"from": "/test"
+								}
+							}
+						}
+					},
+				},
+				"outputs": {
+					"test": "pipe:one-inner:test"
+				}
+			}
+		},
+		"one-outer": {
 			"protoformula": {
 				"inputs": {
-					"/": "pipe::rootfs"
+					"/": "pipe::rootfs",
+					"/test": "pipe:zero-outer:test"
 				},
 				"action": {
 					"exec": {
 						"command": [
 							"/bin/sh",
 							"-c",
-							"echo test > /test"
+							"echo 'in one-outer'; cat /test/file"
 						]
 					}
 				},
-				"outputs": {
-					"test": {
-						"from": "/test",
-						"packtype": "tar"
-					}
-				}
+				"outputs": {}
 			}
 		}
 	},
 	"outputs": {
-		"test": "pipe:one:test"
+		"test": "pipe:zero-outer:test"
 	}
 }

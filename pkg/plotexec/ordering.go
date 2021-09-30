@@ -204,6 +204,10 @@ func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 		todo[step] = struct{}{}
 	}
 
+	// initialize a map to hold the output pipes of each step
+	// this is needed to ensure the top level plot outputs can be resolved
+	outputPipes := make(map[wfapi.StepName][]wfapi.LocalLabel)
+
 	// begin with steps sorted by name
 	stepsOrdered := make([]wfapi.StepName, len(plot.Steps.Keys))
 	copy(stepsOrdered, plot.Steps.Keys)
@@ -211,11 +215,31 @@ func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 
 	// visit each step
 	for _, name := range stepsOrdered {
-		err := orderSteps_visit(name, plot.Steps.Values[name], todo, map[wfapi.StepName]struct{}{}, &result, plot)
+		err := orderSteps_visit(name, plot.Steps.Values[name], todo, map[wfapi.StepName]struct{}{}, &result, plot, &outputPipes)
 		if err != nil {
 			return []wfapi.StepName{}, err
 		}
 	}
+
+	for _, output := range plot.Outputs.Values {
+		// check StepName exists
+		stepOutputs, ok := outputPipes[output.Pipe.StepName]
+		if !ok {
+			return []wfapi.StepName{}, fmt.Errorf("could not resolve plot outputs: no step named %q", output.Pipe.StepName)
+		}
+
+		labelFound := false
+		for _, label := range stepOutputs {
+			if output.Pipe.Label == label {
+				labelFound = true
+				break
+			}
+		}
+		if !labelFound {
+			return []wfapi.StepName{}, fmt.Errorf("could not resolve plot outputs: no output %q in step %q", output.Pipe.Label, output.Pipe.StepName)
+		}
+	}
+
 	return result, nil
 }
 
@@ -226,6 +250,7 @@ func orderSteps_visit(
 	loopDetector map[wfapi.StepName]struct{},
 	result *[]wfapi.StepName,
 	plot wfapi.Plot,
+	outputPipes *map[wfapi.StepName][]wfapi.LocalLabel,
 ) error {
 
 	// if step has already been visited, we're done
@@ -292,6 +317,26 @@ func orderSteps_visit(
 		}
 	}
 
+	// obtain all step outputs
+	stepOutputs := []wfapi.LocalLabel{}
+	switch {
+	case step.Protoformula != nil:
+		for label, _ := range step.Protoformula.Outputs.Values {
+			stepOutputs = append(stepOutputs, label)
+		}
+	case step.Plot != nil:
+		for label, _ := range step.Plot.Outputs.Values {
+			stepOutputs = append(stepOutputs, label)
+		}
+	default:
+		panic("unreachable")
+	}
+
+	// place the outputs of this step into the outputPipes map
+	for _, label := range stepOutputs {
+		(*outputPipes)[name] = append((*outputPipes)[name], label)
+	}
+
 	// sort pipes by name (to ensure determinism), then recurse
 	sort.Sort(pipesByLex(inputPipes))
 	for _, pipe := range inputPipes {
@@ -300,7 +345,7 @@ func orderSteps_visit(
 			// top level input, nothing to do
 		case false:
 			// recurse the referenced step
-			if err := orderSteps_visit(pipe.StepName, plot.Steps.Values[pipe.StepName], todo, loopDetector, result, plot); err != nil {
+			if err := orderSteps_visit(pipe.StepName, plot.Steps.Values[pipe.StepName], todo, loopDetector, result, plot, outputPipes); err != nil {
 				return err
 			}
 		}

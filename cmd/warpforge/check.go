@@ -2,47 +2,52 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 
 	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
-	"github.com/warpfork/warpforge/wfapi"
 )
+
+var checkCmdDef = cli.Command{
+	Name:   "check",
+	Usage:  "Check file(s) for syntax and sanity.",
+	Action: cmdCheck,
+}
 
 func cmdCheck(c *cli.Context) error {
 	if !c.Args().Present() {
 		return fmt.Errorf("no input files provided")
 	}
 
-	for _, file := range c.Args().Slice() {
-		f, err := ioutil.ReadFile(file)
+	for _, fileName := range c.Args().Slice() {
+		t, err := getFileType(fileName)
 		if err != nil {
 			return err
 		}
 
-		t, err := getFileType(file)
-		if err != nil {
-			return err
-		}
-
-		var n ipld.Node
+		var n *ipld.Node
 		switch t {
 		case "formula":
-			frmAndCtx := wfapi.FormulaAndContext{}
-			n, err = ipld.Unmarshal([]byte(f), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
+			n, err = checkFormula(fileName)
 			if err != nil {
-				return err
+				return fmt.Errorf("%s: %s", fileName, err)
 			}
 		case "plot":
-			plot := wfapi.Plot{}
-			n, err = ipld.Unmarshal([]byte(f), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+			n, err = checkPlot(fileName)
 			if err != nil {
-				return err
+				return fmt.Errorf("%s: %s", fileName, err)
+			}
+		case "module":
+			n, err = checkModule(fileName)
+			if err != nil {
+				return fmt.Errorf("%s: %s", fileName, err)
+			}
+		default:
+			if c.Bool("verbose") {
+				fmt.Fprintf(c.App.ErrWriter, "ignoring unrecoginzed file: %q\n", fileName)
 			}
 		}
-		if c.Bool("verbose") {
-			c.App.Metadata["result"] = n
+		if c.Bool("verbose") && n != nil {
+			c.App.Metadata["result"] = *n
 		}
 	}
 
