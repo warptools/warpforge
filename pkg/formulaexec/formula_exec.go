@@ -98,7 +98,11 @@ func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
 	return rc, nil
 }
 
-func makeWareMount(config runConfig, wareId string, dest string, context *wfapi.FormulaContext) (specs.Mount, error) {
+func makeWareMount(config runConfig,
+	wareId string,
+	dest string,
+	context *wfapi.FormulaContext,
+	filters wfapi.FilterMap) (specs.Mount, error) {
 	// default warehouse to unpack from
 	src := "ca+file:///warpforge/warehouse"
 	// check to see if this ware should be fetched from a different warehouse
@@ -154,6 +158,12 @@ func makeWareMount(config runConfig, wareId string, dest string, context *wfapi.
 	config.spec.Mounts = append(config.spec.Mounts, etcMount)
 	config.spec.Mounts = append(config.spec.Mounts, caMount)
 
+	// convert FilterMap to rio string
+	var filterStr string
+	for name, value := range filters.Values {
+		filterStr = fmt.Sprintf(",%s%s=%s", filterStr, name, value)
+	}
+
 	config.spec.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
 	config.spec.Process.Args = []string{
 		"/warpforge/bin/rio",
@@ -164,7 +174,7 @@ func makeWareMount(config runConfig, wareId string, dest string, context *wfapi.
 		// will end up being different if a tar doesn't only use uid/gid 0!
 		// these *must* be zero due to runc issue 1800, otherwise we would
 		// choose a more sane value
-		"--filters=uid=0,gid=0,mtime=follow",
+		"--filters=uid=0,gid=0,mtime=follow" + filterStr,
 		"--placer=none",
 		"--format=json",
 		wareId,
@@ -353,12 +363,14 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 	// loop over formula inputs
 	for dest, src := range formula.Inputs.Values {
 		var input *wfapi.FormulaInputSimple
+		var filters wfapi.FilterMap
 		if src.FormulaInputSimple != nil {
 			input = src.FormulaInputSimple
 		} else if src.FormulaInputComplex != nil {
 			input = &src.FormulaInputComplex.Basis
 			// TODO deal with complex input fields
 			log.Println("WARNING: ignoring complex input (not supported)")
+			filters = src.FormulaInputComplex.Filters
 		} else {
 			return rr, fmt.Errorf("invalid formula input for %s", *dest.SandboxPath)
 		}
@@ -370,15 +382,18 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			return rr, err
 		}
 		if input.Mount != nil {
-			// TODO do something with Mount.Mode
-			log.Println("WARNING: mount mode is currently ignored, all mounts are overlay")
-			// mount uses relative path
-			mnt, err = makePathMount(config, filepath.Join(pwd, input.Mount.HostPath), filepath.Join("/", string(*dest.SandboxPath)))
-			if err != nil {
-				return rr, err
+			switch input.Mount.Mode {
+			case "overlay":
+				// mount uses relative path
+				mnt, err = makePathMount(config, filepath.Join(pwd, input.Mount.HostPath), filepath.Join("/", string(*dest.SandboxPath)))
+				if err != nil {
+					return rr, err
+				}
+			default:
+				return rr, fmt.Errorf("unsupported mount mode %q", input.Mount.Mode)
 			}
 		} else if input.WareID != nil {
-			mnt, err = makeWareMount(config, input.WareID.String(), filepath.Join("/", string(*dest.SandboxPath)), context)
+			mnt, err = makeWareMount(config, input.WareID.String(), filepath.Join("/", string(*dest.SandboxPath)), context, filters)
 			if err != nil {
 				return rr, err
 			}

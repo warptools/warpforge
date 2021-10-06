@@ -117,7 +117,7 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 	"formula": {
 		"inputs": {
 			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS",
-			"/work": "mount:type:."
+			"/work": "mount:overlay:."
 		},
 		"action": {
 			"exec": {
@@ -137,9 +137,54 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 [testmark]:# (dirmount/runrecord)
 ```json
 {
-	"guid": "dd774fa1-07f2-4403-8fdf-aa4272389a1c",
-	"time": 1631717847,
-	"formulaID": "bafyrgqg3gmutfoop2zr7ohe5ntdd3jfr5pbqxrj3fw3kz5xrio23bwmwe6sv4arb2kgff4r7cgoakgnyd2a6zixiphbry72fl6ulxivjhvbty",
+	"guid": "dee7c993-d653-45d2-b299-3b1cdec4e28d",
+	"time": 1633531181,
+	"formulaID": "bafyrgqafgsnzvlt343s7zppulq7o6zuph6xxp3woiocpsz3axd6hj5nuwxaudw357n5hceql2x7umw3zlkauti7aknnavgrxfpfycmhwcsq3o",
+	"exitcode": 0,
+	"results": {}
+}
+```
+
+## Example: Complex Input
+
+This formula uses an input with filters.
+
+### Formula
+
+[testmark]:# (complexinput/formula)
+```json
+{
+	"formula": {
+		"inputs": {
+			"/": {
+				"basis": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS",
+				"filters": {
+					"setid": "ignore"
+				}
+			}
+		},
+		"action": {
+			"exec": {
+				"command": ["/bin/sh", "-c", "echo hello from warpforge!"]
+			}
+		},
+		"outputs": {
+		}
+	},
+	"context": {
+		"warehouses": {}
+	}
+}
+```
+
+### RunRecord
+
+[testmark]:# (complexinput/runrecord)
+```json
+{
+	"guid": "2355eefb-2e93-4183-bf3b-e04b0150b86a",
+	"time": 1633531905,
+	"formulaID": "bafyrgqaecatcmjzjpgp6aojsm4nau7pfbnwopybx32hmgy647iybrsdmy55n7kq2rtmyn5qlv3r25xah254t3ixw6ejaikvqkauf65le7lerm",
 	"exitcode": 0,
 	"results": {}
 }
