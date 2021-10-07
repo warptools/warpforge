@@ -1,6 +1,20 @@
 CLI Examples
 ============
 
+## Recursively Run Modules
+Using `./...` will traverse recursively from `.` and execute all `module.json` files 
+found.
+
+[testmark]:# (runall/sequence)
+```
+warpforge run ./...
+```
+
+[testmark]:# (runall/output)
+```
+```
+
+
 ## Check Input Files are Valid
 
 This usage will infer the file's type based on its name, then check it for validity.
