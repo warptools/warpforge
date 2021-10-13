@@ -181,27 +181,39 @@ func makeWareMount(config runConfig,
 		"/null",
 	}
 
-	outStr, err := invokeRunc(config)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", wareId, err)
-	}
-
-	out := RioOutput{}
-	for _, line := range strings.Split(outStr, "\n") {
-		err := json.Unmarshal([]byte(line), &out)
+	var wareType string
+	var cacheWareId string
+	// check if the cached ware already exists
+	expectCachePath := fmt.Sprintf("cache/%s/fileset/%s/%s/%s", "tar", wareId[4:7], wareId[7:10], wareId[4:])
+	if _, err := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(err) {
+		// no cached ware, run the unpack
+		outStr, err := invokeRunc(config)
 		if err != nil {
-			log.Fatal(err)
+			return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", wareId, err)
 		}
-		if out.Result.WareId != "" {
-			// found wareId
-			break
+		out := RioOutput{}
+		for _, line := range strings.Split(outStr, "\n") {
+			fmt.Println(line)
+			err := json.Unmarshal([]byte(line), &out)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if out.Result.WareId != "" {
+				// found wareId
+				break
+			}
 		}
+		if out.Result.WareId == "" {
+			return specs.Mount{}, fmt.Errorf("no wareId output from rio when unpacking %s", wareId)
+		}
+		wareType = strings.SplitN(out.Result.WareId, ":", 2)[0]
+		cacheWareId = strings.SplitN(out.Result.WareId, ":", 2)[1]
+	} else {
+		// use cached ware
+		fmt.Printf("ware %q already in cache\n", wareId)
+		wareType = strings.SplitN(wareId, ":", 2)[0]
+		cacheWareId = strings.SplitN(wareId, ":", 2)[1]
 	}
-	if out.Result.WareId == "" {
-		return specs.Mount{}, fmt.Errorf("no wareId output from rio when unpacking %s", wareId)
-	}
-	wareType := strings.SplitN(out.Result.WareId, ":", 2)[0]
-	cacheWareId := strings.SplitN(out.Result.WareId, ":", 2)[1]
 
 	cachePath := filepath.Join(config.wsPath, "cache", wareType, "fileset", cacheWareId[0:3], cacheWareId[3:6], cacheWareId)
 	upperdirPath := filepath.Join(config.runPath, "overlays", fmt.Sprintf("upper-%s", cacheWareId))
