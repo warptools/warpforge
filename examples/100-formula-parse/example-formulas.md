@@ -181,6 +181,7 @@ struct<FormulaAndContext>{
 		action: union<Action>{struct<Action_Exec>{
 			command: list<List__String>{
 			}
+			network: absent
 		}}
 		outputs: map<Map__OutputName__GatherDirective>{
 		}

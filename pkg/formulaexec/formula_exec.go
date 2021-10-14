@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -35,6 +34,25 @@ type runConfig struct {
 	spec    specs.Spec
 	runPath string
 	wsPath  string
+}
+
+func getNetworkMounts(wsPath string) []specs.Mount {
+	// some operations require network access, which requires some configuration
+	// we provide a resolv.conf for DNS configuration and /etc/ssl/certs
+	// for trusted CAs from the host system
+	etcMount := specs.Mount{
+		Source:      "/etc/resolv.conf",
+		Destination: "/etc/resolv.conf",
+		Type:        "none",
+		Options:     []string{"rbind", "readonly"},
+	}
+	caMount := specs.Mount{
+		Source:      "/etc/ssl/certs",
+		Destination: "/etc/ssl/certs",
+		Type:        "none",
+		Options:     []string{"rbind", "readonly"},
+	}
+	return []specs.Mount{etcMount, caMount}
 }
 
 func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
@@ -82,8 +100,7 @@ func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
 	rc.spec.Root = &root
 
 	// mount warpforge directory into the container
-	// TODO: this should probably be removed for the exec step,
-	// only needed for pack/unpack
+	// TODO: only needed for pack/unpack, but currently applied to all containers
 	wfMount := specs.Mount{
 		Source:      wsPath,
 		Destination: "/warpforge",
@@ -108,7 +125,7 @@ func makeWareMount(config runConfig,
 	// check to see if this ware should be fetched from a different warehouse
 	for k, v := range context.Warehouses.Values {
 		if k.String() == wareId {
-			log.Printf("using warehouse %s for ware %s", v, wareId)
+			fmt.Printf("using warehouse %q for ware %q\n", v, wareId)
 			src = string(v)
 		}
 	}
@@ -117,46 +134,7 @@ func makeWareMount(config runConfig,
 	// require network access. since we do this in an empty container,
 	// we need a resolv.conf for DNS configuration and /etc/ssl/certs
 	// for trusted CAs
-
-	// copy host's resolv.conf so we can mount it
-	err := os.MkdirAll(filepath.Join(config.wsPath, "/etc"), 0755)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to create etc directory: %s", err)
-	}
-	destResolv, err := os.Create(filepath.Join(config.wsPath, "etc/resolv.conf"))
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to create resolv.conf file: %s", err)
-	}
-	defer destResolv.Close()
-	srcResolv, err := os.Open("/etc/resolv.conf")
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to open host resolv.conf: %s", err)
-	}
-	defer srcResolv.Close()
-	_, err = io.Copy(destResolv, srcResolv)
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to copy resolv.conf: %s", err)
-	}
-	err = destResolv.Sync()
-	if err != nil {
-		return specs.Mount{}, fmt.Errorf("failed to sync resolv.conf: %s", err)
-	}
-
-	// add mounts for resolv.conf and ssl certificates
-	etcMount := specs.Mount{
-		Source:      filepath.Join(config.wsPath, "/etc"),
-		Destination: "/etc",
-		Type:        "none",
-		Options:     []string{"rbind"},
-	}
-	caMount := specs.Mount{
-		Source:      "/etc/ssl/certs",
-		Destination: "/etc/ssl/certs",
-		Type:        "none",
-		Options:     []string{"rbind", "readonly"},
-	}
-	config.spec.Mounts = append(config.spec.Mounts, etcMount)
-	config.spec.Mounts = append(config.spec.Mounts, caMount)
+	config.spec.Mounts = append(config.spec.Mounts, getNetworkMounts(config.wsPath)...)
 
 	// convert FilterMap to rio string
 	var filterStr string
@@ -164,6 +142,9 @@ func makeWareMount(config runConfig,
 		filterStr = fmt.Sprintf(",%s%s=%s", filterStr, name, value)
 	}
 
+	// perform a rio unpack with no placer. this will unpack the contents
+	// to the RIO_CACHE dir and stop. we will then overlay mount the cache
+	// dir when executing the formula.
 	config.spec.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
 	config.spec.Process.Args = []string{
 		"/warpforge/bin/rio",
@@ -193,7 +174,6 @@ func makeWareMount(config runConfig,
 		}
 		out := RioOutput{}
 		for _, line := range strings.Split(outStr, "\n") {
-			fmt.Println(line)
 			err := json.Unmarshal([]byte(line), &out)
 			if err != nil {
 				log.Fatal(err)
@@ -220,7 +200,7 @@ func makeWareMount(config runConfig,
 	workdirPath := filepath.Join(config.runPath, "overlays", fmt.Sprintf("work-%s", cacheWareId))
 
 	// create upper and work dirs
-	err = os.MkdirAll(upperdirPath, 0755)
+	err := os.MkdirAll(upperdirPath, 0755)
 	if err != nil {
 		return specs.Mount{}, fmt.Errorf("creation of upperdir failed: %s", err)
 	}
@@ -355,13 +335,15 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 
 	// each formula execution gets a unique run directory
 	// this is used to store working files and is destroyed upon completion
-	runPath, err := ioutil.TempDir(os.TempDir(), "run-")
+	runPath, err := ioutil.TempDir(os.TempDir(), "warpforge-run-")
 	if err != nil {
 		return rr, fmt.Errorf("failed to create temp run directory: %s", err)
 	}
 
 	_, keep := os.LookupEnv("WARPFORGE_KEEP_RUNDIR")
-	if !keep {
+	if keep {
+		fmt.Printf("using rundir %q\n", runPath)
+	} else {
 		defer os.RemoveAll(runPath)
 	}
 
@@ -380,8 +362,6 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			input = src.FormulaInputSimple
 		} else if src.FormulaInputComplex != nil {
 			input = &src.FormulaInputComplex.Basis
-			// TODO deal with complex input fields
-			log.Println("WARNING: ignoring complex input (not supported)")
 			filters = src.FormulaInputComplex.Filters
 		} else {
 			return rr, fmt.Errorf("invalid formula input for %s", *dest.SandboxPath)
@@ -418,6 +398,19 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 		} else {
 			execConfig.spec.Mounts = append(execConfig.spec.Mounts, mnt)
 		}
+	}
+
+	// add network mounts if networking is enabled, otherwise disable networking
+	// TODO: support non-Exec actions
+	if formula.Action.Exec.Network != nil && *formula.Action.Exec.Network {
+		execConfig.spec.Mounts = append(execConfig.spec.Mounts, getNetworkMounts(wsPath)...)
+	} else {
+		// create empty network namespace to disable network
+		execConfig.spec.Linux.Namespaces = append(execConfig.spec.Linux.Namespaces,
+			specs.LinuxNamespace{
+				Type: "network",
+				Path: "",
+			})
 	}
 
 	// set up the runrecord result

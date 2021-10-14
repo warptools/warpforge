@@ -41,7 +41,8 @@ This plot has a single protoformula step, which creates a file. This file is use
 							"/bin/sh",
 							"-c",
 							"echo test > /test"
-						]
+						],
+						"network": false
 					}
 				},
 				"outputs": {

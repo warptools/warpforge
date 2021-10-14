@@ -54,7 +54,8 @@ Here is a relatively simple plot, which has a single step:
 						"command": [
 							"/bin/echo",
 							"hi"
-						]
+						],
+						"network": false
 					}
 				},
 				"outputs": {
@@ -106,6 +107,7 @@ struct<Plot>{
 					0: string<String>{"/bin/echo"}
 					1: string<String>{"hi"}
 				}
+				network: bool<Boolean>{false}
 			}}
 			outputs: map<Map__LocalLabel__GatherDirective>{
 				string<LocalLabel>{"stuff"}: struct<GatherDirective>{

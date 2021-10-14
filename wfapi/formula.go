@@ -152,6 +152,7 @@ func init() {
 	TypeSystem.Accumulate(schema.SpawnStruct("Action_Exec",
 		[]schema.StructField{
 			schema.SpawnStructField("command", "List__String", false, false),
+			schema.SpawnStructField("network", "Boolean", true, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnStruct("Action_Script",
@@ -159,6 +160,7 @@ func init() {
 			// TODO
 		},
 		schema.SpawnStructRepresentationMap(nil)))
+	TypeSystem.Accumulate(schema.SpawnBool("Boolean"))
 }
 
 // Action is a union (aka sum type).  Exactly one of its fields will be set.
@@ -173,7 +175,7 @@ type Action_Echo struct {
 }
 type Action_Exec struct {
 	Command []string
-	// TODO
+	Network *bool
 }
 type Action_Script struct {
 	// TODO
