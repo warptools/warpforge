@@ -348,7 +348,6 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 		return rr, fmt.Errorf("no home workspace was provided")
 	}
 	wsPath = filepath.Join("/", wsPath, ".warpforge")
-	fmt.Println(wsPath)
 
 	// ensure a warehouse dir exists within the home workspace
 	err = os.MkdirAll(filepath.Join(wsPath, "warehouse"), 0755)
