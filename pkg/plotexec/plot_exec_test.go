@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -15,12 +16,32 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
+// constructs a custom workspace stack containing only this project's .warpforge dir (contains catalog)
+func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
+	pwd, err := os.Getwd()
+	qt.Assert(t, err, qt.IsNil)
+	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
+	qt.Assert(t, err, qt.IsNil)
+	wss := []*workspace.Workspace{
+		projWs,
+	}
+	return wss
+}
+
 // Test example plots.
 func TestFormulaExecFixtures(t *testing.T) {
 	doc, err := testmark.ReadFile("../../examples/220-plot-usage/example-plot-exec.md")
 	if err != nil {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
+
+	// override the path to required binaries
+	pwd, err := os.Getwd()
+	qt.Assert(t, err, qt.IsNil)
+	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
+	qt.Assert(t, err, qt.IsNil)
+	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
+	qt.Assert(t, err, qt.IsNil)
 
 	// Data hunk in this spec file are in "directories" of a test scenario each.
 	doc.BuildDirIndex()
@@ -43,11 +64,8 @@ func TestFormulaExecFixtures(t *testing.T) {
 						qt.Assert(t, string(dir.Children["order"].Hunk.Body), qt.CmpEquals(), fmt.Sprintf("%s\n", steps))
 					}
 
-					pwd, err := os.Getwd()
-					qt.Assert(t, err, qt.IsNil)
-					ws, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
-					qt.Assert(t, err, qt.IsNil)
-					results, err := Exec(ws, plot)
+					wss := getTestWorkspaceStack(t)
+					results, err := Exec(wss, plot)
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file

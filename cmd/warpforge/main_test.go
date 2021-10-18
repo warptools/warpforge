@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -10,7 +11,20 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
+	"github.com/warpfork/warpforge/pkg/workspace"
 )
+
+// constructs a custom workspace stack containing only this project's .warpforge dir (contains catalog)
+func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
+	pwd, err := os.Getwd()
+	qt.Assert(t, err, qt.IsNil)
+	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
+	qt.Assert(t, err, qt.IsNil)
+	wss := []*workspace.Workspace{
+		projWs,
+	}
+	return wss
+}
 
 func TestExecFixtures(t *testing.T) {
 	os.Chdir("../../examples/500-cli")
@@ -18,6 +32,14 @@ func TestExecFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
+
+	// override the path to required binaries
+	pwd, err := os.Getwd()
+	qt.Assert(t, err, qt.IsNil)
+	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
+	qt.Assert(t, err, qt.IsNil)
+	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
+	qt.Assert(t, err, qt.IsNil)
 
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}

@@ -3,6 +3,7 @@ package formulaexec
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 
 	"github.com/warpfork/go-testmark"
-	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -20,6 +20,13 @@ func TestFormulaExecFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
+
+	pwd, err := os.Getwd()
+	qt.Assert(t, err, qt.IsNil)
+	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
+	qt.Assert(t, err, qt.IsNil)
+	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
+	qt.Assert(t, err, qt.IsNil)
 
 	// Data hunk in this spec file are in "directories" of a test scenario each.
 	doc.BuildDirIndex()
@@ -35,11 +42,7 @@ func TestFormulaExecFixtures(t *testing.T) {
 					frmAndCtx := wfapi.FormulaAndContext{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
-
-					qt.Assert(t, err, qt.IsNil)
-					ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
-					qt.Assert(t, err, qt.IsNil)
-					rr, err := Exec(ws, frmAndCtx)
+					rr, err := Exec(nil, frmAndCtx)
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))

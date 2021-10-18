@@ -39,7 +39,9 @@ This formula echos a value to stdout.
 		}
 	},
 	"context": {
-		"warehouses": {}
+		"warehouses": {
+			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		}
 	}
 }
 ```
@@ -84,7 +86,9 @@ Note the RunRecord now contains a `results` value which includes the output.
 		}
 	},
 	"context": {
-		"warehouses": {}
+		"warehouses": {
+			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		}
 	}
 }
 ```
@@ -128,7 +132,9 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 		}
 	},
 	"context": {
-		"warehouses": {}
+		"warehouses": {
+			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		}
 	}
 }
 ```
@@ -172,7 +178,9 @@ This formula uses an input with filters.
 		}
 	},
 	"context": {
-		"warehouses": {}
+		"warehouses": {
+			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		}
 	}
 }
 ```

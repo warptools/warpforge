@@ -32,8 +32,9 @@ type RioOutput struct {
 
 type runConfig struct {
 	spec    specs.Spec
-	runPath string
-	wsPath  string
+	runPath string // path used to store temporary files used for formula run
+	wsPath  string // path to of the workspace to run in
+	binPath string // path containing required binaries to run (rio, runc)
 }
 
 func getNetworkMounts(wsPath string) []specs.Mount {
@@ -55,10 +56,11 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 	return []specs.Mount{etcMount, caMount}
 }
 
-func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
+func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 	rc := runConfig{
 		runPath: runPath,
 		wsPath:  wsPath,
+		binPath: binPath,
 	}
 
 	// generate a runc rootless config, then read the resulting config
@@ -67,7 +69,7 @@ func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
 	if err != nil {
 		return rc, fmt.Errorf("failed to remove config.json")
 	}
-	cmd := exec.Command(filepath.Join(wsPath, "bin/runc"),
+	cmd := exec.Command(filepath.Join(binPath, "runc"),
 		"spec",
 		"--rootless",
 		"-b", runPath)
@@ -99,7 +101,7 @@ func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
 	}
 	rc.spec.Root = &root
 
-	// mount warpforge directory into the container
+	// mount warpforge directories into the container
 	// TODO: only needed for pack/unpack, but currently applied to all containers
 	wfMount := specs.Mount{
 		Source:      wsPath,
@@ -108,6 +110,13 @@ func getBaseConfig(wsPath string, runPath string) (runConfig, error) {
 		Options:     []string{"rbind"},
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfMount)
+	wfBinMount := specs.Mount{
+		Source:      binPath,
+		Destination: "/warpforge/bin",
+		Type:        "none",
+		Options:     []string{"rbind"},
+	}
+	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
 
 	// required for executing on systems without a tty (e.g., github actions)
 	rc.spec.Process.Terminal = false
@@ -254,7 +263,6 @@ func invokeRunc(config runConfig) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	bundlePath, err := ioutil.TempDir(config.runPath, "bundle-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create bundle directory: %s", err)
@@ -264,7 +272,7 @@ func invokeRunc(config runConfig) (string, error) {
 		return "", fmt.Errorf("failed to write config.json: %s", err)
 	}
 
-	cmd := exec.Command(filepath.Join(config.wsPath, "bin", "runc"),
+	cmd := exec.Command(filepath.Join(config.binPath, "runc"),
 		"--root", filepath.Join(config.wsPath, "runc-root"),
 		"run",
 		"-b", bundlePath, // bundle path
@@ -329,9 +337,38 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 		return rr, fmt.Errorf("failed to get working dir: %s", err)
 	}
 
-	// get the workspace location
-	_, wsPath := ws.Path()
+	// get the home workspace location
+	var wsPath string
+	path, override := os.LookupEnv("WARPFORGE_HOME")
+	if override {
+		wsPath = path
+	} else if ws != nil {
+		_, wsPath = ws.Path()
+	} else {
+		return rr, fmt.Errorf("no home workspace was provided")
+	}
 	wsPath = filepath.Join("/", wsPath, ".warpforge")
+	fmt.Println(wsPath)
+
+	// ensure a warehouse dir exists within the home workspace
+	err = os.MkdirAll(filepath.Join(wsPath, "warehouse"), 0755)
+	if err != nil {
+		return rr, fmt.Errorf("failed to create warehouse: %s", err)
+	}
+
+	// determine the path of the running executable
+	// other binaries (runc, rio) will be located here as well
+	var binPath string
+	path, override = os.LookupEnv("WARPFORGE_PATH")
+	if override {
+		binPath = path
+	} else {
+		binPath, err = os.Executable()
+		if err != nil {
+			return rr, err
+		}
+		binPath = filepath.Dir(binPath)
+	}
 
 	// each formula execution gets a unique run directory
 	// this is used to store working files and is destroyed upon completion
@@ -349,7 +386,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 
 	// get our configuration for the exec step
 	// this config will collect the various input mounts as each is set up
-	execConfig, err := getBaseConfig(wsPath, runPath)
+	execConfig, err := getBaseConfig(wsPath, runPath, binPath)
 	if err != nil {
 		return rr, err
 	}
@@ -369,7 +406,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 
 		var mnt specs.Mount
 		// create a temporary config for setting up each mount
-		config, err := getBaseConfig(wsPath, runPath)
+		config, err := getBaseConfig(wsPath, runPath, binPath)
 		if err != nil {
 			return rr, err
 		}
