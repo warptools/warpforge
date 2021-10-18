@@ -13,9 +13,5 @@ jobs:
       with:
         go-version: '1.17'
     
-    - name: Setup Workspace
-      run: |
-        ./setup-test-workspace.sh
-    
     - name: Run Tests
       run: go test ./...
