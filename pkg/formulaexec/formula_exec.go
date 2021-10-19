@@ -230,7 +230,7 @@ func makeWareMount(config runConfig,
 	}, nil
 }
 
-func makePathMount(config runConfig, path string, dest string) (specs.Mount, error) {
+func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mount, error) {
 	mountId := strings.Replace(path, "/", "-", -1)
 	mountId = strings.Replace(mountId, ".", "-", -1)
 	upperdirPath := filepath.Join(config.runPath, "overlays/upper-", mountId)
@@ -255,6 +255,15 @@ func makePathMount(config runConfig, path string, dest string) (specs.Mount, err
 			"upperdir=" + upperdirPath,
 			"workdir=" + workdirPath,
 		},
+	}, nil
+}
+
+func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount, error) {
+	return specs.Mount{
+		Source:      path,
+		Destination: dest,
+		Type:        "none",
+		Options:     []string{"rbind", "readonly"},
 	}, nil
 }
 
@@ -410,10 +419,28 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			return rr, err
 		}
 		if input.Mount != nil {
+			// determine the host path
+			var hostPath string
+			if input.Mount.HostPath[0] == '/' {
+				// leading slash, use absolute path
+				hostPath = input.Mount.HostPath
+			} else {
+				// otherwise, use relative path
+				hostPath = filepath.Join(pwd, input.Mount.HostPath)
+			}
+
+			// add leading slash to destPath since it is removed during parsing
+			destPath := filepath.Join("/", string(*dest.SandboxPath))
+
+			// create the mount
 			switch input.Mount.Mode {
 			case "overlay":
-				// mount uses relative path
-				mnt, err = makePathMount(config, filepath.Join(pwd, input.Mount.HostPath), filepath.Join("/", string(*dest.SandboxPath)))
+				mnt, err = makeOverlayPathMount(config, hostPath, destPath)
+				if err != nil {
+					return rr, err
+				}
+			case "bind":
+				mnt, err = makeBindPathMount(config, hostPath, destPath)
 				if err != nil {
 					return rr, err
 				}
