@@ -15,6 +15,11 @@ which is exactly what you would execute in a normal shell.
 
 ---
 
+FUTURE: this might be a little more readable (and less redundant on fixtures)
+if reorganized to show topic areas like "here's the things you can do on modules", etc.
+
+---
+
 ## Recursively Run Modules
 
 Using `./...` will traverse recursively from `.` and execute all `module.json` files found.
@@ -58,6 +63,34 @@ Specific formats can also be checked explicitly, using `check` commands specific
 warpforge --json --verbose formula check formula.json
 ```
 
+We'll run this in a filesystem that contains a `formula.json`:
+
+[testmark]:# (checkformula/fs/formula.json)
+```
+{
+    "formula": {
+        "inputs": {
+            "/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+        },
+        "action": {
+            "exec": {
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    "echo hello from warpforge!"
+                ]
+            }
+        },
+        "outputs": {}
+    },
+    "context": {
+		"warehouses": {
+			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		}
+    }
+}
+```
+
 Together with the verbosity and output formatting flags used above, this will also emit the checked document again:
 
 [testmark]:# (checkformula/output)
@@ -88,10 +121,23 @@ Together with the verbosity and output formatting flags used above, this will al
 
 ## Check a Module is Valid
 
+There's also an explicit `check` subcommand for dealing with modules:
+
 [testmark]:# (checkmodule/sequence)
 ```
 warpforge --verbose module check module.json
 ```
+
+We'll run this in a filesystem that contains a `module.json` (albeit a pretty silly one):
+
+[testmark]:# (checkmodule/fs/module.json)
+```
+{
+    "name": "test"
+}
+```
+
+Because we've asked for verbose output, this'll say "ok", and then print a debug representation of the module spec.
 
 [testmark]:# (checkmodule/output)
 ```
@@ -103,10 +149,25 @@ ok: struct<Module>{
 
 ## Check a Plot is Valid
 
+There's also an explicit `check` subcommand for dealing with plots:
+
 [testmark]:# (checkplot/sequence)
 ```
 warpforge plot check plot.json
 ```
+
+We'll run this in a filesystem that contains a `plot.json` (albeit a pretty silly one):
+
+[testmark]:# (checkplot/fs/plot.json)
+```
+{
+    "inputs": {},
+    "steps": {},
+    "outputs": {}
+}
+```
+
+Because we haven't asked for verbose output, and it's successfully checked, the output is nothing:
 
 [testmark]:# (checkplot/output)
 ```
@@ -121,6 +182,37 @@ When given a formula file, it knows what to do:
 ```
 warpforge --json run formula.json
 ```
+
+We'll run this in a filesystem that contains a `formula.json`
+(the same one we used in the check example earlier):
+
+[testmark]:# (runformula/fs/formula.json)
+```
+{
+    "formula": {
+        "inputs": {
+            "/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+        },
+        "action": {
+            "exec": {
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    "echo hello from warpforge!"
+                ]
+            }
+        },
+        "outputs": {}
+    },
+    "context": {
+		"warehouses": {
+			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		}
+    }
+}
+```
+
+(TODO: this should probably use the testexec "then" feature to do several things on the same documents.)
 
 The result of this will be a `RunRecord` object printed to stdout:
 
@@ -148,8 +240,119 @@ it's still just the `warpforge run` command, which will figure out what to do wi
 warpforge --json run module.json
 ```
 
+A module is declared with two files.  One is the `module.json` file:
+
+[testmark]:# (runmodule/fs/module.json)
+```
+{
+    "name": "test"
+}
+```
+
+The module declaration is fairly short.
+Mostly it just marks that a module is "here" on the filesystem,
+and gives it a name.
+(There can be other config here too, but it's all optional.)
+Most of the data is in the plot, which is another file.
+
+Here's the `plot.json` file -- this one's a bit bigger and more involved:
+
+[testmark]:# (runmodule/fs/plot.json)
+```
+{
+	"inputs": {
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+	},
+	"steps": {
+		"zero-outer": {
+			"plot": {
+				"inputs": {
+					"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+				},
+				"steps": {
+					"zero-inner": {
+						"protoformula": {
+							"inputs": {
+								"/": "pipe::rootfs"
+							},
+							"action": {
+								"exec": {
+									"command": [
+										"/bin/sh",
+										"-c",
+										"mkdir /test; echo 'hello from step zero-inner' > /test/file"
+									]
+								}
+							},
+							"outputs": {
+								"test": {
+									"packtype": "tar",
+									"from": "/test"
+								}
+							}
+						}
+					},
+					"one-inner": {
+						"protoformula": {
+							"inputs": {
+								"/": "pipe::rootfs",
+								"/test": "pipe:zero-inner:test"
+							},
+							"action": {
+								"exec": {
+									"command": [
+										"/bin/sh",
+										"-c",
+										"cat /test/file && echo 'hello from step one-inner' >> /test/file"
+									]
+								}
+							},
+							"outputs": {
+								"test": {
+									"packtype": "tar",
+									"from": "/test"
+								}
+							}
+						}
+					},
+				},
+				"outputs": {
+					"test": "pipe:one-inner:test"
+				}
+			}
+		},
+		"one-outer": {
+			"protoformula": {
+				"inputs": {
+					"/": "pipe::rootfs",
+					"/test": "pipe:zero-outer:test"
+				},
+				"action": {
+					"exec": {
+						"command": [
+							"/bin/sh",
+							"-c",
+							"echo 'in one-outer'; cat /test/file"
+						]
+					}
+				},
+				"outputs": {}
+			}
+		}
+	},
+	"outputs": {
+		"test": "pipe:zero-outer:test"
+	}
+}
+```
+
+(That's not the smallest plot you could have -- it's actually quite complex,
+and demonstrates multiple steps, including subplots, and how to wire them all up!)
+
 The output for evaluating a module is a bit terser: it only emits the results object,
 which has keys matching the outputs that the plot labels for extraction.
+Because we only had one output named for export at the end of the module,
+there's only one record in this map.
 (Future: this will probably change :) and we might expect to see more progress details here as well.)
 
 [testmark]:# (runmodule/output)
@@ -161,9 +364,11 @@ which has keys matching the outputs that the plot labels for extraction.
 
 ## Graph a Plot
 
-[testmark]:# (graphplot/sequence)
+[testmark]:# (graphplot/not-actually-executable)
 ```
 warpforge plot graph --png graph.png plot.json
 ```
+
+(TODO: refactor this to use the testmark "then" feature upon the existing data -- that file is just too big to keep repeating.)
 
 ![Plot Graph](graph.png)
