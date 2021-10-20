@@ -128,13 +128,6 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 	// required for executing on systems without a tty (e.g., github actions)
 	rc.spec.Process.Terminal = false
 
-	// enable CAP_SYS_ADMIN within the container
-	rc.spec.Process.Capabilities.Ambient = append(rc.spec.Process.Capabilities.Ambient, "CAP_SYS_ADMIN")
-	rc.spec.Process.Capabilities.Bounding = append(rc.spec.Process.Capabilities.Bounding, "CAP_SYS_ADMIN")
-	rc.spec.Process.Capabilities.Effective = append(rc.spec.Process.Capabilities.Effective, "CAP_SYS_ADMIN")
-	rc.spec.Process.Capabilities.Inheritable = append(rc.spec.Process.Capabilities.Inheritable, "CAP_SYS_ADMIN")
-	rc.spec.Process.Capabilities.Permitted = append(rc.spec.Process.Capabilities.Permitted, "CAP_SYS_ADMIN")
-
 	// the rootless spec will omit the "network" namespace by default, and the
 	// rootful config will have an empty namespace.
 	// normalize to no network namespace in the base configuration.
