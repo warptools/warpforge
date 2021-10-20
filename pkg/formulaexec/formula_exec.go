@@ -69,10 +69,17 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 	if err != nil {
 		return rc, fmt.Errorf("failed to remove config.json")
 	}
-	cmd := exec.Command(filepath.Join(binPath, "runc"),
-		"spec",
-		"--rootless",
-		"-b", runPath)
+	var cmd *exec.Cmd
+	if os.Getuid() == 0 {
+		cmd = exec.Command(filepath.Join(binPath, "runc"),
+			"spec",
+			"-b", runPath)
+	} else {
+		cmd = exec.Command(filepath.Join(binPath, "runc"),
+			"spec",
+			"--rootless",
+			"-b", runPath)
+	}
 	err = cmd.Run()
 	if err != nil {
 		return rc, fmt.Errorf("failed to generate runc config: %s", err)
@@ -120,6 +127,24 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 
 	// required for executing on systems without a tty (e.g., github actions)
 	rc.spec.Process.Terminal = false
+
+	// enable CAP_SYS_ADMIN within the container
+	rc.spec.Process.Capabilities.Ambient = append(rc.spec.Process.Capabilities.Ambient, "CAP_SYS_ADMIN")
+	rc.spec.Process.Capabilities.Bounding = append(rc.spec.Process.Capabilities.Bounding, "CAP_SYS_ADMIN")
+	rc.spec.Process.Capabilities.Effective = append(rc.spec.Process.Capabilities.Effective, "CAP_SYS_ADMIN")
+	rc.spec.Process.Capabilities.Inheritable = append(rc.spec.Process.Capabilities.Inheritable, "CAP_SYS_ADMIN")
+	rc.spec.Process.Capabilities.Permitted = append(rc.spec.Process.Capabilities.Permitted, "CAP_SYS_ADMIN")
+
+	// the rootless spec will omit the "network" namespace by default, and the
+	// rootful config will have an empty namespace.
+	// normalize to no network namespace in the base configuration.
+	newNamespaces := []specs.LinuxNamespace{}
+	for _, ns := range rc.spec.Linux.Namespaces {
+		if ns.Type != "network" {
+			newNamespaces = append(newNamespaces, ns)
+		}
+	}
+	rc.spec.Linux.Namespaces = newNamespaces
 
 	return rc, nil
 }
