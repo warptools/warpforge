@@ -44,12 +44,14 @@ func TestExecFixtures(t *testing.T) {
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
 	for _, dir := range doc.DirEnt.ChildrenList {
-		test := testexec.Tester{
-			ExecFn:   execFn,
-			Patches:  &patches,
-			AssertFn: assertFn,
-		}
-		test.TestSequence(t, dir)
+		t.Run(dir.Name, func(t *testing.T) {
+			test := testexec.Tester{
+				ExecFn:   execFn,
+				Patches:  &patches,
+				AssertFn: assertFn,
+			}
+			test.TestSequence(t, dir)
+		})
 	}
 }
 
