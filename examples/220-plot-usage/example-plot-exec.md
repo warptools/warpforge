@@ -3,9 +3,6 @@ Example of executing plots
 
 This document contains examples of plots that execute and produce a result.
 
-These examples make use of a minimal Alpine rootfs which must be present in the workspace
-for tests to work. This test workspace can be setup by running the `setup-test-workspace.sh` script.
-
 ---
 
 These fixtures are executed by tests in the `pkg/plotexec` package.
