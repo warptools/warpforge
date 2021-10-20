@@ -9,8 +9,8 @@ These fixtures are executed by tests in the `pkg/formulaexec` package.
 
 These fixtures are executable by parsing them using
 the [testmark](https://github.com/warpfork/go-testmark) format.
-Each example should have a `example/formula` value and optionally a 
-`example/runrecord` value. 
+Each example should have a `example/formula` value and optionally a
+`example/runrecord` value.
 
 ---
 

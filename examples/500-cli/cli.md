@@ -2,8 +2,8 @@ CLI Examples
 ============
 
 ## Recursively Run Modules
-Using `./...` will traverse recursively from `.` and execute all `module.json` files 
-found.
+
+Using `./...` will traverse recursively from `.` and execute all `module.json` files found.
 
 [testmark]:# (runall/sequence)
 ```
