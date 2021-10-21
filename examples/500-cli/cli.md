@@ -349,6 +349,37 @@ Here's the `plot.json` file -- this one's a bit bigger and more involved:
 (That's not the smallest plot you could have -- it's actually quite complex,
 and demonstrates multiple steps, including subplots, and how to wire them all up!)
 
+This will also require a catalog entry for the referenced input (`catalog:alpinelinux.org/alpine:v3.14.2:x86_64`).
+This consists of two files: `lineage.json` and `mirrors.json`
+
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/lineage.json)
+```json
+{
+    "name": "alpinelinux.org/alpine",
+    "metadata": {},
+    "releases": [
+        {
+            "name": "v3.14.2",
+            "metadata": {},
+            "items": {
+                "x86_64": "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+            }
+        }
+    ]
+}
+```
+
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/mirrors.json)
+```json
+{
+    "byWare": {
+        "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": [
+            "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+        ]
+    }
+}
+```
+
 The output for evaluating a module is a bit terser: it only emits the results object,
 which has keys matching the outputs that the plot labels for extraction.
 Because we only had one output named for export at the end of the module,

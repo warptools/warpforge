@@ -41,9 +41,6 @@ func TestExecFixtures(t *testing.T) {
 	// override the home workspace
 	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
 	qt.Assert(t, err, qt.IsNil)
-	// override the workspace search path since testmark will execute in a tmpdir
-	err = os.Setenv("WARPFORGE_WORKSPACE", filepath.Join(pwd, "../../"))
-	qt.Assert(t, err, qt.IsNil)
 
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}

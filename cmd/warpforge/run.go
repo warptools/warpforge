@@ -49,15 +49,7 @@ func execModule(c *cli.Context, fileName string, data []byte) (wfapi.PlotResults
 		return result, err
 	}
 
-	// override the workspace search path if env var is set
-	var searchPath string
-	path, override := os.LookupEnv("WARPFORGE_WORKSPACE")
-	if override {
-		searchPath = path
-	} else {
-		searchPath = pwd
-	}
-	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", searchPath[1:])
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
 	if err != nil {
 		return result, err
 	}
