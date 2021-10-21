@@ -92,11 +92,11 @@ The execution order is automatically determined.
 					"/": "pipe::rootfs"
 				},
 				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"mkdir /test; echo 'hello from step zero' > /test/file"
+					"script": {
+						"interpreter": "/bin/sh",
+						"contents": [
+							"mkdir /test",
+							"echo 'hello from step zero' > /test/file"
 						]
 					}
 				},
@@ -115,11 +115,11 @@ The execution order is automatically determined.
 					"/test": "pipe:zero:test"
 				},
 				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo 'in step one'; cat /test/file"
+					"script": {
+						"interpreter": "/bin/sh",
+						"contents": [
+							"echo 'in step one'",
+							"cat /test/file"
 						]
 					}
 				},

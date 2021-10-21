@@ -157,7 +157,9 @@ func init() {
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnStruct("Action_Script",
 		[]schema.StructField{
-			// TODO
+			schema.SpawnStructField("interpreter", "String", false, false),
+			schema.SpawnStructField("contents", "List__String", false, false),
+			schema.SpawnStructField("network", "Boolean", true, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnBool("Boolean"))
@@ -178,7 +180,9 @@ type Action_Exec struct {
 	Network *bool
 }
 type Action_Script struct {
-	// TODO
+	Interpreter string
+	Contents    []string
+	Network     *bool
 }
 
 func init() {

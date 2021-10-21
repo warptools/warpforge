@@ -482,8 +482,18 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 	}
 
 	// add network mounts if networking is enabled, otherwise disable networking
-	// TODO: support non-Exec actions
-	if formula.Action.Exec.Network != nil && *formula.Action.Exec.Network {
+	enableNet := false
+	switch {
+	case formula.Action.Exec != nil:
+		if formula.Action.Exec.Network != nil {
+			enableNet = *formula.Action.Exec.Network
+		}
+	case formula.Action.Script != nil:
+		if formula.Action.Script.Network != nil {
+			enableNet = *formula.Action.Script.Network
+		}
+	}
+	if enableNet {
 		execConfig.spec.Mounts = append(execConfig.spec.Mounts, getNetworkMounts(wsPath)...)
 	} else {
 		// create empty network namespace to disable network
@@ -499,7 +509,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 	rr.Time = time.Now().Unix()
 	nFormula, err := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
 	if err != nil {
-		return rr, err
+		return rr, fmt.Errorf("failed to wrap formula: %s", err)
 	}
 	lsys := cidlink.DefaultLinkSystem()
 	lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
@@ -509,26 +519,82 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
 	}}, nFormula.(schema.TypedNode).Representation())
 	if err != nil {
-		return rr, err
+		return rr, fmt.Errorf("failed to compute formula ID: %s", err)
 	}
 	rr.FormulaID = lnk.String()
 
-	// run the exec action
+	// configure the action
 	switch {
 	case formula.Action.Exec != nil:
 		execConfig.spec.Process.Args = formula.Action.Exec.Command
 		execConfig.spec.Process.Cwd = "/"
-		out, err := invokeRunc(execConfig)
+	case formula.Action.Script != nil:
+		// the script action creates a seperate "entry" file for each element in the script contents
+		// and creates a "run" file which executes these in order within the the current shell process.
+
+		// create the script directory
+		scriptPath := filepath.Join(runPath, "script")
+		err = os.MkdirAll(scriptPath, 0755)
 		if err != nil {
-			return rr, fmt.Errorf("invoke runc for exec failed: %s", err)
+			return rr, fmt.Errorf("failed to create script dir %q: %s", scriptPath, err)
 		}
-		// TODO exit code?
-		rr.Exitcode = 0
-		fmt.Printf("%s\n", out)
+
+		// open the script file
+		scriptFilePath := filepath.Join(scriptPath, "run")
+		scriptFile, err := os.OpenFile(scriptFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return rr, fmt.Errorf("failed to open script file for writing: %s", scriptFilePath)
+		}
+		defer scriptFile.Close()
+
+		// iterate over each item in script contents
+		for n, entry := range formula.Action.Script.Contents {
+			// open the entry file (entry-#)
+			entryFilePath := filepath.Join(scriptPath, fmt.Sprintf("entry-%d", n))
+			entryFile, err := os.OpenFile(entryFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return rr, fmt.Errorf("failed to open entry file %q for writing: %s", entryFilePath, scriptFilePath)
+			}
+			defer entryFile.Close()
+
+			// write the entry file
+			_, err = entryFile.WriteString(entry + "\n")
+			if err != nil {
+				return rr, fmt.Errorf("error writing entry file %q: %s", entryFilePath, err)
+			}
+
+			// write a line to execute this entry into the main script file
+			// we use the POSIX standard `. filename` to cause the entry file to be executed
+			// within the current shell process (also known as `source` in bash)
+			_, err = scriptFile.WriteString(fmt.Sprintf(". /script/entry-%d", n) + "\n")
+			if err != nil {
+				return rr, fmt.Errorf("error writing script file: %s", err)
+			}
+		}
+
+		// create a mount for the script file
+		scriptMount, err := makeBindPathMount(execConfig, scriptPath, "/script")
+		if err != nil {
+			return rr, fmt.Errorf("failed to create script mount: %s", err)
+		}
+		execConfig.spec.Mounts = append(execConfig.spec.Mounts, scriptMount)
+
+		// configure the process
+		execConfig.spec.Process.Args = []string{formula.Action.Script.Interpreter, "/script/run"}
+		execConfig.spec.Process.Cwd = "/"
 	default:
 		// TODO handle other actions
 		log.Fatal("unsupported action")
 	}
+
+	// run the action
+	out, err := invokeRunc(execConfig)
+	if err != nil {
+		return rr, fmt.Errorf("invoke runc for exec failed: %s", err)
+	}
+	// TODO exit code?
+	rr.Exitcode = 0
+	fmt.Printf("%s\n", out)
 
 	// collect outputs
 	rr.Results.Values = make(map[wfapi.OutputName]wfapi.FormulaInputSimple)
@@ -538,7 +604,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			path := string(*gather.From.SandboxPath)
 			wareId, err := rioPack(execConfig, path)
 			if err != nil {
-				return rr, err
+				return rr, fmt.Errorf("rio pack failed: %s", err)
 			}
 			rr.Results.Keys = append(rr.Results.Keys, name)
 			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &wareId}
@@ -550,5 +616,6 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 		}
 	}
 
+	fmt.Println(rr)
 	return rr, nil
 }

@@ -14,20 +14,16 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-// Test example formulas.
-func TestFormulaExecFixtures(t *testing.T) {
-	doc, err := testmark.ReadFile("../../examples/110-formula-usage/example-formula-exec.md")
-	if err != nil {
-		t.Fatalf("spec file parse failed?!: %s", err)
-	}
-
+func configureEnvironment(t *testing.T) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
 	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
 	qt.Assert(t, err, qt.IsNil)
 	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
 	qt.Assert(t, err, qt.IsNil)
+}
 
+func evaluateDoc(t *testing.T, doc *testmark.Document) {
 	// Data hunk in this spec file are in "directories" of a test scenario each.
 	doc.BuildDirIndex()
 	for _, dir := range doc.DirEnt.ChildrenList {
@@ -69,4 +65,25 @@ func TestFormulaExecFixtures(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test example formulas.
+func TestFormulaExecFixtures(t *testing.T) {
+	doc, err := testmark.ReadFile("../../examples/110-formula-usage/example-formula-exec.md")
+	if err != nil {
+		t.Fatalf("spec file parse failed?!: %s", err)
+	}
+
+	configureEnvironment(t)
+	evaluateDoc(t, doc)
+}
+
+func TestFormulaScriptFixtures(t *testing.T) {
+	doc, err := testmark.ReadFile("../../examples/110-formula-usage/example-formula-script.md")
+	if err != nil {
+		t.Fatalf("spec file parse failed?!: %s", err)
+	}
+
+	configureEnvironment(t)
+	evaluateDoc(t, doc)
 }

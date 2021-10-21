@@ -205,3 +205,33 @@ As you can see, unions (sometimes also called sum types, or variants, or other t
 
 Unions are used wherever there's an exclusive choice (such as: `SandboxPath` and `SandboxVar` for whether something is a mount path or a variable name),
 or, whenever we need an extension mechanism (that's what `Action` and its various possible members are for: so we can add new ones in the future).
+
+A Formula With Script Action
+----------------------------
+
+The `script` action type allows for a script to be executed. This takes a path to the interpreter to be used,
+and a `contents` array. Each element of `contents` will be executed as an individual statement.
+
+[testmark]:# (script-action/formula)
+```json
+{
+	"formula": {
+		"inputs": {
+			"/mount/path": "ware:tar:qwerasdf",
+			"/other/place": "ware:git:abcd1234"
+		},
+		"action": {
+			"script": {
+				"interpreter": "/bin/sh",
+				"contents": [
+					"echo hello!",
+					"echo this is a script action!"
+				]
+			}
+		},
+		"outputs": {}
+	}
+}
+```
+
+---
