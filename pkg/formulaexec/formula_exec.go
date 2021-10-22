@@ -37,6 +37,34 @@ type runConfig struct {
 	binPath string // path containing required binaries to run (rio, runc)
 }
 
+// base directory for warpforge related files within the container
+const CONTAINER_BASE_PATH string = "/.warpforge.container"
+
+// bin directory within the container, provides `rio`
+func containerBinPath() string {
+	return filepath.Join(CONTAINER_BASE_PATH, "bin")
+}
+
+// home workspace directory location within the container
+func containerWorkspacePath() string {
+	return filepath.Join(CONTAINER_BASE_PATH, "workspace")
+}
+
+// rio warehouse directory location within the container
+func containerWarehousePath() string {
+	return filepath.Join(containerWorkspacePath(), "warehouse")
+}
+
+// rio cache directory location within the container
+func containerCachePath() string {
+	return filepath.Join(containerWorkspacePath(), "cache")
+}
+
+// base directory for `script` Action files within the container
+func containerScriptPath() string {
+	return filepath.Join(CONTAINER_BASE_PATH, "script")
+}
+
 func getNetworkMounts(wsPath string) []specs.Mount {
 	// some operations require network access, which requires some configuration
 	// we provide a resolv.conf for DNS configuration and /etc/ssl/certs
@@ -45,13 +73,13 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 		Source:      "/etc/resolv.conf",
 		Destination: "/etc/resolv.conf",
 		Type:        "none",
-		Options:     []string{"rbind", "readonly"},
+		Options:     []string{"rbind"},
 	}
 	caMount := specs.Mount{
 		Source:      "/etc/ssl/certs",
 		Destination: "/etc/ssl/certs",
 		Type:        "none",
-		Options:     []string{"rbind", "readonly"},
+		Options:     []string{"rbind", "ro"},
 	}
 	return []specs.Mount{etcMount, caMount}
 }
@@ -112,16 +140,16 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 	// TODO: only needed for pack/unpack, but currently applied to all containers
 	wfMount := specs.Mount{
 		Source:      wsPath,
-		Destination: "/warpforge",
+		Destination: containerWorkspacePath(),
 		Type:        "none",
 		Options:     []string{"rbind"},
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfMount)
 	wfBinMount := specs.Mount{
 		Source:      binPath,
-		Destination: "/warpforge/bin",
+		Destination: containerBinPath(),
 		Type:        "none",
-		Options:     []string{"rbind"},
+		Options:     []string{"rbind", "ro"},
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
 
@@ -148,7 +176,7 @@ func makeWareMount(config runConfig,
 	context *wfapi.FormulaContext,
 	filters wfapi.FilterMap) (specs.Mount, error) {
 	// default warehouse to unpack from
-	src := "ca+file:///warpforge/warehouse"
+	src := "ca+file://" + containerWarehousePath()
 	// check to see if this ware should be fetched from a different warehouse
 	for k, v := range context.Warehouses.Values {
 		if k.String() == wareId {
@@ -172,9 +200,9 @@ func makeWareMount(config runConfig,
 	// perform a rio unpack with no placer. this will unpack the contents
 	// to the RIO_CACHE dir and stop. we will then overlay mount the cache
 	// dir when executing the formula.
-	config.spec.Process.Env = []string{"RIO_CACHE=/warpforge/cache"}
+	config.spec.Process.Env = []string{"RIO_CACHE=" + containerCachePath()}
 	config.spec.Process.Args = []string{
-		"/warpforge/bin/rio",
+		filepath.Join(containerBinPath(), "rio"),
 		"unpack",
 		fmt.Sprintf("--source=%s", src),
 		// force uid and gid to zero since these are the values in the container
@@ -281,7 +309,7 @@ func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount,
 		Source:      path,
 		Destination: dest,
 		Type:        "none",
-		Options:     []string{"rbind", "readonly"},
+		Options:     []string{"rbind", "ro"},
 	}, nil
 }
 
@@ -320,10 +348,10 @@ func invokeRunc(config runConfig) (string, error) {
 
 func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 	config.spec.Process.Args = []string{
-		"/warpforge/bin/rio",
+		filepath.Join(containerBinPath(), "rio"),
 		"pack",
 		"--format=json",
-		"--target=ca+file:///warpforge/warehouse",
+		"--target=ca+file://" + containerWarehousePath(),
 		"tar",
 		path,
 	}
@@ -566,24 +594,27 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			// write a line to execute this entry into the main script file
 			// we use the POSIX standard `. filename` to cause the entry file to be executed
 			// within the current shell process (also known as `source` in bash)
-			_, err = scriptFile.WriteString(fmt.Sprintf(". /script/entry-%d", n) + "\n")
+			entrySrc := fmt.Sprintf(". %s\n",
+				filepath.Join(containerScriptPath(), fmt.Sprintf("entry-%d", n)))
+			_, err = scriptFile.WriteString(entrySrc)
 			if err != nil {
 				return rr, fmt.Errorf("error writing script file: %s", err)
 			}
 		}
 
 		// create a mount for the script file
-		scriptMount, err := makeBindPathMount(execConfig, scriptPath, "/script")
+		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath())
 		if err != nil {
 			return rr, fmt.Errorf("failed to create script mount: %s", err)
 		}
 		execConfig.spec.Mounts = append(execConfig.spec.Mounts, scriptMount)
 
 		// configure the process
-		execConfig.spec.Process.Args = []string{formula.Action.Script.Interpreter, "/script/run"}
+		execConfig.spec.Process.Args = []string{formula.Action.Script.Interpreter,
+			filepath.Join(containerScriptPath(), "run"),
+		}
 		execConfig.spec.Process.Cwd = "/"
 	default:
-		// TODO handle other actions
 		log.Fatal("unsupported action")
 	}
 
@@ -616,6 +647,5 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 		}
 	}
 
-	fmt.Println(rr)
 	return rr, nil
 }
