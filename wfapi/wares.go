@@ -2,6 +2,7 @@ package wfapi
 
 import (
 	"fmt"
+
 	"github.com/ipld/go-ipld-prime/schema"
 )
 
@@ -69,3 +70,28 @@ const (
 	MountMode_Readwrite MountMode = "rw"
 	MountMode_Overlay   MountMode = "overlay"
 )
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnUnion("Ingest",
+		[]schema.TypeName{
+			"GitIngest",
+		},
+		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
+			"git:": "GitIngest",
+		})))
+	TypeSystem.Accumulate(schema.SpawnStruct("GitIngest",
+		[]schema.StructField{
+			schema.SpawnStructField("hostPath", "String", false, false), // Ideally an enum, punting on that for now.
+			schema.SpawnStructField("ref", "String", false, false),
+		},
+		schema.SpawnStructRepresentationStringjoin(":")))
+}
+
+type Ingest struct {
+	GitIngest *GitIngest
+}
+
+type GitIngest struct {
+	HostPath string
+	Ref      string
+}

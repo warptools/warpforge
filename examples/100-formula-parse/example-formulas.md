@@ -143,7 +143,8 @@ Let's show how these values are being parsed.
 				"filters": {
 					"demo": "value"
 				}
-			}
+			},
+			"/ingest/git": "ingest:git:.:HEAD"
 		},
 		"action": {
 			"exec": {
@@ -177,6 +178,10 @@ struct<FormulaAndContext>{
 					string<String>{"demo"}: string<String>{"value"}
 				}
 			}}
+			union<SandboxPort>{string<SandboxPath>{"ingest/git"}}: union<FormulaInput>{union<FormulaInputSimple>{union<Ingest>{struct<GitIngest>{
+				hostPath: string<String>{"."}
+				ref: string<String>{"HEAD"}
+			}}}}
 		}
 		action: union<Action>{struct<Action_Exec>{
 			command: list<List__String>{
