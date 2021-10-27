@@ -44,6 +44,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&plotCmdDef,
 		&runCmdDef,
 		&checkCmdDef,
+		&catalogCmdDef,
 	}
 	return app
 }

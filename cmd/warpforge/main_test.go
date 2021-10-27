@@ -26,9 +26,8 @@ func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
 	return wss
 }
 
-func TestExecFixtures(t *testing.T) {
-	os.Chdir("../../examples/500-cli")
-	doc, err := testmark.ReadFile("cli.md")
+func testFile(t *testing.T, fileName string, workDir *string) {
+	doc, err := testmark.ReadFile(fileName)
 	if err != nil {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
@@ -42,6 +41,11 @@ func TestExecFixtures(t *testing.T) {
 	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
 	qt.Assert(t, err, qt.IsNil)
 
+	if workDir != nil {
+		err = os.Chdir(*workDir)
+		qt.Assert(t, err, qt.IsNil)
+	}
+
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
 	for _, dir := range doc.DirEnt.ChildrenList {
@@ -51,9 +55,17 @@ func TestExecFixtures(t *testing.T) {
 				Patches:  &patches,
 				AssertFn: assertFn,
 			}
-			test.TestSequence(t, dir)
+			test.Test(t, dir)
 		})
 	}
+}
+
+func TestExecFixtures(t *testing.T) {
+	testFile(t, "../../examples/500-cli/cli.md", nil)
+}
+
+func TestQuickStart(t *testing.T) {
+	testFile(t, "../../examples/quick-start.md", nil)
 }
 
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
