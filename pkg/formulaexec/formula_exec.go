@@ -177,13 +177,41 @@ func makeWareMount(config runConfig,
 	filters wfapi.FilterMap) (specs.Mount, error) {
 	// default warehouse to unpack from
 	src := "ca+file://" + containerWarehousePath()
+
 	// check to see if this ware should be fetched from a different warehouse
 	for k, v := range context.Warehouses.Values {
 		if k.String() == wareId {
-			fmt.Printf("using warehouse %q for ware %q\n", v, wareId)
-			src = string(v)
+			wareAddr := string(v)
+			fmt.Printf("using warehouse %q for ware %q\n", wareAddr, wareId)
+
+			// check if we need to create a mount for this warehouse
+			proto := strings.Split(wareAddr, ":")[0]
+			hostPath := strings.Split(wareAddr, "://")[1]
+			if proto == "file" || proto == "file+ca" {
+				// this is a local file or directory, we will need to mount it to the container for unpacking
+				// we will mount it at CONTAINER_BASE_PATH/tmp
+				src = filepath.Join(CONTAINER_BASE_PATH, "tmp")
+				mnt, err := makeBindPathMount(config, hostPath, src)
+				if err != nil {
+					return mnt, fmt.Errorf("failed to create mount for warehouse")
+				}
+				config.spec.Mounts = append(config.spec.Mounts, mnt)
+
+				// finally, add the protocol back on to the src string for rio
+				src = fmt.Sprintf("%s://%s", proto, src)
+			} else {
+				// this is a network address, pass it to rio as is
+				src = string(v)
+			}
 		}
 	}
+
+	// handle git wares. unfortunately, go-git shells out to the `git` binary
+	// for `file://` repositories. since we don't want to bundle a git binary,
+	// we'll perform this unpack on the host. the `rio unpack` step will later
+	// be skipped since the ware is cached
+
+	// TODO
 
 	// unpacking may require fetching from a remote source, which may
 	// require network access. since we do this in an empty container,
@@ -220,10 +248,14 @@ func makeWareMount(config runConfig,
 	var wareType string
 	var cacheWareId string
 	// check if the cached ware already exists
-	expectCachePath := fmt.Sprintf("cache/%s/fileset/%s/%s/%s", "tar", wareId[4:7], wareId[7:10], wareId[4:])
+	expectCachePath := fmt.Sprintf("cache/%s/fileset/%s/%s/%s",
+		strings.Split(wareId, ":")[0],
+		wareId[4:7], wareId[7:10], wareId[4:])
+	fmt.Println(expectCachePath)
 	if _, err := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(err) {
 		// no cached ware, run the unpack
 		outStr, err := invokeRunc(config)
+		fmt.Println(outStr)
 		if err != nil {
 			return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", wareId, err)
 		}

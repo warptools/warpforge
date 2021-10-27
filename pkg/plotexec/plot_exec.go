@@ -2,6 +2,7 @@ package plotexec
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
@@ -94,6 +95,7 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace, plotInput wfapi.P
 				}, wareAddr, nil
 			}
 		}
+
 		if wareId == nil {
 			// failed to find a match in the catalog
 			return wfapi.FormulaInputSimple{},
@@ -104,6 +106,21 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace, plotInput wfapi.P
 		// resolve the pipe to a WareID using the pipeCtx
 		input, err := pipeCtx.lookup(basis.Pipe.StepName, basis.Pipe.Label)
 		return *input.Basis(), nil, err
+
+	case basis.Ingest != nil && basis.Ingest.GitIngest != nil:
+		input := wfapi.FormulaInputSimple{
+			WareID: &wfapi.WareID{
+				Packtype: "git",
+				Hash:     basis.Ingest.GitIngest.Ref,
+			},
+		}
+		path, err := filepath.Abs(basis.Ingest.GitIngest.HostPath)
+		if err != nil {
+			return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("failed to get absolute path for git ingest")
+		}
+		wareAddr := wfapi.WarehouseAddr(fmt.Sprintf("file://%s", path))
+		return input, &wareAddr, nil
+
 	}
 	return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid type in plot input")
 }

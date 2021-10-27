@@ -41,7 +41,8 @@ Here is a relatively simple plot, which has a single step:
 ```json
 {
 	"inputs": {
-		"thingy": "ware:tar:qwerasdf"
+		"thingy": "ware:tar:qwerasdf",
+		"ingest": "ingest:git:.:HEAD"
 	},
 	"steps": {
 		"one": {
@@ -93,6 +94,10 @@ struct<Plot>{
 			packtype: string<Packtype>{"tar"}
 			hash: string<String>{"qwerasdf"}
 		}}}
+		string<LocalLabel>{"ingest"}: union<PlotInput>{union<PlotInputSimple>{union<Ingest>{struct<GitIngest>{
+			hostPath: string<String>{"."}
+			ref: string<String>{"HEAD"}
+		}}}}
 	}
 	steps: map<Map__StepName__Step>{
 		string<StepName>{"one"}: union<Step>{struct<Protoformula>{

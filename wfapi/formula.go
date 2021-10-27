@@ -72,13 +72,11 @@ func init() {
 			"WareID",
 			"Mount",
 			"String",
-			"Ingest",
 		},
 		schema.SpawnUnionRepresentationStringprefix("", map[string]schema.TypeName{
 			"ware:":    "WareID",
 			"mount:":   "Mount",
 			"literal:": "String",
-			"ingest:":  "Ingest",
 		})))
 	TypeSystem.Accumulate(schema.SpawnStruct("FormulaInputComplex",
 		[]schema.StructField{
@@ -108,7 +106,6 @@ type FormulaInputSimple struct {
 	WareID  *WareID
 	Mount   *Mount
 	Literal *string
-	Ingest  *Ingest
 }
 
 type FormulaInputComplex struct {
