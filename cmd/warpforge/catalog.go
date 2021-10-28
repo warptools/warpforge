@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
@@ -25,6 +23,34 @@ var catalogCmdDef = cli.Command{
 			Action: cmdCatalogAdd,
 		},
 	},
+}
+
+func scanWareId(packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID, error) {
+	result := wfapi.WareID{}
+	execPath, err := os.Executable()
+	if err != nil {
+		return result, fmt.Errorf("failed to get executable path: %s", err)
+	}
+	rioPath := filepath.Join(filepath.Dir(execPath), "rio")
+	rioScan := exec.Command(
+		rioPath, "scan", "--source="+string(addr), string(packType),
+	)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	rioScan.Stdout = &stdout
+	rioScan.Stderr = &stderr
+	err = rioScan.Run()
+	if err != nil {
+		return result, fmt.Errorf("failed to run rio scan command: %s\n%s", err, stderr.String())
+	}
+	wareIdStr := strings.TrimSpace(stdout.String())
+	hash := strings.Split(wareIdStr, ":")[1]
+	result = wfapi.WareID{
+		Packtype: wfapi.Packtype(packType),
+		Hash:     hash,
+	}
+
+	return result, nil
 }
 
 func cmdCatalogAdd(c *cli.Context) error {
@@ -45,7 +71,13 @@ func cmdCatalogAdd(c *cli.Context) error {
 	releaseName := catalogRefSplit[1]
 	itemName := catalogRefSplit[2]
 
-	// get pwd, create workspace if it doesn't exist, then open the workspace
+	ref := wfapi.CatalogRef{
+		ModuleName:  wfapi.ModuleName(moduleName),
+		ReleaseName: releaseName,
+		ItemName:    itemName,
+	}
+
+	// get pwd and catalog dir, creating it if it doesn't exist
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %s", err)
@@ -57,158 +89,27 @@ func cmdCatalogAdd(c *cli.Context) error {
 	} else if err != nil {
 		return fmt.Errorf("failed to create catalog directory: %s", err)
 	}
+
+	// open the workspace
 	ws, err := workspace.OpenWorkspace(os.DirFS("/"), pwd[1:])
 	if err != nil {
 		return fmt.Errorf("failed to open workspace: %s", err)
 	}
 
 	// perform rio scan to determine the ware id of the provided item
-	execPath, err := os.Executable()
+	scanWareId, err := scanWareId(wfapi.Packtype(packType), wfapi.WarehouseAddr(url))
 	if err != nil {
-		return fmt.Errorf("failed to get executable path: %s", err)
+		return fmt.Errorf("scanning %q failed: %s", url, err)
 	}
-	rioPath := filepath.Join(filepath.Dir(execPath), "rio")
-	rioScan := exec.Command(
-		rioPath, "scan", "--source="+url, packType,
-	)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	rioScan.Stdout = &stdout
-	rioScan.Stderr = &stderr
-	err = rioScan.Run()
+
+	// add the new item
+	err = ws.AddCatalogItem(ref, scanWareId)
 	if err != nil {
-		return fmt.Errorf("failed to run rio scan command: %s\n%s", err, stderr.String())
+		return fmt.Errorf("failed to add item to catalog: %s", err)
 	}
-	wareIdStr := strings.TrimSpace(stdout.String())
-	hash := strings.Split(wareIdStr, ":")[1]
-	scanWareId := wfapi.WareID{
-		Packtype: wfapi.Packtype(packType),
-		Hash:     hash,
-	}
-
-	// attempt to load the existing lineage and mirrors files
-	_, wsPath := ws.Path()
-	path := filepath.Join("/", wsPath, ".warpforge", "catalog", moduleName)
-	lineagePath := filepath.Join(path, "lineage.json")
-	mirrorsPath := filepath.Join(path, "mirrors.json")
-
-	var lineage wfapi.CatalogLineage
-	lineageBytes, err := os.ReadFile(lineagePath)
-	if os.IsNotExist(err) {
-		lineage = wfapi.CatalogLineage{
-			Name: moduleName,
-		}
-	} else if err == nil {
-		_, err = ipld.Unmarshal(lineageBytes, json.Decode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
-		if err != nil {
-			return fmt.Errorf("could not parse lineage file %q: %s", lineagePath, err)
-		}
-	} else {
-		return fmt.Errorf("could not open lineage file %q: %s", lineagePath, err)
-	}
-
-	var mirrors wfapi.CatalogMirror
-	mirrorsBytes, err := os.ReadFile(mirrorsPath)
-	if os.IsNotExist(err) {
-		mirrors = wfapi.CatalogMirror{
-			ByWare: &wfapi.CatalogMirrorByWare{},
-		}
-	} else if err == nil {
-		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
-		if err != nil {
-			return fmt.Errorf("could not parse mirrors file %q: %s", lineagePath, err)
-		}
-	} else {
-		return fmt.Errorf("could not open mirrors file %q: %s", lineagePath, err)
-	}
-
-	// add this item to the lineage file
-	// first, search for the release
-	releaseIdx := -1
-	for i, release := range lineage.Releases {
-		if release.Name == releaseName {
-			// release was found, we will add to it
-			releaseIdx = i
-			break
-		}
-	}
-	if releaseIdx == -1 {
-		// release was not found, add a new release value
-		lineage.Releases = append(lineage.Releases, wfapi.CatalogRelease{
-			Name: releaseName,
-		})
-		releaseIdx = len(lineage.Releases) - 1
-	}
-	// check if this item exists for the release
-	existingWareId, found := lineage.Releases[releaseIdx].Items.Values[itemName]
-	if found {
-		// ensure the ware ids match
-		if existingWareId != scanWareId {
-			return fmt.Errorf("computed ware id does not match existing catalog value")
-		}
-		// if the ware ids match, the lineage file is fine, do nothing
-	} else {
-		// if the item does not exist, add it
-		lineage.Releases[releaseIdx].Items.Keys = append(lineage.Releases[releaseIdx].Items.Keys, itemName)
-		if lineage.Releases[releaseIdx].Items.Values == nil {
-			lineage.Releases[releaseIdx].Items.Values = make(map[string]wfapi.WareID)
-		}
-		lineage.Releases[releaseIdx].Items.Values[itemName] = scanWareId
-	}
-
-	// add this item to the mirrors file
-	switch {
-	case mirrors.ByWare != nil:
-		mirrorList, wareIdExists := mirrors.ByWare.Values[scanWareId]
-		if wareIdExists {
-			// avoid adding duplicate values
-			mirrorExists := false
-			for _, m := range mirrorList {
-				if m == wfapi.WarehouseAddr(url) {
-					mirrorExists = true
-					break
-				}
-			}
-			if !mirrorExists {
-				mirrors.ByWare.Values[scanWareId] = append(mirrors.ByWare.Values[scanWareId], wfapi.WarehouseAddr(url))
-			}
-		} else {
-			mirrors.ByWare.Keys = append(mirrors.ByWare.Keys, scanWareId)
-			if mirrors.ByWare.Values == nil {
-				mirrors.ByWare.Values = make(map[wfapi.WareID][]wfapi.WarehouseAddr)
-			}
-			mirrors.ByWare.Values[scanWareId] = []wfapi.WarehouseAddr{wfapi.WarehouseAddr(url)}
-		}
-	default:
-		panic("unsupported")
-	}
-
-	// serialize the updated structs
-	lineageSerial, err := ipld.Marshal(json.Encode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
+	err = ws.AddByWareMirror(ref, scanWareId, wfapi.WarehouseAddr(url))
 	if err != nil {
-		return fmt.Errorf("failed to serialize lineage: %s", err)
-	}
-	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
-	if err != nil {
-		return fmt.Errorf("failed to serialize mirror: %s", err)
-	}
-
-	fmt.Println(string(lineageSerial))
-	fmt.Println(string(mirrorSerial))
-
-	// write the updated structs
-	err = os.MkdirAll(path, 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create directory for catalog entry: %s", err)
-	}
-
-	err = os.WriteFile(filepath.Join(path, "lineage.json"), lineageSerial, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write lineage file: %s", err)
-	}
-	os.WriteFile(filepath.Join(path, "mirrors.json"), mirrorSerial, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write mirror file: %s", err)
+		return fmt.Errorf("failed to add mirror: %s", err)
 	}
 
 	return nil

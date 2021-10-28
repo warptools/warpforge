@@ -113,3 +113,145 @@ func (ws *Workspace) getCatalogLineage(ref wfapi.CatalogRef) (*wfapi.CatalogLine
 
 	return &lineage, nil
 }
+
+func (ws *Workspace) AddCatalogItem(ref wfapi.CatalogRef, wareId wfapi.WareID) error {
+	lineagePath := filepath.Join("/",
+		ws.rootPath,
+		".warpforge",
+		"catalog",
+		string(ref.ModuleName),
+		"lineage.json",
+	)
+
+	// load lineage file
+	var lineage wfapi.CatalogLineage
+	lineageBytes, err := os.ReadFile(lineagePath)
+	if os.IsNotExist(err) {
+		lineage = wfapi.CatalogLineage{
+			Name: string(ref.ModuleName),
+		}
+	} else if err == nil {
+		_, err = ipld.Unmarshal(lineageBytes, json.Decode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
+		if err != nil {
+			return fmt.Errorf("could not parse lineage file %q: %s", lineagePath, err)
+		}
+	} else {
+		return fmt.Errorf("could not open lineage file %q: %s", lineagePath, err)
+	}
+
+	// add this item to the lineage file
+	// first, search for the release in the existing file
+	releaseIdx := -1
+	for i, release := range lineage.Releases {
+		if release.Name == ref.ReleaseName {
+			// release was found, we will add to it
+			releaseIdx = i
+			break
+		}
+	}
+	if releaseIdx == -1 {
+		// release was not found, insert a new release value
+		lineage.Releases = append(lineage.Releases, wfapi.CatalogRelease{
+			Name: ref.ReleaseName,
+		})
+		releaseIdx = len(lineage.Releases) - 1
+	}
+
+	// check if this item exists for the release
+	_, found := lineage.Releases[releaseIdx].Items.Values[ref.ItemName]
+	if found {
+		// this item already exists, do nothing
+		// TODO: do we want to check things match when adding?
+	} else {
+		// the item does not exist, add it
+		lineage.Releases[releaseIdx].Items.Keys = append(lineage.Releases[releaseIdx].Items.Keys, ref.ItemName)
+		if lineage.Releases[releaseIdx].Items.Values == nil {
+			lineage.Releases[releaseIdx].Items.Values = make(map[string]wfapi.WareID)
+		}
+		lineage.Releases[releaseIdx].Items.Values[ref.ItemName] = wareId
+	}
+
+	// write the updated structure
+	lineageSerial, err := ipld.Marshal(json.Encode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
+	if err != nil {
+		return fmt.Errorf("failed to serialize lineage: %s", err)
+	}
+
+	err = os.MkdirAll(filepath.Dir(lineagePath), 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory for catalog entry: %s", err)
+	}
+	err = os.WriteFile(lineagePath, lineageSerial, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write lineage file: %s", err)
+	}
+
+	return nil
+}
+
+func (ws *Workspace) AddByWareMirror(ref wfapi.CatalogRef, wareId wfapi.WareID, addr wfapi.WarehouseAddr) error {
+	// load mirrors file, or create it if it doesn't exist
+	mirrorsPath := filepath.Join("/",
+		ws.rootPath,
+		".warpforge",
+		"catalog",
+		string(ref.ModuleName),
+		"mirrors.json",
+	)
+
+	var mirrors wfapi.CatalogMirror
+	mirrorsBytes, err := os.ReadFile(mirrorsPath)
+	if os.IsNotExist(err) {
+		mirrors = wfapi.CatalogMirror{
+			ByWare: &wfapi.CatalogMirrorByWare{},
+		}
+	} else if err == nil {
+		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+		if err != nil {
+			return fmt.Errorf("could not parse mirrors file %q: %s", mirrorsPath, err)
+		}
+	} else {
+		return fmt.Errorf("could not open mirrors file %q: %s", mirrorsPath, err)
+	}
+
+	// add this item to the mirrors file
+	if mirrors.ByWare == nil {
+		return fmt.Errorf("existing mirrors file is not of type ByWare")
+	}
+	mirrorList, wareIdExists := mirrors.ByWare.Values[wareId]
+	if wareIdExists {
+		// avoid adding duplicate values
+		mirrorExists := false
+		for _, m := range mirrorList {
+			if m == addr {
+				mirrorExists = true
+				break
+			}
+		}
+		if !mirrorExists {
+			mirrors.ByWare.Values[wareId] = append(mirrors.ByWare.Values[wareId], addr)
+		}
+	} else {
+		mirrors.ByWare.Keys = append(mirrors.ByWare.Keys, wareId)
+		if mirrors.ByWare.Values == nil {
+			mirrors.ByWare.Values = make(map[wfapi.WareID][]wfapi.WarehouseAddr)
+		}
+		mirrors.ByWare.Values[wareId] = []wfapi.WarehouseAddr{addr}
+	}
+
+	// write the updated data to the mirrors file
+	err = os.MkdirAll(filepath.Dir(mirrorsPath), 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create catalog dir: %s", err)
+	}
+	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+	if err != nil {
+		return fmt.Errorf("failed to serialize mirrors: %s", err)
+	}
+	os.WriteFile(mirrorsPath, mirrorSerial, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write mirrors file: %s", err)
+	}
+
+	return nil
+}
