@@ -176,6 +176,7 @@ warpforge run ./...
 ```
 
 TODO: this output isn't right, but it passes the test...
+
 [testmark]:# (quickstart/then-run/output)
 ```
 ```

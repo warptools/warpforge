@@ -27,11 +27,10 @@ var catalogCmdDef = cli.Command{
 
 func scanWareId(packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID, error) {
 	result := wfapi.WareID{}
-	execPath, err := os.Executable()
+	rioPath, err := binPath("rio")
 	if err != nil {
-		return result, fmt.Errorf("failed to get executable path: %s", err)
+		return result, fmt.Errorf("failed to get path to rio")
 	}
-	rioPath := filepath.Join(filepath.Dir(execPath), "rio")
 	rioScan := exec.Command(
 		rioPath, "scan", "--source="+string(addr), string(packType),
 	)
@@ -39,8 +38,10 @@ func scanWareId(packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID
 	var stderr bytes.Buffer
 	rioScan.Stdout = &stdout
 	rioScan.Stderr = &stderr
+	fmt.Println(rioPath)
 	err = rioScan.Run()
 	if err != nil {
+		fmt.Println(err)
 		return result, fmt.Errorf("failed to run rio scan command: %s\n%s", err, stderr.String())
 	}
 	wareIdStr := strings.TrimSpace(stdout.String())

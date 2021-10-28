@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,6 +18,21 @@ func getFileType(name string) (string, error) {
 		return "", nil
 	}
 	return split[0], nil
+}
+
+// helper function for finding the path to internally used binaries (e.g, rio, runc)
+func binPath(bin string) (string, error) {
+	path, override := os.LookupEnv("WARPFORGE_PATH")
+	if override {
+		return filepath.Join(path, bin), nil
+	}
+
+	path, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(path, bin), nil
 }
 
 func unimplemented(c *cli.Context) error {
