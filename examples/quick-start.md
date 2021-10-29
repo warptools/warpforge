@@ -16,7 +16,7 @@ A Warpforge *module* consists of two files:
 
 A minimal `module.json` and `plot.json` can be initialized with
 
-[testmark]:# (quickstart/module-init/script)
+[testmark]:# (quickstart/module-init/sequence)
 ```
 warpforge module init my-module-name
 ```
@@ -70,7 +70,7 @@ We can add items to the catalog using the `catalog` subcommand. This will
 2. Fetch the provided URL and compute its WareID (hash)
 3. Add the URL to the list of mirrors for this catalog entry
 
-[testmark]:# (quickstart/script)
+[testmark]:# (quickstart/sequence)
 ```
 warpforge catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
 ```
