@@ -4,9 +4,14 @@ This guide aims to get you up and running with Warpforge
 
 ## Install
 
-You need to `git clone`, `go install ./...`, then copy `plugins/*` to `$GOPATH/bin`
+Download the Warpforge release tarball and extract it to a folder (we use `~/.warpforge/bin` as an example).
+Optionally, add this location to your `PATH`.
 
-TODO: better install (perhaps a tarball)
+For example:
+
+```
+mkdir -p ~/.warpforge/bin && tar -C ~/.warpforge/bin -xzvf warpforge.tgz .
+```
 
 ## Initializing a Module
 
@@ -126,7 +131,7 @@ be a bit more useful.
 
 Most plots will mount a root filesystem at `/`. In this example, we use the Alpine Linux root filesystem which was added to the catalog in the previous step. By making this a plot input named `rootfs`, we can later refer to it as `pipe::rootfs`.
 
-Our simple plot consists of a single step. This step is a `protoformula`, which has inputs, an action, and outputs. We use the Alpine root filesystem as our only input and place it at `/`. Our action is a script, which will be interpreted by `/bin/sh` and consists of a single statement (`echo hello world!`). We do not define any outputs.
+Our simple plot consists of a single step. This step is a *protoformula*, which has inputs, an action, and outputs. We use the Alpine root filesystem as our only input and place it at `/`. Our action is a script, which will be interpreted by `/bin/sh`. This script creates a directory, then creates a file. This directory is an output of the protoformula (`pipe:hello:out`), and is later used as a plot output.
 
 [testmark]:# (quickstart/fs/module.json)
 ```
@@ -142,7 +147,7 @@ Our simple plot consists of a single step. This step is a `protoformula`, which 
 		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
 	},
 	"steps": {
-		"echo": {
+		"hello": {
 			"protoformula": {
 				"inputs": {
 					"/": "pipe::rootfs"
@@ -151,17 +156,23 @@ Our simple plot consists of a single step. This step is a `protoformula`, which 
 					"script": {
                         "interpreter": "/bin/sh",
 						"contents": [
-							"echo hello world!"
+                            "mkdir /out",
+							"echo 'hello world!' > /out/hello"
 						]
 					}
 				},
 				"outputs": {
+                    "out": {
+                        "packtype": "tar",
+                        "from": "/out"
+                    }
 				}
 			}
 		}
 
 	},
 	"outputs": {
+        "hello": "pipe:hello:out"
 	}
 }
 ```
@@ -175,10 +186,16 @@ We can run the module using `warpforge run`. Using `warpforge run ./...` will ru
 warpforge run ./...
 ```
 
-TODO: this output isn't right, but it passes the test...
+Now that the module has executed, we can look at the output. We could also use this as the input to another plot. The `hello` file in the resulting tar file contains the expected string.
 
-[testmark]:# (quickstart/then-run/output)
+[testmark]:# (quickstart/then-check-output/script)
 ```
+tar -axzf $WARPFORGE_HOME/.warpforge/warehouse/Bxq/Rdw/BxqRdwas4mrtKXP1qkzZQoNKPyH72JK3wC4d7UY9gqp67JthyytZdvwQCKcJcWgr6 ./hello -O
+```
+
+[testmark]:# (quickstart/then-check-output/output)
+```
+hello world!
 ```
 
 ## About this Document
