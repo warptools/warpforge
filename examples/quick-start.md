@@ -154,25 +154,24 @@ Our simple plot consists of a single step. This step is a *protoformula*, which 
 				},
 				"action": {
 					"script": {
-                        "interpreter": "/bin/sh",
+						"interpreter": "/bin/sh",
 						"contents": [
-                            "mkdir /out",
+							"mkdir /out",
 							"echo 'hello world!' > /out/hello"
 						]
 					}
 				},
 				"outputs": {
-                    "out": {
-                        "packtype": "tar",
-                        "from": "/out"
-                    }
+					"out": {
+						"packtype": "tar",
+						"from": "/out"
+					}
 				}
 			}
 		}
-
 	},
 	"outputs": {
-        "hello": "pipe:hello:out"
+		"hello": "pipe:hello:out"
 	}
 }
 ```
