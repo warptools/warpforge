@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"io/fs"
 	"path/filepath"
 
@@ -56,4 +57,19 @@ func (ws *Workspace) Path() (fs.FS, string) {
 // Some functions will refuse to work on the home workspace, or work specially on it.
 func (ws *Workspace) IsHomeWorkspace() bool {
 	return ws.isHomeWorkspace
+}
+
+func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
+	if len(wareId.Hash) < 7 {
+		return "", fmt.Errorf("invalid WareID hash")
+	}
+	return filepath.Join(
+		ws.rootPath,
+		".warpforge",
+		"cache",
+		string(wareId.Packtype),
+		"fileset",
+		wareId.Hash[0:3],
+		wareId.Hash[3:6],
+		wareId.Hash), nil
 }

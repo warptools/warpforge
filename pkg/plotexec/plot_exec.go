@@ -1,8 +1,12 @@
 package plotexec
 
 import (
+	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
@@ -118,8 +122,49 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace, plotInput wfapi.P
 		if err != nil {
 			return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("failed to get absolute path for git ingest")
 		}
-		wareAddr := wfapi.WarehouseAddr(fmt.Sprintf("file://%s", path))
-		return input, &wareAddr, nil
+
+		// NOTE: we should be using go-git and not git exec here.
+		// however, this does work, because it will be checked out and owned by the same user that invokes runc,
+		// resulting in all files being owned by uid 0 within the container. this doesn't work for tarballs (which
+		// preserve persmissions) but does work for git.
+		// this checks the repo out to
+		ws, _ := workspace.OpenHomeWorkspace(os.DirFS("/"))
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		gitCmd := exec.Command(
+			"git",
+			"--git-dir",
+			filepath.Join(path, ".git"),
+			"rev-parse",
+			basis.Ingest.GitIngest.Ref)
+		gitCmd.Stdout = &stdout
+		gitCmd.Stderr = &stderr
+		err = gitCmd.Run()
+		if err != nil {
+			fmt.Println(stderr.String())
+			return input, nil, fmt.Errorf("git rev-parse failed: %s", err)
+		}
+		hash := strings.TrimSpace(stdout.String())
+		input.WareID.Hash = hash
+		input.WareID.Packtype = "git"
+
+		cachePath, err := ws.CachePath(*input.WareID)
+		if err != nil {
+			return input, nil, err
+		}
+		if _, err = os.Stat(cachePath); os.IsNotExist(err) {
+			var stdout bytes.Buffer
+			cmd := exec.Command("git", "clone", "file://"+path, cachePath)
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stdout
+			err = cmd.Run()
+			if err != nil {
+				fmt.Println(stdout.String())
+				return input, nil, fmt.Errorf("git failed: %s", err)
+			}
+		}
+		return input, nil, nil
 
 	}
 	return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid type in plot input")

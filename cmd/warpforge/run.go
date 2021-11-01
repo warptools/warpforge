@@ -22,24 +22,38 @@ var runCmdDef = cli.Command{
 	Action: cmdRun,
 }
 
-func execModule(c *cli.Context, fileName string, data []byte) (wfapi.PlotResults, error) {
-	result := wfapi.PlotResults{}
-	// unmarshal Module
-	module := wfapi.Module{}
-	_, err := ipld.Unmarshal(data, json.Decode, &module, wfapi.TypeSystem.TypeByName("Module"))
+func plotFromFile(fileName string) (wfapi.Plot, error) {
+	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		return result, err
-	}
-
-	// get Plot for Module
-	plotFileName := filepath.Join(filepath.Dir(fileName), "plot.json")
-	f, err := ioutil.ReadFile(plotFileName)
-	if err != nil {
-		return result, err
+		return wfapi.Plot{}, err
 	}
 
 	plot := wfapi.Plot{}
 	_, err = ipld.Unmarshal(f, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	if err != nil {
+		return wfapi.Plot{}, err
+	}
+
+	return plot, nil
+}
+
+func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
+	result := wfapi.PlotResults{}
+
+	// read module file
+	moduleBytes, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return result, err
+	}
+
+	// unmarshal Module
+	module := wfapi.Module{}
+	_, err = ipld.Unmarshal(moduleBytes, json.Decode, &module, wfapi.TypeSystem.TypeByName("Module"))
+	if err != nil {
+		return result, err
+	}
+
+	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), "plot.json"))
 	if err != nil {
 		return result, err
 	}
@@ -83,11 +97,7 @@ func cmdRun(c *cli.Context) error {
 					if c.Bool("verbose") {
 						fmt.Printf("executing %q\n", path)
 					}
-					f, err := ioutil.ReadFile(path)
-					if err != nil {
-						return err
-					}
-					_, err = execModule(c, path, f)
+					_, err = execModule(c, path)
 					if err != nil {
 						return err
 					}
@@ -125,7 +135,7 @@ func cmdRun(c *cli.Context) error {
 				}
 				c.App.Metadata["result"] = bindnode.Wrap(&rr, wfapi.TypeSystem.TypeByName("RunRecord"))
 			case "module":
-				result, err := execModule(c, fileName, f)
+				result, err := execModule(c, fileName)
 				if err != nil {
 					return err
 				}
