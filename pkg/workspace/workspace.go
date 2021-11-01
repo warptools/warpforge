@@ -64,6 +64,7 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 		return "", fmt.Errorf("invalid WareID hash")
 	}
 	return filepath.Join(
+		"/",
 		ws.rootPath,
 		".warpforge",
 		"cache",

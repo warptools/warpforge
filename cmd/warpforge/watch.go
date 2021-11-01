@@ -25,6 +25,8 @@ func cmdWatch(c *cli.Context) error {
 
 	path := c.Args().First()
 
+	// TODO: currently we read the module/plot from the provided path.
+	// instead, we should read it from the git cache dir
 	plot, err := plotFromFile(filepath.Join(path, "plot.json"))
 	if err != nil {
 		return err
@@ -47,8 +49,6 @@ func cmdWatch(c *cli.Context) error {
 			ingests[ingest.HostPath] = ingest.Ref
 		}
 	}
-
-	fmt.Println(ingests)
 
 	ingestCache := make(map[string]string)
 	for k, v := range ingests {
@@ -76,7 +76,10 @@ func cmdWatch(c *cli.Context) error {
 			if ingestCache[path] != hash {
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
-				execModule(c, filepath.Join(c.Args().First(), "module.json"))
+				_, err := execModule(c, filepath.Join(c.Args().First(), "module.json"))
+				if err != nil {
+					fmt.Printf("exec failed: %s\n", err)
+				}
 			}
 		}
 		time.Sleep(time.Millisecond * 100)

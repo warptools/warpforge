@@ -182,7 +182,6 @@ func makeWareMount(config runConfig,
 	for k, v := range context.Warehouses.Values {
 		if k.String() == wareId {
 			wareAddr := string(v)
-			fmt.Printf("using warehouse %q for ware %q\n", wareAddr, wareId)
 
 			// check if we need to create a mount for this warehouse
 			proto := strings.Split(wareAddr, ":")[0]
@@ -205,13 +204,6 @@ func makeWareMount(config runConfig,
 			}
 		}
 	}
-
-	// handle git wares. unfortunately, go-git shells out to the `git` binary
-	// for `file://` repositories. since we don't want to bundle a git binary,
-	// we'll perform this unpack on the host. the `rio unpack` step will later
-	// be skipped since the ware is cached
-
-	// TODO
 
 	// unpacking may require fetching from a remote source, which may
 	// require network access. since we do this in an empty container,
@@ -251,11 +243,9 @@ func makeWareMount(config runConfig,
 	expectCachePath := fmt.Sprintf("cache/%s/fileset/%s/%s/%s",
 		strings.Split(wareId, ":")[0],
 		wareId[4:7], wareId[7:10], wareId[4:])
-	fmt.Println(expectCachePath)
 	if _, err := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(err) {
 		// no cached ware, run the unpack
 		outStr, err := invokeRunc(config)
-		fmt.Println(outStr)
 		if err != nil {
 			return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", wareId, err)
 		}

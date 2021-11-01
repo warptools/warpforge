@@ -153,14 +153,16 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace, plotInput wfapi.P
 		if err != nil {
 			return input, nil, err
 		}
+		fmt.Println(cachePath)
 		if _, err = os.Stat(cachePath); os.IsNotExist(err) {
 			var stdout bytes.Buffer
+			var stderr bytes.Buffer
 			cmd := exec.Command("git", "clone", "file://"+path, cachePath)
 			cmd.Stdout = &stdout
-			cmd.Stderr = &stdout
+			cmd.Stderr = &stderr
 			err = cmd.Run()
 			if err != nil {
-				fmt.Println(stdout.String())
+				fmt.Println(stderr.String())
 				return input, nil, fmt.Errorf("git failed: %s", err)
 			}
 		}
