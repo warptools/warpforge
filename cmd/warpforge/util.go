@@ -32,7 +32,7 @@ func binPath(bin string) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(path, bin), nil
+	return filepath.Join(filepath.Dir(path), bin), nil
 }
 
 func unimplemented(c *cli.Context) error {

@@ -38,7 +38,6 @@ func scanWareId(packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID
 	var stderr bytes.Buffer
 	rioScan.Stdout = &stdout
 	rioScan.Stderr = &stderr
-	fmt.Println(rioPath)
 	err = rioScan.Run()
 	if err != nil {
 		fmt.Println(err)
