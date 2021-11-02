@@ -1,13 +1,13 @@
 package plotexec
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
@@ -113,57 +113,54 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace, plotInput wfapi.P
 
 	case basis.Ingest != nil && basis.Ingest.GitIngest != nil:
 		input := wfapi.FormulaInputSimple{
-			WareID: &wfapi.WareID{
-				Packtype: "git",
-				Hash:     basis.Ingest.GitIngest.Ref,
-			},
+			WareID: &wfapi.WareID{},
 		}
+
 		path, err := filepath.Abs(basis.Ingest.GitIngest.HostPath)
 		if err != nil {
 			return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("failed to get absolute path for git ingest")
 		}
 
-		// NOTE: we should be using go-git and not git exec here.
-		// however, this does work, because it will be checked out and owned by the same user that invokes runc,
-		// resulting in all files being owned by uid 0 within the container. this doesn't work for tarballs (which
-		// preserve persmissions) but does work for git.
-		// this checks the repo out to
+		// populate cache dir with git ingest
+		//
+		// note, this executes on the host, not in a container. however, this does work, because it will be checked out
+		// and owned by the same user that invokes runc, resulting in all files being owned by uid 0 within the container.
+		// this doesn't work for tarballs (which preserve persmissions) but does work for git (which does not).
+		//
+		// since the cache dir will be populated before formula exec occurs, the rio unpack step will
+		// be skipped for this input.
 		ws, _ := workspace.OpenHomeWorkspace(os.DirFS("/"))
 
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-		gitCmd := exec.Command(
-			"git",
-			"--git-dir",
-			filepath.Join(path, ".git"),
-			"rev-parse",
-			basis.Ingest.GitIngest.Ref)
-		gitCmd.Stdout = &stdout
-		gitCmd.Stderr = &stderr
-		err = gitCmd.Run()
+		// resolve the revision of the git ingest to a hash
+		repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+			URL: "file://" + path,
+		})
 		if err != nil {
-			fmt.Println(stderr.String())
-			return input, nil, fmt.Errorf("git rev-parse failed: %s", err)
+			return input, nil, fmt.Errorf("failed to checkout git repository at %q to memory: %s", path, err)
 		}
-		hash := strings.TrimSpace(stdout.String())
-		input.WareID.Hash = hash
+
+		hashBytes, err := repo.ResolveRevision(plumbing.Revision(basis.Ingest.GitIngest.Ref))
+		if err != nil {
+			return input, nil, fmt.Errorf("failed to resolve git hash: %s", err)
+		}
+
+		// create our formula ware id using the resolved hash
+		fmt.Println(hashBytes)
+		input.WareID.Hash = hashBytes.String()
 		input.WareID.Packtype = "git"
 
+		// checkout the git repository to the cache path
 		cachePath, err := ws.CachePath(*input.WareID)
 		if err != nil {
 			return input, nil, err
 		}
-		fmt.Println(cachePath)
 		if _, err = os.Stat(cachePath); os.IsNotExist(err) {
-			var stdout bytes.Buffer
-			var stderr bytes.Buffer
-			cmd := exec.Command("git", "clone", "file://"+path, cachePath)
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
-			err = cmd.Run()
+			_, err = git.PlainClone(cachePath, false, &git.CloneOptions{
+				URL: "file://" + path,
+			})
+
 			if err != nil {
-				fmt.Println(stderr.String())
-				return input, nil, fmt.Errorf("git failed: %s", err)
+				return input, nil, fmt.Errorf("failed to checkout git ingest: %s", err)
 			}
 		}
 		return input, nil, nil

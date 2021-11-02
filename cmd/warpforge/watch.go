@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -56,22 +56,19 @@ func cmdWatch(c *cli.Context) error {
 	}
 
 	for {
-		for path, ref := range ingests {
-			var stdout bytes.Buffer
-			var stderr bytes.Buffer
-			gitCmd := exec.Command(
-				"git",
-				"--git-dir",
-				filepath.Join(path, ".git"),
-				"rev-parse",
-				ref)
-			gitCmd.Stdout = &stdout
-			gitCmd.Stderr = &stderr
-			err = gitCmd.Run()
+		for path, rev := range ingests {
+			r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+				URL: "file://" + path,
+			})
 			if err != nil {
-				return fmt.Errorf("git rev-parse failed: %s", stderr.String())
+				return fmt.Errorf("failed to checkout git repository at %q to memory: %s", path, err)
 			}
-			hash := strings.TrimSpace(stdout.String())
+
+			hashBytes, err := r.ResolveRevision(plumbing.Revision(rev))
+			if err != nil {
+				return fmt.Errorf("failed to resolve git hash: %s", err)
+			}
+			hash := hashBytes.String()
 
 			if ingestCache[path] != hash {
 				fmt.Println("path", path, "changed, new hash", hash)
