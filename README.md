@@ -15,6 +15,13 @@ To install `warpforge` to your `GOPATH`, run:
 go install ./...
 ```
 
+You will also need to copy the binaries in the `plugins` directory to the same path as the
+`warpforge` binary.
+
+```
+cp plugins/* ~/go/bin
+```
+
 You should now be able to run the `warpforge` command:
 
 ```
