@@ -11,6 +11,7 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 
 	"github.com/warpfork/go-testmark"
+	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -38,7 +39,7 @@ func evaluateDoc(t *testing.T, doc *testmark.Document) {
 					frmAndCtx := wfapi.FormulaAndContext{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
-					rr, err := Exec(nil, frmAndCtx)
+					rr, err := Exec(nil, frmAndCtx, logging.DefaultLogger())
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))

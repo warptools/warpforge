@@ -3,6 +3,7 @@ module github.com/warpfork/warpforge
 go 1.16
 
 require (
+	github.com/fatih/color v1.13.0
 	github.com/frankban/quicktest v1.13.1
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/goccy/go-graphviz v0.0.9
@@ -15,5 +16,4 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/warpfork/go-testmark v0.8.0
 	go.starlark.net v0.0.0-20210901212718-87f333178d59
-	golang.org/x/sys v0.0.0-20210503080704-8803ae5d1324 // indirect
 )

@@ -11,6 +11,7 @@ import (
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
+	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
@@ -72,7 +73,10 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 	if err != nil {
 		return result, err
 	}
-	result, err = plotexec.Exec(wss, plot)
+
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
+
+	result, err = plotexec.Exec(wss, plot, logger)
 	cdErr := os.Chdir(pwd)
 	if cdErr != nil {
 		return result, cdErr
@@ -85,6 +89,8 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 }
 
 func cmdRun(c *cli.Context) error {
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
+
 	if !c.Args().Present() {
 		return fmt.Errorf("no input files provided")
 	}
@@ -95,7 +101,7 @@ func cmdRun(c *cli.Context) error {
 			func(path string, info os.FileInfo, err error) error {
 				if filepath.Base(path) == "module.json" {
 					if c.Bool("verbose") {
-						fmt.Printf("executing %q\n", path)
+						logger.Debug("executing %q", path)
 					}
 					_, err = execModule(c, path)
 					if err != nil {
@@ -129,7 +135,7 @@ func cmdRun(c *cli.Context) error {
 				ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
 
 				// run formula
-				rr, err := formulaexec.Exec(ws, frmAndCtx)
+				rr, err := formulaexec.Exec(ws, frmAndCtx, logger)
 				if err != nil {
 					return err
 				}

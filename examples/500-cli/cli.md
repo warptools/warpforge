@@ -216,7 +216,7 @@ We'll run this in a filesystem that contains a `formula.json`
 
 The result of this will be a `RunRecord` object printed to stdout:
 
-[testmark]:# (runformula/output)
+[testmark]:# (runformula/stdout)
 ```
 {
 	"guid": "389c442f-5343-497e-b74d-d31fd487af53",
@@ -386,7 +386,7 @@ Because we only had one output named for export at the end of the module,
 there's only one record in this map.
 (Future: this will probably change :) and we might expect to see more progress details here as well.)
 
-[testmark]:# (runmodule/output)
+[testmark]:# (runmodule/stdout)
 ```
 {
 	"test": "tar:3P7pTG7U7ezdpSJMKBHr6mVAUSC6yHsgYgXqwUkDJ9wcVeY4KT9okcZZnsvKwHhRH5"

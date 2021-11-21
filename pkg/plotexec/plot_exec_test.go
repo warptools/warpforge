@@ -12,6 +12,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/go-testmark"
+	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -65,7 +66,7 @@ func TestFormulaExecFixtures(t *testing.T) {
 					}
 
 					wss := getTestWorkspaceStack(t)
-					results, err := Exec(wss, plot)
+					results, err := Exec(wss, plot, logging.DefaultLogger())
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file

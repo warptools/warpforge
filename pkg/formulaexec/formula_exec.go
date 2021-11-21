@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,16 +13,24 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
+
+const LOG_TAG_START = " ┌─ formula"
+const LOG_TAG = " │  formula"
+const LOG_TAG_OUTPUT = " │  formula  ->"
+const LOG_TAG_END = " └─ formula"
 
 type RioResult struct {
 	WareId string `json:"wareID"`
@@ -174,7 +183,8 @@ func makeWareMount(config runConfig,
 	wareId string,
 	dest string,
 	context *wfapi.FormulaContext,
-	filters wfapi.FilterMap) (specs.Mount, error) {
+	filters wfapi.FilterMap,
+	logger logging.Logger) (specs.Mount, error) {
 	// default warehouse to unpack from
 	src := "ca+file://" + containerWarehousePath()
 
@@ -245,7 +255,7 @@ func makeWareMount(config runConfig,
 		wareId[4:7], wareId[7:10], wareId[4:])
 	if _, err := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(err) {
 		// no cached ware, run the unpack
-		outStr, err := invokeRunc(config)
+		outStr, err := invokeRunc(config, nil)
 		if err != nil {
 			return specs.Mount{}, fmt.Errorf("invoke runc for rio unpack of %s failed: %s", wareId, err)
 		}
@@ -267,7 +277,6 @@ func makeWareMount(config runConfig,
 		cacheWareId = strings.SplitN(out.Result.WareId, ":", 2)[1]
 	} else {
 		// use cached ware
-		fmt.Printf("ware %q already in cache\n", wareId)
 		wareType = strings.SplitN(wareId, ":", 2)[0]
 		cacheWareId = strings.SplitN(wareId, ":", 2)[1]
 	}
@@ -335,7 +344,7 @@ func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount,
 	}, nil
 }
 
-func invokeRunc(config runConfig) (string, error) {
+func invokeRunc(config runConfig, logWriter io.Writer) (string, error) {
 	configBytes, err := json.Marshal(config.spec)
 	if err != nil {
 		return "", err
@@ -356,16 +365,23 @@ func invokeRunc(config runConfig) (string, error) {
 		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
 
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
+	// if a logWriter was provided, write output to it
+	// otherwise, capture stderr and stdout to buffers
+	var stderrBuf bytes.Buffer
+	var stdoutBuf bytes.Buffer
+	if logWriter != nil {
+		cmd.Stderr = io.MultiWriter(&stderrBuf, logWriter)
+		cmd.Stdout = io.MultiWriter(&stdoutBuf, logWriter)
+	} else {
+		cmd.Stderr = &stderrBuf
+		cmd.Stdout = &stdoutBuf
+	}
 	err = cmd.Run()
 	if err != nil {
-		return "", fmt.Errorf("%s: %s %s", err, stdout.String(), stderr.String())
+		return "", fmt.Errorf("%s: %s %s", err, stdoutBuf.String(), stderrBuf.String())
 	}
 	// TODO what exitcode do we care about?
-	return stdout.String(), nil
+	return stdoutBuf.String(), nil
 }
 
 func rioPack(config runConfig, path string) (wfapi.WareID, error) {
@@ -378,7 +394,7 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 		path,
 	}
 
-	outStr, err := invokeRunc(config)
+	outStr, err := invokeRunc(config, nil)
 	if err != nil {
 		return wfapi.WareID{}, fmt.Errorf("invoke runc for rio pack of %s failed: %s", path, err)
 	}
@@ -404,10 +420,34 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 	return wareId, nil
 }
 
-func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord, error) {
+func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, error) {
 	formula := fc.Formula
 	context := fc.Context
 	rr := wfapi.RunRecord{}
+
+	// convert formula to node
+	nFormulaAndContext, err := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
+	if err != nil {
+		return rr, fmt.Errorf("failed to wrap formula: %s", err)
+	}
+
+	// set up the runrecord result
+	rr.Guid = uuid.New().String()
+	rr.Time = time.Now().Unix()
+	lsys := cidlink.DefaultLinkSystem()
+	lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+		Version:  1,    // Usually '1'.
+		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+	}}, nFormulaAndContext.(schema.TypedNode).Representation())
+	if err != nil {
+		return rr, fmt.Errorf("failed to compute formula ID: %s", err)
+	}
+	rr.FormulaID = lnk.String()
+
+	logger.Info(LOG_TAG_START, "")
+	logger.Debug(LOG_TAG, printer.Sprint(nFormulaAndContext))
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -455,10 +495,14 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 
 	_, keep := os.LookupEnv("WARPFORGE_KEEP_RUNDIR")
 	if keep {
-		fmt.Printf("using rundir %q\n", runPath)
+		logger.Info(LOG_TAG, "using rundir %q\n", runPath)
 	} else {
 		defer os.RemoveAll(runPath)
 	}
+
+	logger.Debug(LOG_TAG, "home workspace path: %s", wsPath)
+	logger.Debug(LOG_TAG, "bin path: %s", binPath)
+	logger.Debug(LOG_TAG, "run path: %s", runPath)
 
 	// get our configuration for the exec step
 	// this config will collect the various input mounts as each is set up
@@ -503,11 +547,23 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			// create the mount
 			switch input.Mount.Mode {
 			case "overlay":
+				logger.Info(LOG_TAG,
+					"overlay mount:\t%s = %s\t%s = %s",
+					color.HiBlueString("hostPath"),
+					color.WhiteString(hostPath),
+					color.HiBlueString("destPath"),
+					color.WhiteString(destPath))
 				mnt, err = makeOverlayPathMount(config, hostPath, destPath)
 				if err != nil {
 					return rr, err
 				}
 			case "bind":
+				logger.Info(LOG_TAG,
+					"bind mount:\t%s = %s\t%s = %s",
+					color.HiBlueString("hostPath"),
+					color.WhiteString(hostPath),
+					color.HiBlueString("destPath"),
+					color.WhiteString(destPath))
 				mnt, err = makeBindPathMount(config, hostPath, destPath)
 				if err != nil {
 					return rr, err
@@ -516,7 +572,14 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 				return rr, fmt.Errorf("unsupported mount mode %q", input.Mount.Mode)
 			}
 		} else if input.WareID != nil {
-			mnt, err = makeWareMount(config, input.WareID.String(), filepath.Join("/", string(*dest.SandboxPath)), context, filters)
+			destPath := filepath.Join("/", string(*dest.SandboxPath))
+			logger.Info(LOG_TAG,
+				"ware mount:\t%s = %s\t%s = %s",
+				color.HiBlueString("wareId"),
+				color.WhiteString(input.WareID.String()),
+				color.HiBlueString("destPath"),
+				color.WhiteString(destPath))
+			mnt, err = makeWareMount(config, input.WareID.String(), destPath, context, filters, logger)
 			if err != nil {
 				return rr, err
 			}
@@ -545,6 +608,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 	}
 	if enableNet {
 		execConfig.spec.Mounts = append(execConfig.spec.Mounts, getNetworkMounts(wsPath)...)
+		logger.Debug(LOG_TAG, "networking enabled")
 	} else {
 		// create empty network namespace to disable network
 		execConfig.spec.Linux.Namespaces = append(execConfig.spec.Linux.Namespaces,
@@ -552,35 +616,22 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 				Type: "network",
 				Path: "",
 			})
+		logger.Debug(LOG_TAG, "networking disabled")
 	}
-
-	// set up the runrecord result
-	rr.Guid = uuid.New().String()
-	rr.Time = time.Now().Unix()
-	nFormula, err := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
-	if err != nil {
-		return rr, fmt.Errorf("failed to wrap formula: %s", err)
-	}
-	lsys := cidlink.DefaultLinkSystem()
-	lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
-		Version:  1,    // Usually '1'.
-		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-		MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
-	}}, nFormula.(schema.TypedNode).Representation())
-	if err != nil {
-		return rr, fmt.Errorf("failed to compute formula ID: %s", err)
-	}
-	rr.FormulaID = lnk.String()
 
 	// configure the action
 	switch {
 	case formula.Action.Exec != nil:
+		logger.Info(LOG_TAG, "executing command: %q", strings.Join(formula.Action.Exec.Command, " "))
 		execConfig.spec.Process.Args = formula.Action.Exec.Command
 		execConfig.spec.Process.Cwd = "/"
 	case formula.Action.Script != nil:
 		// the script action creates a seperate "entry" file for each element in the script contents
 		// and creates a "run" file which executes these in order within the the current shell process.
+
+		logger.Info(LOG_TAG, "executing script\t%s = %s",
+			color.HiBlueString("interpreter"),
+			color.WhiteString(formula.Action.Script.Interpreter))
 
 		// create the script directory
 		scriptPath := filepath.Join(runPath, "script")
@@ -641,13 +692,12 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 	}
 
 	// run the action
-	out, err := invokeRunc(execConfig)
+	_, err = invokeRunc(execConfig, logger.InfoWriter(LOG_TAG_OUTPUT))
 	if err != nil {
 		return rr, fmt.Errorf("invoke runc for exec failed: %s", err)
 	}
 	// TODO exit code?
 	rr.Exitcode = 0
-	fmt.Printf("%s\n", out)
 
 	// collect outputs
 	rr.Results.Values = make(map[wfapi.OutputName]wfapi.FormulaInputSimple)
@@ -661,13 +711,36 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext) (wfapi.RunRecord,
 			}
 			rr.Results.Keys = append(rr.Results.Keys, name)
 			rr.Results.Values[name] = wfapi.FormulaInputSimple{WareID: &wareId}
-			log.Println("packed", name, "(", path, "->", wareId, ")")
+			logger.Info(LOG_TAG, "packed %q:\t%s = %s\t%s=%s",
+				name,
+				color.HiBlueString("path"),
+				color.WhiteString("/"+path),
+				color.HiBlueString("wareId"),
+				color.WhiteString(wareId.String()))
 		case gather.From.SandboxVar != nil:
 			log.Fatal("unsupported output type")
 		default:
 			log.Fatal("invalid output spec")
 		}
 	}
+
+	logger.Info(LOG_TAG, "RunRecord:\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s:",
+		color.HiBlueString("GUID"),
+		color.WhiteString(rr.Guid),
+		color.HiBlueString("FormulaID"),
+		color.WhiteString(rr.FormulaID),
+		color.HiBlueString("Exitcode"),
+		color.WhiteString(fmt.Sprintf("%d", rr.Exitcode)),
+		color.HiBlueString("Time"),
+		color.WhiteString(fmt.Sprintf("%d", rr.Time)),
+		color.HiBlueString("Results"),
+	)
+
+	for k, v := range rr.Results.Values {
+		logger.Info(LOG_TAG, "\t\t%s: %s", k, v.WareID)
+	}
+
+	logger.Info(LOG_TAG_END, "")
 
 	return rr, nil
 }
