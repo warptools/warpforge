@@ -389,6 +389,7 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 		filepath.Join(containerBinPath(), "rio"),
 		"pack",
 		"--format=json",
+		"--filters=uid=0,gid=0",
 		"--target=ca+file://" + containerWarehousePath(),
 		"tar",
 		path,
