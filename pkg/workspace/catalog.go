@@ -38,7 +38,11 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 	// TODO: handling of multiple mirrors
 	switch {
 	case mirror.ByWare != nil:
-		return item, &mirror.ByWare.Values[*item][0], nil
+		if len(mirror.ByWare.Values[*item]) > 0 {
+			return item, &mirror.ByWare.Values[*item][0], nil
+		} else {
+			return item, nil, nil
+		}
 	case mirror.ByModule != nil:
 		return item, &mirror.ByModule.Values[ref.ModuleName].Values[item.Packtype][0], nil
 	default:

@@ -134,11 +134,17 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace,
 			}
 			if wareId != nil {
 				// found a matching ware in a catalog, stop searching
+				var wareStr string
+				if wareAddr != nil {
+					wareStr = string(*wareAddr)
+				} else {
+					wareStr = "none"
+				}
 				logger.Info(LOG_TAG, "\t\t%s = %s\n\t\t%s = %s",
 					color.HiBlueString("wareId"),
 					color.WhiteString(wareId.String()),
 					color.HiBlueString("wareAddr"),
-					color.WhiteString(string(*wareAddr)),
+					color.WhiteString(wareStr),
 				)
 
 				return wfapi.FormulaInputSimple{
