@@ -189,7 +189,7 @@ Now that the module has executed, we can look at the output. We could also use t
 
 [testmark]:# (quickstart/then-check-output/script)
 ```
-tar -axzf $WARPFORGE_HOME/.warpforge/warehouse/Bxq/Rdw/BxqRdwas4mrtKXP1qkzZQoNKPyH72JK3wC4d7UY9gqp67JthyytZdvwQCKcJcWgr6 ./hello -O
+tar -axzf $WARPFORGE_HOME/.warpforge/warehouse/8L5/6FK/8L56FK1pSGpqTodkHiQ7UiosLm4cgce1joZ69vx8iJy4fSird5RwvNbK9b9cQ6RyWN ./hello -O
 ```
 
 [testmark]:# (quickstart/then-check-output/output)

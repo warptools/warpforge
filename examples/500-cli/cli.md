@@ -389,7 +389,7 @@ there's only one record in this map.
 [testmark]:# (runmodule/stdout)
 ```
 {
-	"test": "tar:3P7pTG7U7ezdpSJMKBHr6mVAUSC6yHsgYgXqwUkDJ9wcVeY4KT9okcZZnsvKwHhRH5"
+	"test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9"
 }
 ```
 

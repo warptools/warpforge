@@ -99,7 +99,7 @@ Note the RunRecord now contains a `results` value which includes the output.
 	"formulaID": "bafyrgqeajmqooakjt2ich4hsehl2n7lljavunopvxt5hwkuvdbazc2y6m5ylztr3x6pvf4ydrvjze5zhtebhyca7iffba7yumptvfhmi3ug56",
 	"exitcode": 0,
 	"results": {
-		"test": "ware:tar:1we9CNTxLVQWRu2KvfyhugbAydJezzh4DWU4rmvNzds7PxgE7fbRQi2MQwC76LSo5"
+		"test": "ware:tar:7wjdwS2Bn5faUcq6t156Je8KY9CoSejC4vMbvTQNeKzdeNLzt4sEtzKQ6H56x6KuD7"
 	}
 }
 ```
