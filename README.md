@@ -4,6 +4,17 @@ warpforge
 
 Putting things together. Consistently.
 
+Many of the docs and much of coordination work is in [Notion](https://www.notion.so/warpforge/Welcome-6653d3362db84ad8a2b0d2a0046748b7) --
+check out the content there.
+Especially check out the [API Specs](https://www.notion.so/warpforge/API-Specs-41830e3da58646d2927ef6ae5b2902e4),
+because those are going to tell you a lot about _exactly_ what this tool will do for you.
+
+Here are some terminal movies of what you can do with warpforge:
+
+- Describing computations using filesystems named by catalogs: https://asciinema.org/a/jXl9OmTs6xlFeaeXo36BmFtjB (This is the "L2" API -- e.g. the thing that has human-readable names.)
+- Describing computations using all hashes: https://asciinema.org/a/FY4iYhlEi5m0h78oFYqqvIZYc (This is the "L1" API -- it's purely content-addressable, cryptographic hashes -- no fun to write by hand, but extremely reproducible!  The "L2" API generates this for you.)
+
+
 Install
 -------
 
