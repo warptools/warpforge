@@ -78,7 +78,8 @@ func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (Workspac
 	set := WorkspaceSet{}
 	home, err := OpenHomeWorkspace(fsys)
 	if err != nil {
-		return set, err
+		// if this failed, continue with no home workspace
+		home = nil
 	}
 
 	root, err := OpenRootWorkspace(fsys, basisPath, searchPath)
