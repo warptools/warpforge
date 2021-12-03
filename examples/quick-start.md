@@ -61,6 +61,15 @@ cat plot.json
 ```
 ```
 
+## Set Root Workspace
+
+We want to mark the directory this test executes in as the root workspace, so that catalog entries
+are created in it. This file marks the workspace as a root workspace.
+
+[testmark]:# (quickstart/fs/.warpforge/root)
+```
+```
+
 ## Creating a Catalog
 
 Warpforge *catalogs* give friendly names to *wares*. This allows us to use a string like
@@ -75,9 +84,9 @@ We can add items to the catalog using the `catalog` subcommand. This will
 2. Fetch the provided URL and compute its WareID (hash)
 3. Add the URL to the list of mirrors for this catalog entry
 
-[testmark]:# (quickstart/sequence)
+[testmark]:# (quickstart/add-catalog/sequence)
 ```
-warpforge catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
+warpforge -v catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
 ```
 
 Catalog entries consist of two file `lineage.json` and `mirrors.json`. The files created
@@ -86,7 +95,8 @@ by this example are:
 ### lineage.json
 [testmark]:# (quickstart/then-check-lineage/script)
 ```
-cat .warpforge/catalog/alpinelinux.org/alpine/lineage.json
+pwd
+cat .warpforge/catalogs/default/alpinelinux.org/alpine/lineage.json
 ```
 
 [testmark]:# (quickstart/then-check-lineage/output)
@@ -109,7 +119,7 @@ cat .warpforge/catalog/alpinelinux.org/alpine/lineage.json
 ### mirror.json
 [testmark]:# (quickstart/then-check-mirrors/script)
 ```
-cat .warpforge/catalog/alpinelinux.org/alpine/mirrors.json
+cat .warpforge/catalogs/default/alpinelinux.org/alpine/mirrors.json
 ```
 
 [testmark]:# (quickstart/then-check-mirrors/output)
@@ -199,5 +209,4 @@ hello world!
 
 ## About this Document
 
-This document uses [testmark](https://github.com/warpfork/go-testmark) to automatically
-test each example. 
+This document uses [testmark](https://github.com/warpfork/go-testmark) to automatically test each example. 

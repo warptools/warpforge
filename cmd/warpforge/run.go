@@ -64,7 +64,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 		return result, err
 	}
 
-	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
+	wss, err := openWorkspaceSet()
 	if err != nil {
 		return result, err
 	}

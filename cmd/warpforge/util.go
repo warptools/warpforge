@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"github.com/warpfork/warpforge/pkg/workspace"
 )
 
 // Returns the file type, which is the file name without extension
@@ -37,4 +38,22 @@ func binPath(bin string) (string, error) {
 
 func unimplemented(c *cli.Context) error {
 	return fmt.Errorf("sorry, command %s is not implemented", c.Command.Name)
+}
+
+// Opens the default WorkspaceSet.
+// This consists of:
+// stack: a workspace stack starting at the current working directory,
+// root workspace: the first marked root workspace in the stack, or the home workspace if none are marked,
+// home workspace: the workspace at the user's homedir
+func openWorkspaceSet() (workspace.WorkspaceSet, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return workspace.WorkspaceSet{}, fmt.Errorf("failed to get working directory: %s", err)
+	}
+
+	wss, err := workspace.OpenWorkspaceSet(os.DirFS("/"), "", pwd[1:])
+	if err != nil {
+		return workspace.WorkspaceSet{}, fmt.Errorf("failed to open workspace: %s", err)
+	}
+	return wss, nil
 }

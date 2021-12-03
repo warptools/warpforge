@@ -12,42 +12,66 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
+// Get a catalog ware from a single workspace, doing lookup by CatalogRef.
+// This will first check all catalogs within the "catalogs" subdirectory, if it exists
+// then, it will check the "catalog" subdirectory, if it exists
 func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
-	lineage, err := ws.getCatalogLineage(ref)
+	// list the catalogs within the "catalogs" subdirectory
+	catPaths, err := ws.ListCatalogPaths()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// no matching lineage found
-	if lineage == nil {
-		return nil, nil, nil
+	// if it exists, add the "catalog" subdirectory to the end of the list
+	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
+	_, err = fs.Stat(ws.fsys, catalogPath)
+	if err == nil {
+		// "catalog" subdirectory exists
+		catPaths = append(catPaths, catalogPath)
 	}
 
-	// lineage found, try find the matching release and item
-	item := getWareFromLineage(lineage, ref)
-	if item == nil {
-		// not found in this lineage
-		return nil, nil, nil
-	}
-
-	mirror, err := ws.getCatalogMirror(ref)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO: handling of multiple mirrors
-	switch {
-	case mirror.ByWare != nil:
-		if len(mirror.ByWare.Values[*item]) > 0 {
-			return item, &mirror.ByWare.Values[*item][0], nil
-		} else {
-			return item, nil, nil
+	for _, path := range catPaths {
+		// try to find a lineage in this path
+		lineage, err := ws.getCatalogLineage(path, ref)
+		if err != nil {
+			return nil, nil, err
 		}
-	case mirror.ByModule != nil:
-		return item, &mirror.ByModule.Values[ref.ModuleName].Values[item.Packtype][0], nil
-	default:
-		panic("unreachable")
+		if lineage == nil {
+			// lineage not found in this catalog
+			continue
+		}
+
+		// lineage found, try find the item matching the catalog ref
+		item := getWareFromLineage(lineage, ref)
+		if item == nil {
+			// item not found in this catalog
+			continue
+		}
+
+		// item found, try to get the matching mirror
+		mirror, err := ws.getCatalogMirror(path, ref)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// TODO: handling of multiple mirrors
+		switch {
+		case mirror.ByWare != nil:
+			if len(mirror.ByWare.Values[*item]) > 0 {
+				return item, &mirror.ByWare.Values[*item][0], nil
+			} else {
+				return item, nil, nil
+			}
+		case mirror.ByModule != nil:
+			return item, &mirror.ByModule.Values[ref.ModuleName].Values[item.Packtype][0], nil
+		default:
+			panic("unreachable")
+		}
+
 	}
+
+	// nothing found
+	return nil, nil, nil
 }
 
 func getWareFromLineage(l *wfapi.CatalogLineage, ref wfapi.CatalogRef) *wfapi.WareID {
@@ -63,18 +87,18 @@ func getWareFromLineage(l *wfapi.CatalogLineage, ref wfapi.CatalogRef) *wfapi.Wa
 	return nil
 }
 
-func (ws *Workspace) getCatalogMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, error) {
+func (ws *Workspace) getCatalogMirror(catalogPath string, ref wfapi.CatalogRef) (*wfapi.CatalogMirror, error) {
 	mirror := wfapi.CatalogMirror{}
 
 	// open lineage file
-	mirrorPath := filepath.Join(ws.rootPath, ".warpforge", "catalog", string(ref.ModuleName), "mirrors.json")
+	mirrorPath := filepath.Join(catalogPath, string(ref.ModuleName), "mirrors.json")
 	var mirrorFile fs.File
 	var err error
 	if mirrorFile, err = ws.fsys.Open(mirrorPath); os.IsNotExist(err) {
 		// no mirror file for this ware
 		return nil, fmt.Errorf("no mirror file found for catalog reference %q", ref.String())
 	} else if err != nil {
-		return nil, fmt.Errorf("error opening lineage file %q: %s", mirrorPath, err)
+		return nil, fmt.Errorf("error opening mirror file %q: %s", mirrorPath, err)
 	}
 
 	// read and unmarshal mirror data
@@ -88,14 +112,13 @@ func (ws *Workspace) getCatalogMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirro
 	}
 
 	return &mirror, nil
-
 }
 
-func (ws *Workspace) getCatalogLineage(ref wfapi.CatalogRef) (*wfapi.CatalogLineage, error) {
+func (ws *Workspace) getCatalogLineage(catalogPath string, ref wfapi.CatalogRef) (*wfapi.CatalogLineage, error) {
 	lineage := wfapi.CatalogLineage{}
 
 	// open lineage file
-	lineagePath := filepath.Join(ws.rootPath, ".warpforge", "catalog", string(ref.ModuleName), "lineage.json")
+	lineagePath := filepath.Join(catalogPath, string(ref.ModuleName), "lineage.json")
 	var lineageFile fs.File
 	var err error
 	if lineageFile, err = ws.fsys.Open(lineagePath); os.IsNotExist(err) {
@@ -118,11 +141,14 @@ func (ws *Workspace) getCatalogLineage(ref wfapi.CatalogRef) (*wfapi.CatalogLine
 	return &lineage, nil
 }
 
-func (ws *Workspace) AddCatalogItem(ref wfapi.CatalogRef, wareId wfapi.WareID) error {
+func (ws *Workspace) AddCatalogItem(catalog string,
+	ref wfapi.CatalogRef,
+	wareId wfapi.WareID) error {
 	lineagePath := filepath.Join("/",
 		ws.rootPath,
 		".warpforge",
-		"catalog",
+		"catalogs",
+		catalog,
 		string(ref.ModuleName),
 		"lineage.json",
 	)
@@ -193,12 +219,16 @@ func (ws *Workspace) AddCatalogItem(ref wfapi.CatalogRef, wareId wfapi.WareID) e
 	return nil
 }
 
-func (ws *Workspace) AddByWareMirror(ref wfapi.CatalogRef, wareId wfapi.WareID, addr wfapi.WarehouseAddr) error {
+func (ws *Workspace) AddByWareMirror(catalog string,
+	ref wfapi.CatalogRef,
+	wareId wfapi.WareID,
+	addr wfapi.WarehouseAddr) error {
 	// load mirrors file, or create it if it doesn't exist
 	mirrorsPath := filepath.Join("/",
 		ws.rootPath,
 		".warpforge",
-		"catalog",
+		"catalogs",
+		catalog,
 		string(ref.ModuleName),
 		"mirrors.json",
 	)
@@ -258,4 +288,28 @@ func (ws *Workspace) AddByWareMirror(ref wfapi.CatalogRef, wareId wfapi.WareID, 
 	}
 
 	return nil
+}
+
+// Get a catalog ware from a workspace set.
+// looks up a ware by CatalogRef, traversing the workspace set:
+//  1. traverses the workspace stack looking in "catalog" dirs.
+//  2. looks through all catalogs (within the "catalogs" dir) of the root workspace
+//     in alphabetical order, picking the first matching ware found.
+func (wsSet *WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
+
+	// traverse workspace stack
+	for _, ws := range wsSet.Stack {
+		wareId, wareAddr, err := ws.GetCatalogWare(ref)
+		if err != nil {
+			return nil, nil, err
+		}
+		if wareId != nil {
+			return wareId, wareAddr, nil
+		}
+	}
+
+	// search root workspace
+	// TODO
+
+	return nil, nil, nil
 }

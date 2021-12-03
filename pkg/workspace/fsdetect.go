@@ -115,3 +115,30 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
 	return OpenWorkspace(fsys, homedir)
 }
+
+// OpenRootWorkspace calls OpenWorkspace on the first root workspace in the stack.
+//
+// A root workspace is marked by containing a file named "root"
+//
+// If no root filesystems are marked, this will default to the last item in the
+// stack, which is the home workspace.
+//
+// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+func OpenRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, wfapi.Error) {
+	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ws := range stack {
+		// check if the root marker file exists
+		_, err := fsys.Open(filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
+		if err == nil {
+			// it does, so this is our root workspace and we're done
+			return ws, nil
+		}
+	}
+
+	// no matches, default to the last item in the stack
+	return stack[len(stack)-1], nil
+}

@@ -47,11 +47,11 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 // Resolves a PlotInput to a WareID and optionally a WarehouseAddr.
 // This will resolve various input types (Pipes, CatalogRefs, etc...)
 // to allow them to be used in a Formula.
-func plotInputToFormulaInput(wss []*workspace.Workspace,
+func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
 	logger logging.Logger) (wfapi.FormulaInput, *wfapi.WarehouseAddr, error) {
-	basis, addr, err := plotInputToFormulaInputSimple(wss, plotInput, pipeCtx, logger)
+	basis, addr, err := plotInputToFormulaInputSimple(wsSet, plotInput, pipeCtx, logger)
 	if err != nil {
 		return wfapi.FormulaInput{}, nil, err
 	}
@@ -72,7 +72,7 @@ func plotInputToFormulaInput(wss []*workspace.Workspace,
 	}
 }
 
-func plotInputToFormulaInputSimple(wss []*workspace.Workspace,
+func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
 	logger logging.Logger) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, error) {
@@ -124,33 +124,10 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace,
 			color.WhiteString(basis.CatalogRef.String()),
 		)
 
-		// search the warehouse stack for this CatalogRef
-		// this will return the WareID and WarehouseAddr to use
-		var wareId *wfapi.WareID
-		for _, ws := range wss {
-			wareId, wareAddr, err := ws.GetCatalogWare(*basis.CatalogRef)
-			if err != nil {
-				return wfapi.FormulaInputSimple{}, nil, err
-			}
-			if wareId != nil {
-				// found a matching ware in a catalog, stop searching
-				var wareStr string
-				if wareAddr != nil {
-					wareStr = string(*wareAddr)
-				} else {
-					wareStr = "none"
-				}
-				logger.Info(LOG_TAG, "\t\t%s = %s\n\t\t%s = %s",
-					color.HiBlueString("wareId"),
-					color.WhiteString(wareId.String()),
-					color.HiBlueString("wareAddr"),
-					color.WhiteString(wareStr),
-				)
-
-				return wfapi.FormulaInputSimple{
-					WareID: wareId,
-				}, wareAddr, nil
-			}
+		// find the WareID and WareAddress for this catalog item
+		wareId, wareAddr, err := wsSet.GetCatalogWare(*basis.CatalogRef)
+		if err != nil {
+			return wfapi.FormulaInputSimple{}, nil, err
 		}
 
 		if wareId == nil {
@@ -159,6 +136,22 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace,
 				nil,
 				fmt.Errorf("no definition found for %q", basis.CatalogRef.String())
 		}
+
+		wareStr := "none"
+		if wareAddr != nil {
+			wareStr = string(*wareAddr)
+		}
+		logger.Info(LOG_TAG, "\t\t%s = %s\n\t\t%s = %s",
+			color.HiBlueString("wareId"),
+			color.WhiteString(wareId.String()),
+			color.HiBlueString("wareAddr"),
+			color.WhiteString(wareStr),
+		)
+
+		return wfapi.FormulaInputSimple{
+			WareID: wareId,
+		}, wareAddr, nil
+
 	case basis.Pipe != nil:
 		// resolve the pipe to a WareID using the pipeCtx
 		input, err := pipeCtx.lookup(basis.Pipe.StepName, basis.Pipe.Label)
@@ -208,7 +201,8 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace,
 		}
 		if _, err = os.Stat(cachePath); os.IsNotExist(err) {
 			_, err = git.PlainClone(cachePath, false, &git.CloneOptions{
-				URL: "file://" + path,
+				URL:               "file://" + path,
+				RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 			})
 
 			if err != nil {
@@ -221,7 +215,7 @@ func plotInputToFormulaInputSimple(wss []*workspace.Workspace,
 	return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid type in plot input")
 }
 
-func execProtoformula(wss []*workspace.Workspace,
+func execProtoformula(wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	ctx wfapi.FormulaContext,
 	pipeCtx pipeMap,
@@ -233,19 +227,10 @@ func execProtoformula(wss []*workspace.Workspace,
 	formula.Inputs.Values = make(map[wfapi.SandboxPort]wfapi.FormulaInput)
 	formula.Outputs.Values = make(map[wfapi.OutputName]wfapi.GatherDirective)
 
-	// get the home workspace from the workspace stack
-	var homeWs *workspace.Workspace
-	for _, ws := range wss {
-		if ws.IsHomeWorkspace() {
-			homeWs = ws
-			break
-		}
-	}
-
 	// convert Protoformula inputs (of type PlotInput) to FormulaInputs
 	for sbPort, plotInput := range pf.Inputs.Values {
 		formula.Inputs.Keys = append(formula.Inputs.Keys, sbPort)
-		input, wareAddr, err := plotInputToFormulaInput(wss, plotInput, pipeCtx, logger)
+		input, wareAddr, err := plotInputToFormulaInput(wsSet, plotInput, pipeCtx, logger)
 		if err != nil {
 			return wfapi.RunRecord{}, err
 		}
@@ -265,7 +250,7 @@ func execProtoformula(wss []*workspace.Workspace,
 	}
 
 	// execute the derived formula
-	rr, err := formulaexec.Exec(homeWs,
+	rr, err := formulaexec.Exec(wsSet.Root,
 		wfapi.FormulaAndContext{
 			Formula: formula,
 			Context: &ctx,
@@ -274,7 +259,7 @@ func execProtoformula(wss []*workspace.Workspace,
 	return rr, err
 }
 
-func Exec(wss []*workspace.Workspace, plot wfapi.Plot, logger logging.Logger) (wfapi.PlotResults, error) {
+func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) (wfapi.PlotResults, error) {
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
 
@@ -297,7 +282,7 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot, logger logging.Logger) (w
 	inputContext := wfapi.FormulaContext{}
 	inputContext.Warehouses.Values = make(map[wfapi.WareID]wfapi.WarehouseAddr)
 	for name, input := range plot.Inputs.Values {
-		input, wareAddr, err := plotInputToFormulaInput(wss, input, pipeCtx, logger)
+		input, wareAddr, err := plotInputToFormulaInput(wsSet, input, pipeCtx, logger)
 		if err != nil {
 			return results, err
 		}
@@ -325,7 +310,7 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot, logger logging.Logger) (w
 				color.HiCyanString(string(name)),
 				color.WhiteString("evaluating protoformula"),
 			)
-			rr, err := execProtoformula(wss, *step.Protoformula, inputContext, pipeCtx, logger)
+			rr, err := execProtoformula(wsSet, *step.Protoformula, inputContext, pipeCtx, logger)
 			if err != nil {
 				return results, fmt.Errorf("failed to execute protoformula for step %s: %s", name, err)
 			}
@@ -348,7 +333,7 @@ func Exec(wss []*workspace.Workspace, plot wfapi.Plot, logger logging.Logger) (w
 				color.WhiteString("evaluating subplot"),
 			)
 
-			stepResults, err := Exec(wss, *step.Plot, logger)
+			stepResults, err := Exec(wsSet, *step.Plot, logger)
 			if err != nil {
 				return results, fmt.Errorf("failed to execute plot for step %s: %s", name, err)
 			}

@@ -393,6 +393,34 @@ there's only one record in this map.
 }
 ```
 
+## Catalog Operations
+
+[testmark]:# (catalog/fs/.warpforge/root)
+```
+this file marks the workspace as a root workspace
+```
+
+### Initialize a Catalog
+
+[testmark]:# (catalog/sequence)
+```
+warpforge catalog init my-catalog
+```
+
+### Add an Item to a Catalog
+
+[testmark]:# (catalog/then-add/sequence)
+```
+warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
+```
+
+### List Catalogs
+
+[testmark]:# (catalog/then-ls/sequence)
+```
+warpforge catalog ls
+```
+
 ## Graph a Plot
 
 [testmark]:# (graphplot/not-actually-executable)

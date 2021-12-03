@@ -17,14 +17,18 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-// constructs a custom workspace stack containing only this project's .warpforge dir (contains catalog)
-func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
+// constructs a custom workspace set containing only this project's .warpforge dir (contains catalog)
+func getTestWorkspaceStack(t *testing.T) workspace.WorkspaceSet {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
 	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
 	qt.Assert(t, err, qt.IsNil)
-	wss := []*workspace.Workspace{
-		projWs,
+	wss := workspace.WorkspaceSet{
+		Home: projWs,
+		Root: projWs,
+		Stack: []*workspace.Workspace{
+			projWs,
+		},
 	}
 	return wss
 }
