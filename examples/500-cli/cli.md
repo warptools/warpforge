@@ -407,6 +407,13 @@ this file marks the workspace as a root workspace
 warpforge catalog init my-catalog
 ```
 
+### List Catalogs
+
+[testmark]:# (catalog/then-ls/sequence)
+```
+warpforge catalog ls
+```
+
 ### Add an Item to a Catalog
 
 [testmark]:# (catalog/then-add/sequence)
@@ -414,11 +421,67 @@ warpforge catalog init my-catalog
 warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
 ```
 
-### List Catalogs
-
-[testmark]:# (catalog/then-ls/sequence)
+[testmark]:# (catalog/then-add/then-check/script)
 ```
-warpforge catalog ls
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/lineage.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
+```
+
+[testmark]:# (catalog/then-add/then-check/output)
+```
+{
+	"name": "alpinelinux.org/alpine",
+	"metadata": {},
+	"releases": [
+		{
+			"name": "v3.14.2",
+			"items": {
+				"x86_64": "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+			},
+			"metadata": {}
+		}
+	]
+}
+{
+	"byWare": {
+		"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": [
+			"https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		]
+	}
+}
+```
+
+### Bundle Catalog
+
+Test module that uses a catalog input:
+
+[testmark]:# (catalog/then-add/then-bundle/fs/module.json)
+```
+{
+	"name": "bundle-test",
+}
+```
+
+[testmark]:# (catalog/then-add/then-bundle/fs/plot.json)
+```
+{
+	"inputs": {
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+	},
+	"steps": {},
+	"outputs": {}
+}
+```
+
+
+[testmark]:# (catalog/then-add/then-bundle/sequence)
+```
+warpforge -v catalog bundle module.json
+```
+
+[testmark]:# (catalog/then-add/then-bundle/stdout)
+```
+bundled "alpinelinux.org/alpine:v3.14.2:x86_64"
 ```
 
 ## Graph a Plot

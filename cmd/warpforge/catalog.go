@@ -38,6 +38,11 @@ var catalogCmdDef = cli.Command{
 			Usage:  "List available catalogs.",
 			Action: cmdCatalogLs,
 		},
+		{
+			Name:   "bundle",
+			Usage:  "Bundle required catalog items into this project's catalog.",
+			Action: cmdCatalogBundle,
+		},
 	},
 }
 
@@ -56,7 +61,6 @@ func scanWareId(packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID
 	rioScan.Stderr = &stderr
 	err = rioScan.Run()
 	if err != nil {
-		fmt.Println(err)
 		return result, fmt.Errorf("failed to run rio scan command: %s\n%s", err, stderr.String())
 	}
 	wareIdStr := strings.TrimSpace(stdout.String())
@@ -80,7 +84,7 @@ func cmdCatalogInit(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	catalogPath := wsSet.Root.CatalogPath(&catalogName)
+	catalogPath := filepath.Join("/", wsSet.Root.CatalogPath(&catalogName))
 
 	// check if the catalog directory exists
 	_, err = os.Stat(catalogPath)
@@ -159,17 +163,17 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	// add the new item
-	err = wsSet.Root.AddCatalogItem(catalog, ref, scanWareId)
+	err = wsSet.Root.AddCatalogItem(&catalog, ref, scanWareId)
 	if err != nil {
 		return fmt.Errorf("failed to add item to catalog: %s", err)
 	}
-	err = wsSet.Root.AddByWareMirror(catalog, ref, scanWareId, wfapi.WarehouseAddr(url))
+	err = wsSet.Root.AddByWareMirror(&catalog, ref, scanWareId, wfapi.WarehouseAddr(url))
 	if err != nil {
 		return fmt.Errorf("failed to add mirror: %s", err)
 	}
 
 	if c.Bool("verbose") {
-		fmt.Printf("added item to catalog %q\n", wsSet.Root.CatalogPath(&catalog))
+		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root.CatalogPath(&catalog))
 	}
 
 	return nil
@@ -188,8 +192,85 @@ func cmdCatalogLs(c *cli.Context) error {
 	}
 
 	// print the list
-	for _, c := range catalogs {
-		fmt.Println(c)
+	for _, catalog := range catalogs {
+		fmt.Fprintf(c.App.Writer, "%s\n", catalog)
 	}
+	return nil
+}
+
+func gatherCatalogRefs(plot wfapi.Plot) []wfapi.CatalogRef {
+	refs := []wfapi.CatalogRef{}
+
+	// gather this plot's inputs
+	for _, input := range plot.Inputs.Values {
+		if input.Basis().CatalogRef != nil {
+			refs = append(refs, *input.Basis().CatalogRef)
+		}
+	}
+
+	// gather subplot inputs
+	for _, step := range plot.Steps.Values {
+		if step.Plot != nil {
+			// recursively gather the refs from subplot(s)
+			newRefs := gatherCatalogRefs(*step.Plot)
+
+			// deduplicate
+			unique := true
+			for _, newRef := range newRefs {
+				for _, existingRef := range refs {
+					if newRef == existingRef {
+						unique = false
+						break
+					}
+				}
+				if unique {
+					refs = append(refs, newRef)
+				}
+			}
+		}
+	}
+
+	return refs
+}
+
+func cmdCatalogBundle(c *cli.Context) error {
+	wsSet, err := openWorkspaceSet()
+	if err != nil {
+		return err
+	}
+
+	fileName := filepath.Dir(c.Args().First())
+
+	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), "plot.json"))
+	if err != nil {
+		return err
+	}
+
+	refs := gatherCatalogRefs(plot)
+
+	// create a catalog if it does not exist
+	err = os.MkdirAll(filepath.Join(filepath.Dir(fileName), ".warpforge", "catalog"), 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create catalog directory: %s", err)
+	}
+
+	for _, ref := range refs {
+		wareId, wareAddr, err := wsSet.Root.GetCatalogWare(ref)
+		if err != nil {
+			return err
+		}
+
+		if wareId == nil {
+			return fmt.Errorf("could not find catalog entry for %s:%s:%s",
+				ref.ModuleName, ref.ReleaseName, ref.ItemName)
+		}
+
+		fmt.Fprintf(c.App.Writer, "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
+		wsSet.Stack[0].AddCatalogItem(nil, ref, *wareId)
+		if wareAddr != nil {
+			wsSet.Stack[0].AddByWareMirror(nil, ref, *wareId, *wareAddr)
+		}
+	}
+
 	return nil
 }

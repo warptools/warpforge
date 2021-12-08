@@ -56,6 +56,8 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 
 		// TODO: handling of multiple mirrors
 		switch {
+		case mirror == nil:
+			return item, nil, nil
 		case mirror.ByWare != nil:
 			if len(mirror.ByWare.Values[*item]) > 0 {
 				return item, &mirror.ByWare.Values[*item][0], nil
@@ -96,7 +98,7 @@ func (ws *Workspace) getCatalogMirror(catalogPath string, ref wfapi.CatalogRef) 
 	var err error
 	if mirrorFile, err = ws.fsys.Open(mirrorPath); os.IsNotExist(err) {
 		// no mirror file for this ware
-		return nil, fmt.Errorf("no mirror file found for catalog reference %q", ref.String())
+		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("error opening mirror file %q: %s", mirrorPath, err)
 	}
@@ -141,21 +143,22 @@ func (ws *Workspace) getCatalogLineage(catalogPath string, ref wfapi.CatalogRef)
 	return &lineage, nil
 }
 
-func (ws *Workspace) AddCatalogItem(catalog string,
+// Adds a new item to the specified catalog.
+// If nil is provided as a catalog name, this will write to the workspace's "catalog" subdirectory
+// Otherwise, it will write to the catalog at "catalogs/[catalogName]"
+func (ws *Workspace) AddCatalogItem(catalogName *string,
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID) error {
-	lineagePath := filepath.Join("/",
-		ws.rootPath,
-		".warpforge",
-		"catalogs",
-		catalog,
+
+	lineagePath := filepath.Join(
+		ws.CatalogPath(catalogName),
 		string(ref.ModuleName),
 		"lineage.json",
 	)
 
 	// load lineage file
 	var lineage wfapi.CatalogLineage
-	lineageBytes, err := os.ReadFile(lineagePath)
+	lineageBytes, err := fs.ReadFile(ws.fsys, lineagePath)
 	if os.IsNotExist(err) {
 		lineage = wfapi.CatalogLineage{
 			Name: string(ref.ModuleName),
@@ -207,11 +210,11 @@ func (ws *Workspace) AddCatalogItem(catalog string,
 		return fmt.Errorf("failed to serialize lineage: %s", err)
 	}
 
-	err = os.MkdirAll(filepath.Dir(lineagePath), 0755)
+	err = os.MkdirAll(filepath.Dir(filepath.Join("/", lineagePath)), 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create directory for catalog entry: %s", err)
 	}
-	err = os.WriteFile(lineagePath, lineageSerial, 0644)
+	err = os.WriteFile(filepath.Join("/", lineagePath), lineageSerial, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write lineage file: %s", err)
 	}
@@ -219,16 +222,13 @@ func (ws *Workspace) AddCatalogItem(catalog string,
 	return nil
 }
 
-func (ws *Workspace) AddByWareMirror(catalog string,
+func (ws *Workspace) AddByWareMirror(catalogName *string,
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID,
 	addr wfapi.WarehouseAddr) error {
 	// load mirrors file, or create it if it doesn't exist
-	mirrorsPath := filepath.Join("/",
-		ws.rootPath,
-		".warpforge",
-		"catalogs",
-		catalog,
+	mirrorsPath := filepath.Join(
+		ws.CatalogPath(catalogName),
 		string(ref.ModuleName),
 		"mirrors.json",
 	)
@@ -274,7 +274,7 @@ func (ws *Workspace) AddByWareMirror(catalog string,
 	}
 
 	// write the updated data to the mirrors file
-	err = os.MkdirAll(filepath.Dir(mirrorsPath), 0755)
+	err = os.MkdirAll(filepath.Join("/", filepath.Dir(mirrorsPath)), 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create catalog dir: %s", err)
 	}
@@ -282,7 +282,7 @@ func (ws *Workspace) AddByWareMirror(catalog string,
 	if err != nil {
 		return fmt.Errorf("failed to serialize mirrors: %s", err)
 	}
-	os.WriteFile(mirrorsPath, mirrorSerial, 0644)
+	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write mirrors file: %s", err)
 	}
@@ -309,7 +309,13 @@ func (wsSet *WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, 
 	}
 
 	// search root workspace
-	// TODO
+	wareId, wareAddr, err := wsSet.Root.GetCatalogWare(ref)
+	if err != nil {
+		return nil, nil, err
+	}
+	if wareId != nil {
+		return wareId, wareAddr, nil
+	}
 
 	return nil, nil, nil
 }

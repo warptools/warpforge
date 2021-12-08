@@ -120,14 +120,12 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 func (ws *Workspace) CatalogPath(name *string) string {
 	if name == nil {
 		return filepath.Join(
-			"/",
 			ws.rootPath,
 			".warpforge",
 			"catalog",
 		)
 	} else {
 		return filepath.Join(
-			"/",
 			ws.rootPath,
 			".warpforge",
 			"catalogs",

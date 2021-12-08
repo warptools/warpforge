@@ -2,12 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/workspace"
+	"github.com/warpfork/warpforge/wfapi"
 )
 
 // Returns the file type, which is the file name without extension
@@ -56,4 +60,20 @@ func openWorkspaceSet() (workspace.WorkspaceSet, error) {
 		return workspace.WorkspaceSet{}, fmt.Errorf("failed to open workspace: %s", err)
 	}
 	return wss, nil
+}
+
+// takes a path to a plot file, returns a plot
+func plotFromFile(fileName string) (wfapi.Plot, error) {
+	f, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return wfapi.Plot{}, err
+	}
+
+	plot := wfapi.Plot{}
+	_, err = ipld.Unmarshal(f, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	if err != nil {
+		return wfapi.Plot{}, err
+	}
+
+	return plot, nil
 }

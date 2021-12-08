@@ -23,21 +23,6 @@ var runCmdDef = cli.Command{
 	Action: cmdRun,
 }
 
-func plotFromFile(fileName string) (wfapi.Plot, error) {
-	f, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return wfapi.Plot{}, err
-	}
-
-	plot := wfapi.Plot{}
-	_, err = ipld.Unmarshal(f, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
-	if err != nil {
-		return wfapi.Plot{}, err
-	}
-
-	return plot, nil
-}
-
 func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 	result := wfapi.PlotResults{}
 
