@@ -54,6 +54,9 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 // Called after a command returns an non-nil error value.
 // Prints the formatted error to stderr.
 func exitErrHandler(c *cli.Context, err error) {
+	if err == nil {
+		return
+	}
 	if c.Bool("json") {
 		bytes, err := json.Marshal(err)
 		if err != nil {
