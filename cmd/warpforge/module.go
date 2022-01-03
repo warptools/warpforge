@@ -28,6 +28,41 @@ var moduleCmdDef = cli.Command{
 	},
 }
 
+const defaultPlotJson = `{
+	"inputs": {
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+	},
+	"steps": {
+		"hello-world": {
+			"protoformula": {
+				"inputs": {
+					"/": "pipe::rootfs"
+				},
+				"action": {
+					"exec": {
+						"command": [
+							"/bin/sh",
+							"-c",
+							"mkdir /output && echo 'hello world' | tee /output/file"
+						],
+						"network": false
+					}
+				},
+				"outputs": {
+					"out": {
+						"from": "/output",
+						"packtype": "tar"
+					}
+				}
+			}
+		}
+	},
+	"outputs": {
+		"output": "pipe:hello-world:out"
+	}
+}
+`
+
 func checkModule(fileName string) (*ipld.Node, error) {
 	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -82,6 +117,10 @@ func cmdModuleInit(c *cli.Context) error {
 	os.WriteFile("module.json", moduleSerial, 0644)
 
 	plot := wfapi.Plot{}
+	_, err = ipld.Unmarshal([]byte(defaultPlotJson), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	if err != nil {
+		return fmt.Errorf("failed to deserialize default plot")
+	}
 	plotSerial, err := ipld.Marshal(json.Encode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
 	if err != nil {
 		return fmt.Errorf("failed to serialize plot")
