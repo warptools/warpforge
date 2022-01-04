@@ -93,20 +93,33 @@ func cmdStatus(c *cli.Context) error {
 			continue
 		}
 
-		fmt.Fprintf(c.App.Writer, "%s (workspace", path)
+		labels := []string{}
 
+		// collect workspaces labels
 		if *ws == *wss.Root {
-			fmt.Fprintf(c.App.Writer, ", root")
+			labels = append(labels, "root workspace")
 		}
 		if *ws == *wss.Home {
-			fmt.Fprintf(c.App.Writer, ", home")
+			labels = append(labels, "home workspace")
+		}
+		if *ws != *wss.Root && *ws != *wss.Home {
+			labels = append(labels, "workspace")
 		}
 
-		// check if it's a git repo
+		// label if it's a git repo
 		if _, err := os.Stat(filepath.Join(path, ".git")); !os.IsNotExist(err) {
-			fmt.Fprintf(c.App.Writer, ", git repo")
+			labels = append(labels, "git repo")
 		}
 
+		// print a line for this dir
+		fmt.Fprintf(c.App.Writer, "%s (", path)
+		for n, label := range labels {
+			fmt.Fprintf(c.App.Writer, "%s", label)
+			if n != len(labels)-1 {
+				// this is not the last label
+				fmt.Fprintf(c.App.Writer, ", ")
+			}
+		}
 		fmt.Fprintf(c.App.Writer, ")\n")
 	}
 
