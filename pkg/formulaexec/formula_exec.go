@@ -421,6 +421,21 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 	return wareId, nil
 }
 
+func GetBinPath() (string, error) {
+	// determine the path of the running executable
+	// other binaries (runc, rio) will be located here as well
+	path, override := os.LookupEnv("WARPFORGE_PATH")
+	if override {
+		return path, nil
+	} else {
+		binPath, err := os.Executable()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Dir(binPath), nil
+	}
+}
+
 func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, error) {
 	formula := fc.Formula
 	context := fc.Context
@@ -473,18 +488,9 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 		return rr, fmt.Errorf("failed to create warehouse: %s", err)
 	}
 
-	// determine the path of the running executable
-	// other binaries (runc, rio) will be located here as well
-	var binPath string
-	path, override = os.LookupEnv("WARPFORGE_PATH")
-	if override {
-		binPath = path
-	} else {
-		binPath, err = os.Executable()
-		if err != nil {
-			return rr, err
-		}
-		binPath = filepath.Dir(binPath)
+	binPath, err := GetBinPath()
+	if err != nil {
+		return rr, err
 	}
 
 	// each formula execution gets a unique run directory

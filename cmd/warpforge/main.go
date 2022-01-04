@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const VERSION = "0.0.1"
+const VERSION = "alpha"
 
 func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 	app := cli.NewApp()
@@ -46,6 +46,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&checkCmdDef,
 		&catalogCmdDef,
 		&watchCmdDef,
+		&statusCmdDef,
 	}
 	return app
 }
