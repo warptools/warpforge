@@ -77,13 +77,23 @@ func cmdRun(c *cli.Context) error {
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
 
 	if !c.Args().Present() {
-		return fmt.Errorf("no input files provided")
-	}
-
-	if filepath.Base(c.Args().First()) == "..." {
+		// execute the module in the current directory
+		pwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("could not get current directory")
+		}
+		result, err := execModule(c, filepath.Join(pwd, "module.json"))
+		if err != nil {
+			return err
+		}
+		c.App.Metadata["result"] = bindnode.Wrap(&result, wfapi.TypeSystem.TypeByName("PlotResults"))
+	} else if filepath.Base(c.Args().First()) == "..." {
 		// recursively execute module.json files
 		return filepath.Walk(filepath.Dir(c.Args().First()),
 			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
 				if filepath.Base(path) == "module.json" {
 					if c.Bool("verbose") {
 						logger.Debug("executing %q", path)
@@ -96,6 +106,7 @@ func cmdRun(c *cli.Context) error {
 				return nil
 			})
 	} else {
+		// execute a specific set of formula or module files
 		for _, fileName := range c.Args().Slice() {
 			f, err := ioutil.ReadFile(fileName)
 			if err != nil {
