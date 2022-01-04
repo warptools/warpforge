@@ -1,0 +1,13 @@
+{
+	"name": "alpinelinux.org/alpine",
+	"metadata": {},
+	"releases": [
+		{
+			"name": "v3.14.2",
+			"items": {
+				"x86_64": "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+			},
+			"metadata": {}
+		}
+	]
+}
