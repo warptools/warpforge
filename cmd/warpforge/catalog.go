@@ -8,9 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/wfapi"
 )
+
+const defaultCatalogUrl = "https://github.com/warpfork/wfcatalog"
 
 var catalogCmdDef = cli.Command{
 	Name:  "catalog",
@@ -42,6 +45,11 @@ var catalogCmdDef = cli.Command{
 			Name:   "bundle",
 			Usage:  "Bundle required catalog items into this project's catalog.",
 			Action: cmdCatalogBundle,
+		},
+		{
+			Name:   "update",
+			Usage:  "Update remote catalogs.",
+			Action: cmdCatalogUpdate,
 		},
 	},
 }
@@ -239,19 +247,31 @@ func cmdCatalogBundle(c *cli.Context) error {
 		return err
 	}
 
-	fileName := filepath.Dir(c.Args().First())
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get pwd: %s", err)
+	}
 
-	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), "plot.json"))
+	plot, err := plotFromFile(filepath.Join(pwd, "plot.json"))
 	if err != nil {
 		return err
 	}
 
 	refs := gatherCatalogRefs(plot)
 
+	catalogPath := filepath.Join(pwd, ".warpforge", "catalog")
 	// create a catalog if it does not exist
-	err = os.MkdirAll(filepath.Join(filepath.Dir(fileName), ".warpforge", "catalog"), 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create catalog directory: %s", err)
+	if _, err = os.Stat(catalogPath); os.IsNotExist(err) {
+		err = os.MkdirAll(catalogPath, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create catalog directory: %s", err)
+		}
+
+		// we need to reopen the workspace set after creating the directory
+		wsSet, err = openWorkspaceSet()
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, ref := range refs {
@@ -269,6 +289,90 @@ func cmdCatalogBundle(c *cli.Context) error {
 		wsSet.Stack[0].AddCatalogItem(nil, ref, *wareId)
 		if wareAddr != nil {
 			wsSet.Stack[0].AddByWareMirror(nil, ref, *wareId, *wareAddr)
+		}
+	}
+
+	return nil
+}
+
+func installDefaultRemoteCatalog(c *cli.Context, path string) error {
+	// install our default remote catalog as "default-remote" by cloning from git
+	// this will noop if the catalog already exists
+
+	defaultCatalogPath := filepath.Join(path, "default-remote")
+	if _, err := os.Stat(defaultCatalogPath); !os.IsNotExist(err) {
+		// a dir exists for this catalog, do nothing
+		return nil
+	}
+
+	fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", defaultCatalogPath)
+	_, err := git.PlainClone(defaultCatalogPath, false, &git.CloneOptions{
+		URL: defaultCatalogUrl,
+	})
+
+	fmt.Fprintf(c.App.Writer, " done.\n")
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func cmdCatalogUpdate(c *cli.Context) error {
+	wss, err := openWorkspaceSet()
+	if err != nil {
+		return fmt.Errorf("failed to open workspace set: %s", err)
+	}
+
+	// get the catalog path for the root workspace
+	catalogPath := filepath.Join("/", wss.Root.CatalogBasePath())
+	// create the path if it does not exist
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		err = os.MkdirAll(catalogPath, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create catalog path: %s", err)
+		}
+	}
+
+	err = installDefaultRemoteCatalog(c, catalogPath)
+	if err != nil {
+		return fmt.Errorf("failed to install default catalog: %s", err)
+	}
+
+	catalogs, err := os.ReadDir(catalogPath)
+	if err != nil {
+		return fmt.Errorf("failed to list catalog path: %s", err)
+	}
+
+	for _, cat := range catalogs {
+		if !cat.IsDir() {
+			// ignore non-directory items
+			continue
+		}
+
+		path := filepath.Join(catalogPath, cat.Name())
+
+		r, err := git.PlainOpen(path)
+		if err == git.ErrRepositoryNotExists {
+			fmt.Fprintf(c.App.Writer, "%s: local catalog\n", cat.Name())
+			continue
+		} else if err != nil {
+			return fmt.Errorf("failed to open git repo: %s", err)
+		}
+
+		wt, err := r.Worktree()
+		if err != nil {
+			return fmt.Errorf("failed to open git worktree: %s", err)
+		}
+
+		err = wt.Pull(&git.PullOptions{})
+		if err == git.NoErrAlreadyUpToDate {
+			fmt.Fprintf(c.App.Writer, "%s: already up to date\n", cat.Name())
+		} else if err != nil {
+			return fmt.Errorf("failed to pull from git: %s", err)
+		} else {
+			fmt.Fprintf(c.App.Writer, "%s: updated\n", cat.Name())
 		}
 	}
 

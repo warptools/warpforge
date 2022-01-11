@@ -116,6 +116,15 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 		wareId.Hash), nil
 }
 
+// returns the base path which contains named catalogs (i.e., `.../.warpforge/catalogs`)
+func (ws *Workspace) CatalogBasePath() string {
+	return filepath.Join(
+		ws.rootPath,
+		".warpforge",
+		"catalogs",
+	)
+}
+
 // returns the catalog path for catalog with a given name within a workspace
 func (ws *Workspace) CatalogPath(name *string) string {
 	if name == nil {
@@ -126,9 +135,7 @@ func (ws *Workspace) CatalogPath(name *string) string {
 		)
 	} else {
 		return filepath.Join(
-			ws.rootPath,
-			".warpforge",
-			"catalogs",
+			ws.CatalogBasePath(),
 			*name,
 		)
 	}
