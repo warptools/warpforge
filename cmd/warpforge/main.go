@@ -47,6 +47,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&catalogCmdDef,
 		&watchCmdDef,
 		&statusCmdDef,
+		&quickstartCmdDef,
 	}
 	return app
 }
