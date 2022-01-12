@@ -30,7 +30,7 @@ import (
 const LOG_TAG_START = "│ ┌─ formula"
 const LOG_TAG = "│ │  formula"
 const LOG_TAG_OUTPUT_START = "│ │ ┌─ output "
-const LOG_TAG_OUTPUT = "│ │ │ output "
+const LOG_TAG_OUTPUT = "│ │ │  output "
 const LOG_TAG_OUTPUT_END = "│ │ └─ output "
 const LOG_TAG_END = "│ └─ formula"
 
