@@ -22,7 +22,7 @@ if reorganized to show topic areas like "here's the things you can do on modules
 
 ## Recursively Run Modules
 
-Using `./...` will traverse recursively from `.` and execute all `module.json` files found.
+Using `./...` will traverse recursively from `.` and execute all `module.wf` files found.
 
 [testmark]:# (runall/sequence)
 ```
@@ -125,12 +125,12 @@ There's also an explicit `check` subcommand for dealing with modules:
 
 [testmark]:# (checkmodule/sequence)
 ```
-warpforge --verbose module check module.json
+warpforge --verbose module check module.wf
 ```
 
-We'll run this in a filesystem that contains a `module.json` (albeit a pretty silly one):
+We'll run this in a filesystem that contains a `module.wf` (albeit a pretty silly one):
 
-[testmark]:# (checkmodule/fs/module.json)
+[testmark]:# (checkmodule/fs/module.wf)
 ```
 {
     "name": "test"
@@ -153,12 +153,12 @@ There's also an explicit `check` subcommand for dealing with plots:
 
 [testmark]:# (checkplot/sequence)
 ```
-warpforge plot check plot.json
+warpforge plot check plot.wf
 ```
 
-We'll run this in a filesystem that contains a `plot.json` (albeit a pretty silly one):
+We'll run this in a filesystem that contains a `plot.wf` (albeit a pretty silly one):
 
-[testmark]:# (checkplot/fs/plot.json)
+[testmark]:# (checkplot/fs/plot.wf)
 ```
 {
     "inputs": {},
@@ -237,12 +237,12 @@ it's still just the `warpforge run` command, which will figure out what to do wi
 
 [testmark]:# (runmodule/sequence)
 ```
-warpforge --json run module.json
+warpforge --json run module.wf
 ```
 
-A module is declared with two files.  One is the `module.json` file:
+A module is declared with two files.  One is the `module.wf` file:
 
-[testmark]:# (runmodule/fs/module.json)
+[testmark]:# (runmodule/fs/module.wf)
 ```
 {
     "name": "test"
@@ -255,9 +255,9 @@ and gives it a name.
 (There can be other config here too, but it's all optional.)
 Most of the data is in the plot, which is another file.
 
-Here's the `plot.json` file -- this one's a bit bigger and more involved:
+Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 
-[testmark]:# (runmodule/fs/plot.json)
+[testmark]:# (runmodule/fs/plot.wf)
 ```
 {
 	"inputs": {
@@ -455,14 +455,14 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 
 Test module that uses a catalog input:
 
-[testmark]:# (catalog/then-add/then-bundle/fs/module.json)
+[testmark]:# (catalog/then-add/then-bundle/fs/module.wf)
 ```
 {
 	"name": "bundle-test",
 }
 ```
 
-[testmark]:# (catalog/then-add/then-bundle/fs/plot.json)
+[testmark]:# (catalog/then-add/then-bundle/fs/plot.wf)
 ```
 {
 	"inputs": {
@@ -476,7 +476,7 @@ Test module that uses a catalog input:
 
 [testmark]:# (catalog/then-add/then-bundle/sequence)
 ```
-warpforge -v catalog bundle module.json
+warpforge -v catalog bundle module.wf
 ```
 
 [testmark]:# (catalog/then-add/then-bundle/stdout)
@@ -488,7 +488,7 @@ bundled "alpinelinux.org/alpine:v3.14.2:x86_64"
 
 [testmark]:# (graphplot/not-actually-executable)
 ```
-warpforge plot graph --png graph.png plot.json
+warpforge plot graph --png graph.png plot.wf
 ```
 
 (TODO: refactor this to use the testmark "then" feature upon the existing data -- that file is just too big to keep repeating.)

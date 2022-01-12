@@ -39,7 +39,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 		return result, err
 	}
 
-	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), "plot.json"))
+	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), PLOT_FILE_NAME))
 	if err != nil {
 		return result, err
 	}
@@ -82,7 +82,7 @@ func cmdRun(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not get current directory")
 		}
-		result, err := execModule(c, filepath.Join(pwd, "module.json"))
+		result, err := execModule(c, filepath.Join(pwd, MODULE_FILE_NAME))
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func cmdRun(c *cli.Context) error {
 				if err != nil {
 					return err
 				}
-				if filepath.Base(path) == "module.json" {
+				if filepath.Base(path) == MODULE_FILE_NAME {
 					if c.Bool("verbose") {
 						logger.Debug("executing %q", path)
 					}

@@ -37,11 +37,11 @@ warpforge quickstart hello-world
 ```
 
 ```
-Successfully created module.json and plot.json for module "hello-world".
+Successfully created module.wf and plot.wf for module "hello-world".
 Ensure your catalogs are up to date by running `warpforge catalog update.`.
 You can check status of this module with `warpforge status`.
 You can run this module with `warpforge run`.
-Once you've run the Hello World example, edit the 'script' section of plot.json to customize what happens.
+Once you've run the Hello World example, edit the 'script' section of plot.wf to customize what happens.
 ```
 
 Next, update the catalog:
@@ -63,8 +63,8 @@ warpforge status
 
 ```
 Workspace:
-        /tmp/warpforge-quickstart (pwd, module)
-        /home/eric (root workspace, home workspace)
+        /home/user/warpforge-quickstart (pwd, module)
+        /home/user (root workspace, home workspace)
 
 You can evaluate this module with the `warpforge run` command.
 ```
@@ -83,33 +83,28 @@ warpforge run
 │  plot                 wareId = tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS
 │  plot                 wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
 ├─ plot  (hello-world) evaluating protoformula
- ┌─ formula  
- │  formula  ware mount:        wareId = tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS destPath = /
- │  formula  executing script   interpreter = /bin/sh
- │  formula  ->  hello world
- │  formula  packed "out":      path = /output  wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
- │  formula  RunRecord:
- │  formula     GUID = c728996f-2951-478f-bd60-dc662183fde3
- │  formula     FormulaID = bafyrgqb55m6gejlpmbta3wyfvdqtxco3k7ajzyjrnoytqgxhxsj4gvgz33b6bqrhv6f4mbejnsdhekx6wvus6rrv4hmblu5r2nrt5jtlygvg6
- │  formula     Exitcode = 0
- │  formula     Time = 1641936529
- │  formula     Results:
- │  formula             out: tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
- └─ formula  
+│ ┌─ formula  
+│ │  formula  ware mount:       wareId = tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS destPath = /
+│ │  formula  executing script  interpreter = /bin/sh
+│ │ ┌─ output   
+│ │ │  output   hello world
+│ │ └─ output   
+│ │  formula  packed "out":     path = /output  wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
+│ │  formula  RunRecord:
+│ │  formula    GUID = 4f09fa04-cf02-4ad6-a2db-c0cb8b1aaf1d
+│ │  formula    FormulaID = bafyrgqb55m6gejlpmbta3wyfvdqtxco3k7ajzyjrnoytqgxhxsj4gvgz33b6bqrhv6f4mbejnsdhekx6wvus6rrv4hmblu5r2nrt5jtlygvg6
+│ │  formula    Exitcode = 0
+│ │  formula    Time = 1642008026
+│ │  formula    Results:
+│ │  formula            out: tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
+│ └─ formula  
 │  plot  (hello-world) collected output hello-world:out
 ├─ plot  (hello-world) complete
 │  plot  
 │  plot  outputs:
 │  plot         output -> tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
 └─ plot  
-ok: map<PlotResults>{
-        string<LocalLabel>{"output"}: struct<WareID>{
-                packtype: string<Packtype>{"tar"}
-                hash: string<String>{"6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA"}
-        }
-}
 ```
-
 
 Running Tests
 -------------

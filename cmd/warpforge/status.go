@@ -22,14 +22,17 @@ var statusCmdDef = cli.Command{
 func cmdStatus(c *cli.Context) error {
 	fmtBold := color.New(color.Bold)
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
+	verbose := c.Bool("verbose")
 
 	// display version
-	fmt.Fprintf(c.App.Writer, "Warpforge Version: %s\n\n", VERSION)
+	if verbose {
+		fmt.Fprintf(c.App.Writer, "Warpforge Version: %s\n\n", VERSION)
+	}
 
 	// check plugins
 	pluginsOk := true
 
-	if c.Bool("verbose") {
+	if verbose {
 		fmt.Fprintf(c.App.Writer, "\nPlugin Info:\n")
 	}
 
@@ -37,7 +40,7 @@ func cmdStatus(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not get binPath: %s", err)
 	}
-	if c.Bool("verbose") {
+	if verbose {
 		fmt.Fprintf(c.App.Writer, "binPath = %s\n", binPath)
 	}
 
@@ -46,7 +49,7 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, "rio not found (expected at %s)\n", rioPath)
 		pluginsOk = false
 	} else {
-		if c.Bool("verbose") {
+		if verbose {
 			fmt.Fprintf(c.App.Writer, "found rio\n")
 		}
 	}
@@ -63,7 +66,7 @@ func cmdStatus(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to get runc version information: %s", err)
 		}
-		if c.Bool("verbose") {
+		if verbose {
 			fmt.Fprintf(c.App.Writer, "found runc\n")
 			fmt.Fprintf(c.App.Writer, "%s", &runcVersionOut)
 		}
@@ -72,6 +75,12 @@ func cmdStatus(c *cli.Context) error {
 	if !pluginsOk {
 		fmtWarning.Fprintf(c.App.Writer, "WARNING: plugins do not appear to be installed correctly.\n\n")
 	}
+
+	// display module info
+	// TODO # of inputs
+	// TODO # of steps
+	// TODO # of outputs
+	// TODO any missing catalog refs?
 
 	// display workspace info
 	fmt.Fprintf(c.App.Writer, "Workspace:\n")
@@ -89,7 +98,7 @@ func cmdStatus(c *cli.Context) error {
 	fmt.Fprintf(c.App.Writer, "\t%s (pwd", pwd)
 	// check if it's a module (and can therefore run)
 	canRun := false
-	if _, err := os.Stat(filepath.Join(pwd, "module.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(pwd, MODULE_FILE_NAME)); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", module")
 		canRun = true
 	}

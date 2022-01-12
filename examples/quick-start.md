@@ -16,10 +16,10 @@ mkdir -p ~/.warpforge/bin && tar -C ~/.warpforge/bin -xzvf warpforge.tgz .
 ## Initializing a Module
 
 A Warpforge *module* consists of two files: 
-1. `module.json`: defines the module name
-2. `plot.json`: defines the inputs, execution steps, and outputs
+1. `module.wf`: defines the module name
+2. `plot.wf`: defines the inputs, execution steps, and outputs
 
-A minimal `module.json` and `plot.json` can be initialized with
+A minimal `module.wf` and `plot.wf` can be initialized with
 
 [testmark]:# (quickstart/module-init/sequence)
 ```
@@ -29,10 +29,10 @@ warpforge module init my-module-name
 This will produce the two output files in the current working directory, and
 fail if the files already exist.
 
-### module.json
+### module.wf
 [testmark]:# (quickstart/module-init/then-check-module/script)
 ```
-cat module.json
+cat module.wf
 ```
 
 [testmark]:# (quickstart/module-init/then-check-module/output)
@@ -42,10 +42,10 @@ cat module.json
 }
 ```
 
-### plot.json
+### plot.wf
 [testmark]:# (quickstart/module-init/then-check-plot/script)
 ```
-cat plot.json
+cat plot.wf
 ```
 
 [testmark]:# (quickstart/module-init/then-check-plot/output)
@@ -95,7 +95,6 @@ by this example are:
 ### lineage.json
 [testmark]:# (quickstart/then-check-lineage/script)
 ```
-pwd
 cat .warpforge/catalogs/default/alpinelinux.org/alpine/lineage.json
 ```
 
@@ -135,22 +134,22 @@ cat .warpforge/catalogs/default/alpinelinux.org/alpine/mirrors.json
 
 ## Configuring a Plot
 
-The minimal `plot.json` created by `warpforge module init` does not have any inputs, steps,
-or outputs. It will run, but does not actually do anything. We can edit `plot.json` to 
+The minimal `plot.wf` created by `warpforge module init` does not have any inputs, steps,
+or outputs. It will run, but does not actually do anything. We can edit `plot.wf` to 
 be a bit more useful.
 
 Most plots will mount a root filesystem at `/`. In this example, we use the Alpine Linux root filesystem which was added to the catalog in the previous step. By making this a plot input named `rootfs`, we can later refer to it as `pipe::rootfs`.
 
 Our simple plot consists of a single step. This step is a *protoformula*, which has inputs, an action, and outputs. We use the Alpine root filesystem as our only input and place it at `/`. Our action is a script, which will be interpreted by `/bin/sh`. This script creates a directory, then creates a file. This directory is an output of the protoformula (`pipe:hello:out`), and is later used as a plot output.
 
-[testmark]:# (quickstart/fs/module.json)
+[testmark]:# (quickstart/fs/module.wf)
 ```
 {
     "name": "my-module-name"
 }
 ```
 
-[testmark]:# (quickstart/fs/plot.json)
+[testmark]:# (quickstart/fs/plot.wf)
 ```
 {
 	"inputs": {

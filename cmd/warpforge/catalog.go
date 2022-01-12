@@ -252,7 +252,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 		return fmt.Errorf("failed to get pwd: %s", err)
 	}
 
-	plot, err := plotFromFile(filepath.Join(pwd, "plot.json"))
+	plot, err := plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
 	if err != nil {
 		return err
 	}

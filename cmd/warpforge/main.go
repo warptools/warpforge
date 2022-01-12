@@ -88,7 +88,9 @@ func afterFunc(c *cli.Context) error {
 			}
 			fmt.Fprintf(c.App.Writer, "%s\n", serial)
 		} else {
-			fmt.Fprintf(c.App.Writer, "ok: %s\n", printer.Sprint(n))
+			if c.Bool("verbose") {
+				fmt.Fprintf(c.App.Writer, "ok: %s\n", printer.Sprint(n))
+			}
 		}
 	}
 	return nil

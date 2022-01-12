@@ -14,6 +14,11 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
+// special file names for plot and module files
+// these are json files with special formatting for detection
+const PLOT_FILE_NAME = "plot.wf"
+const MODULE_FILE_NAME = "module.wf"
+
 // Returns the file type, which is the file name without extension
 // e.g., formula.json -> formula, module.json -> module, etc...
 func getFileType(name string) (string, error) {
