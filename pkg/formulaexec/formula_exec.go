@@ -27,10 +27,12 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-const LOG_TAG_START = " ┌─ formula"
-const LOG_TAG = " │  formula"
-const LOG_TAG_OUTPUT = " │  formula  ->"
-const LOG_TAG_END = " └─ formula"
+const LOG_TAG_START = "│ ┌─ formula"
+const LOG_TAG = "│ │  formula"
+const LOG_TAG_OUTPUT_START = "│ │ ┌─ output "
+const LOG_TAG_OUTPUT = "│ │ │ output "
+const LOG_TAG_OUTPUT_END = "│ │ └─ output "
+const LOG_TAG_END = "│ └─ formula"
 
 type RioResult struct {
 	WareId string `json:"wareID"`
@@ -699,7 +701,9 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 	}
 
 	// run the action
+	logger.Info(LOG_TAG_OUTPUT_START, "")
 	_, err = invokeRunc(execConfig, logger.InfoWriter(LOG_TAG_OUTPUT))
+	logger.Info(LOG_TAG_OUTPUT_END, "")
 	if err != nil {
 		return rr, fmt.Errorf("invoke runc for exec failed: %s", err)
 	}

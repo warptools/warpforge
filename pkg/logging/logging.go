@@ -73,8 +73,8 @@ func (l *Logger) InfoWriter(tag string) *Writer {
 func (w *Writer) Write(data []byte) (n int, err error) {
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		fmt.Fprintf(w.pipe, "%s  %s\n",
-			color.HiYellowString(w.tag),
-			color.HiWhiteString(line))
+			color.HiGreenString(w.tag),
+			line)
 	}
 	return len(data), nil
 }
