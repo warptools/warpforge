@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
+	"github.com/warpfork/warpforge/wfapi"
 )
 
 var statusCmdDef = cli.Command{
@@ -23,6 +24,11 @@ func cmdStatus(c *cli.Context) error {
 	fmtBold := color.New(color.Bold)
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
 	verbose := c.Bool("verbose")
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("could not get current directory")
+	}
 
 	// display version
 	if verbose {
@@ -76,31 +82,91 @@ func cmdStatus(c *cli.Context) error {
 		fmtWarning.Fprintf(c.App.Writer, "WARNING: plugins do not appear to be installed correctly.\n\n")
 	}
 
-	// display module info
-	// TODO # of inputs
-	// TODO # of steps
-	// TODO # of outputs
-	// TODO any missing catalog refs?
+	// check if pwd is a module, read module and set flag
+	isModule := false
+	var module wfapi.Module
+	if _, err := os.Stat(filepath.Join(pwd, MODULE_FILE_NAME)); err == nil {
+		isModule = true
+		module, err = moduleFromFile(filepath.Join(pwd, MODULE_FILE_NAME))
+		if err != nil {
+			return fmt.Errorf("failed to open module file: %s", err)
+		}
+	}
+
+	if isModule {
+		fmt.Fprintf(c.App.Writer, "Module %q:\n", module.Name)
+	} else {
+		fmt.Fprintf(c.App.Writer, "No module in this directory.\n")
+	}
+
+	// display module and plot info
+	var plot wfapi.Plot
+	hasPlot := false
+	_, err = os.Stat(filepath.Join(pwd, PLOT_FILE_NAME))
+	if isModule && err == nil {
+		// module.wf and plot.wf exists, read the plot
+		hasPlot = true
+		plot, err = plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
+		if err != nil {
+			return fmt.Errorf("failed to open plot file: %s", err)
+		}
+	}
+
+	if hasPlot {
+		fmt.Fprintf(c.App.Writer, "\tPlot has %d inputs, %d steps, and %d outputs.\n",
+			len(plot.Inputs.Keys),
+			len(plot.Steps.Keys),
+			len(plot.Outputs.Keys))
+
+		// check for missing catalog refs
+		wss, err := openWorkspaceSet()
+		if err != nil {
+			return fmt.Errorf("failed to open workspace: %s", err)
+		}
+		catalogRefCount := 0
+		ingestCount := 0
+		mountCount := 0
+		for _, input := range plot.Inputs.Values {
+			if input.Basis().Mount != nil {
+				mountCount++
+			} else if input.Basis().Ingest != nil {
+				ingestCount++
+			} else if input.Basis().CatalogRef != nil {
+				ware, _, err := wss.GetCatalogWare(*input.PlotInputSimple.CatalogRef)
+				if err != nil {
+					return fmt.Errorf("failed to lookup catalog ref: %s", err)
+				}
+				if ware == nil {
+					fmt.Fprintf(c.App.Writer, "\tMissing catalog item: %q.\n", input.Basis().CatalogRef.String())
+				} else if err == nil {
+					catalogRefCount++
+				}
+			}
+		}
+		fmt.Fprintf(c.App.Writer, "\tPlot contains %d resolved catalog inputs(s).\n", catalogRefCount)
+		if ingestCount > 0 {
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d ingest input(s) and is not hermetic!\n", ingestCount)
+		}
+		if mountCount > 0 {
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount input(s) and is not hermetic!\n", mountCount)
+		}
+
+	} else if isModule {
+		// directory is a module, but has no plot
+		fmt.Fprintf(c.App.Writer, "\tNo plot file for module.\n")
+	}
 
 	// display workspace info
-	fmt.Fprintf(c.App.Writer, "Workspace:\n")
+	fmt.Fprintf(c.App.Writer, "\nWorkspace:\n")
 	wss, err := openWorkspaceSet()
 	if err != nil {
 		return fmt.Errorf("failed to open workspace set: %s", err)
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not get current directory")
-	}
-
 	// handle special case for pwd
 	fmt.Fprintf(c.App.Writer, "\t%s (pwd", pwd)
-	// check if it's a module (and can therefore run)
-	canRun := false
-	if _, err := os.Stat(filepath.Join(pwd, MODULE_FILE_NAME)); !os.IsNotExist(err) {
+	if isModule {
 		fmt.Fprintf(c.App.Writer, ", module")
-		canRun = true
 	}
 	// check if it's a workspace
 	if _, err := os.Stat(filepath.Join(pwd, ".warpforge")); !os.IsNotExist(err) {
@@ -153,7 +219,7 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, ")\n")
 	}
 
-	if canRun {
+	if isModule && hasPlot {
 		fmtBold.Fprintf(c.App.Writer, "\nYou can evaluate this module with the `%s run` command.\n", os.Args[0])
 	}
 

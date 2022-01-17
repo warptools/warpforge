@@ -82,3 +82,19 @@ func plotFromFile(fileName string) (wfapi.Plot, error) {
 
 	return plot, nil
 }
+
+// takes a path to a module file, returns a module
+func moduleFromFile(fileName string) (wfapi.Module, error) {
+	f, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return wfapi.Module{}, err
+	}
+
+	module := wfapi.Module{}
+	_, err = ipld.Unmarshal(f, json.Decode, &module, wfapi.TypeSystem.TypeByName("Module"))
+	if err != nil {
+		return wfapi.Module{}, err
+	}
+
+	return module, nil
+}
