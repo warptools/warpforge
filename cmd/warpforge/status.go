@@ -124,6 +124,7 @@ func cmdStatus(c *cli.Context) error {
 			return fmt.Errorf("failed to open workspace: %s", err)
 		}
 		catalogRefCount := 0
+		resolvedCatalogRefCount := 0
 		ingestCount := 0
 		mountCount := 0
 		for _, input := range plot.Inputs.Values {
@@ -132,6 +133,7 @@ func cmdStatus(c *cli.Context) error {
 			} else if input.Basis().Ingest != nil {
 				ingestCount++
 			} else if input.Basis().CatalogRef != nil {
+				catalogRefCount++
 				ware, _, err := wss.GetCatalogWare(*input.PlotInputSimple.CatalogRef)
 				if err != nil {
 					return fmt.Errorf("failed to lookup catalog ref: %s", err)
@@ -139,16 +141,19 @@ func cmdStatus(c *cli.Context) error {
 				if ware == nil {
 					fmt.Fprintf(c.App.Writer, "\tMissing catalog item: %q.\n", input.Basis().CatalogRef.String())
 				} else if err == nil {
-					catalogRefCount++
+					resolvedCatalogRefCount++
 				}
 			}
 		}
-		fmt.Fprintf(c.App.Writer, "\tPlot contains %d resolved catalog inputs(s).\n", catalogRefCount)
+		fmt.Fprintf(c.App.Writer, "\tPlot contains %d catalog inputs. %d/%d catalog inputs resolved successfully.\n", catalogRefCount, resolvedCatalogRefCount, catalogRefCount)
+		if resolvedCatalogRefCount < catalogRefCount {
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d unresolved catalog inputs!\n", (catalogRefCount - resolvedCatalogRefCount))
+		}
 		if ingestCount > 0 {
-			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d ingest input(s) and is not hermetic!\n", ingestCount)
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d ingest inputs and is not hermetic!\n", ingestCount)
 		}
 		if mountCount > 0 {
-			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount input(s) and is not hermetic!\n", mountCount)
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount inputs and is not hermetic!\n", mountCount)
 		}
 
 	} else if isModule {
