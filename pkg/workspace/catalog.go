@@ -15,7 +15,12 @@ import (
 // Get a catalog ware from a single workspace, doing lookup by CatalogRef.
 // This will first check all catalogs within the "catalogs" subdirectory, if it exists
 // then, it will check the "catalog" subdirectory, if it exists
-func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading of lineage or mirror files fails
+//     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
+func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
 	// list the catalogs within the "catalogs" subdirectory
 	catPaths, err := ws.ListCatalogPaths()
 	if err != nil {
@@ -24,8 +29,8 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 
 	// if it exists, add the "catalog" subdirectory to the end of the list
 	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
-	_, err = fs.Stat(ws.fsys, catalogPath)
-	if err == nil {
+	_, errRaw := fs.Stat(ws.fsys, catalogPath)
+	if errRaw == nil {
 		// "catalog" subdirectory exists
 		catPaths = append(catPaths, catalogPath)
 	}
@@ -89,7 +94,13 @@ func getWareFromLineage(l *wfapi.CatalogLineage, ref wfapi.CatalogRef) *wfapi.Wa
 	return nil
 }
 
-func (ws *Workspace) getCatalogMirror(catalogPath string, ref wfapi.CatalogRef) (*wfapi.CatalogMirror, error) {
+// Get a catalog mirror for a given catalog reference in a specific catalog (by path)
+//
+// Error:
+//
+//    - warpforge-error-io -- when reading lineage file fails
+//    - warpforge-error-catalog-parse -- when ipld parsing of mirror file fails
+func (ws *Workspace) getCatalogMirror(catalogPath string, ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi.Error) {
 	mirror := wfapi.CatalogMirror{}
 
 	// open lineage file
@@ -100,23 +111,29 @@ func (ws *Workspace) getCatalogMirror(catalogPath string, ref wfapi.CatalogRef) 
 		// no mirror file for this ware
 		return nil, nil
 	} else if err != nil {
-		return nil, fmt.Errorf("error opening mirror file %q: %s", mirrorPath, err)
+		return nil, wfapi.ErrorIo("error opening mirror file", &mirrorPath, err)
 	}
 
 	// read and unmarshal mirror data
 	mirrorBytes, err := ioutil.ReadAll(mirrorFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read mirror file: %s", err)
+		return nil, wfapi.ErrorIo("failed to read mirror file", &mirrorPath, err)
 	}
 	_, err = ipld.Unmarshal(mirrorBytes, json.Decode, &mirror, wfapi.TypeSystem.TypeByName("CatalogMirror"))
 	if err != nil {
-		return nil, err
+		return nil, wfapi.ErrorCatalogParse(mirrorPath, err)
 	}
 
 	return &mirror, nil
 }
 
-func (ws *Workspace) getCatalogLineage(catalogPath string, ref wfapi.CatalogRef) (*wfapi.CatalogLineage, error) {
+// Get a catalog lineage for a given catalog reference in a specific catalog (by path)
+//
+// Error:
+//
+//    - warpforge-error-io -- when reading lineage file fails
+//    - warpforge-error-catalog-parse -- when ipld unmarshaling fails
+func (ws *Workspace) getCatalogLineage(catalogPath string, ref wfapi.CatalogRef) (*wfapi.CatalogLineage, wfapi.Error) {
 	lineage := wfapi.CatalogLineage{}
 
 	// open lineage file
@@ -127,17 +144,17 @@ func (ws *Workspace) getCatalogLineage(catalogPath string, ref wfapi.CatalogRef)
 		// lineage file does not exist for this workspace
 		return nil, nil
 	} else if err != nil {
-		return nil, fmt.Errorf("error opening lineage file: %s", err)
+		return nil, wfapi.ErrorIo("error opening lineage file", &lineagePath, err)
 	}
 
 	// read and unmarshal lineage data
 	lineageBytes, err := ioutil.ReadAll(lineageFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read lineage file: %s", err)
+		return nil, wfapi.ErrorIo("error reading lineage file", &lineagePath, err)
 	}
 	_, err = ipld.Unmarshal(lineageBytes, json.Decode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
 	if err != nil {
-		return nil, err
+		return nil, wfapi.ErrorCatalogParse(lineagePath, err)
 	}
 
 	return &lineage, nil
@@ -295,8 +312,12 @@ func (ws *Workspace) AddByWareMirror(catalogName *string,
 //  1. traverses the workspace stack looking in "catalog" dirs.
 //  2. looks through all catalogs (within the "catalogs" dir) of the root workspace
 //     in alphabetical order, picking the first matching ware found.
-func (wsSet *WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
-
+//
+// Errors:
+//
+//     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
+//     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
+func (wsSet *WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
 	// traverse workspace stack
 	for _, ws := range wsSet.Stack {
 		wareId, wareAddr, err := ws.GetCatalogWare(ref)

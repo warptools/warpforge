@@ -25,7 +25,11 @@ const LOG_TAG_END = "└─ plot"
 type pipeMap map[wfapi.StepName]map[wfapi.LocalLabel]wfapi.FormulaInput
 
 // Returns a WareID for a given StepName and LocalLabel, if it exists
-func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, error) {
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the requested step does not exist
+func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, wfapi.Error) {
 	if step, ok := m[stepName]; ok {
 		if input, ok := step[label]; ok {
 			// located a valid input
@@ -33,24 +37,32 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 		} else {
 			// located step, but no input by label
 			if stepName == "" {
-				return nil, fmt.Errorf("no label '%s' in plot inputs ('pipe::%s' not defined)", label, label)
+				return nil, wfapi.ErrorPlotInvalid(fmt.Sprintf("no label '%s' in plot inputs ('pipe::%s' not defined)", label, label))
 			} else {
-				return nil, fmt.Errorf("no label '%s' for step '%s' (pipe:%s:%s not defined)", label, stepName, stepName, label)
+				return nil, wfapi.ErrorPlotInvalid(fmt.Sprintf("no label '%s' for step '%s' (pipe:%s:%s not defined)", label, stepName, stepName, label))
 			}
 		}
 	} else {
 		// did not locate step
-		return nil, fmt.Errorf("no step '%s'", stepName)
+		return nil, wfapi.ErrorPlotInvalid(fmt.Sprintf("step %s was expected, but missing from plot", stepName))
 	}
 }
 
 // Resolves a PlotInput to a WareID and optionally a WarehouseAddr.
 // This will resolve various input types (Pipes, CatalogRefs, etc...)
 // to allow them to be used in a Formula.
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the provided plot input is invalid
+//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-git -- when a git related error occurs during a git ingest
+//    - warpforge-error-io -- when an IO error occurs during conversion
+//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
-	logger logging.Logger) (wfapi.FormulaInput, *wfapi.WarehouseAddr, error) {
+	logger logging.Logger) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
 	basis, addr, err := plotInputToFormulaInputSimple(wsSet, plotInput, pipeCtx, logger)
 	if err != nil {
 		return wfapi.FormulaInput{}, nil, err
@@ -72,10 +84,19 @@ func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 	}
 }
 
+// Converts a plot input into a FormulaInputSimple
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the provided plot input is invalid
+//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-git -- when a git related error occurs during a git ingest
+//    - warpforge-error-io -- when an IO error occurs during conversion
+//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
-	logger logging.Logger) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, error) {
+	logger logging.Logger) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
 	var basis wfapi.PlotInputSimple
 
 	switch {
@@ -84,7 +105,8 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 	case plotInput.PlotInputComplex != nil:
 		basis = plotInput.PlotInputComplex.Basis
 	default:
-		return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid plot input")
+		return wfapi.FormulaInputSimple{}, nil,
+			wfapi.ErrorPlotInvalid("plot contains input that is neither PlotInputSimple or PlotInputComplex")
 	}
 
 	switch {
@@ -112,7 +134,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 			color.WhiteString(string(basis.Mount.Mode)),
 		)
 
-		// convert WareID PlotInput to FormulaInput
+		// convert mount PlotInput to FormulaInput
 		return wfapi.FormulaInputSimple{
 			Mount: basis.Mount,
 		}, nil, nil
@@ -134,7 +156,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 			// failed to find a match in the catalog
 			return wfapi.FormulaInputSimple{},
 				nil,
-				fmt.Errorf("no definition found for %q", basis.CatalogRef.String())
+				wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef)
 		}
 
 		wareStr := "none"
@@ -162,9 +184,9 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 			WareID: &wfapi.WareID{},
 		}
 
-		path, err := filepath.Abs(basis.Ingest.GitIngest.HostPath)
-		if err != nil {
-			return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("failed to get absolute path for git ingest")
+		path, errRaw := filepath.Abs(basis.Ingest.GitIngest.HostPath)
+		if errRaw != nil {
+			return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorIo("failed to convert git host path to absolute path", &basis.Ingest.GitIngest.HostPath, errRaw)
 		}
 
 		// populate cache dir with git ingest
@@ -178,16 +200,16 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 		ws, _ := workspace.OpenHomeWorkspace(os.DirFS("/"))
 
 		// resolve the revision of the git ingest to a hash
-		repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+		repo, gitErr := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 			URL: "file://" + path,
 		})
-		if err != nil {
-			return input, nil, fmt.Errorf("failed to checkout git repository at %q to memory: %s", path, err)
+		if gitErr != nil {
+			return input, nil, wfapi.ErrorGit(fmt.Sprintf("failed to checkout git repository at %q to memory", path), gitErr)
 		}
 
-		hashBytes, err := repo.ResolveRevision(plumbing.Revision(basis.Ingest.GitIngest.Ref))
-		if err != nil {
-			return input, nil, fmt.Errorf("failed to resolve git hash: %s", err)
+		hashBytes, gitErr := repo.ResolveRevision(plumbing.Revision(basis.Ingest.GitIngest.Ref))
+		if gitErr != nil {
+			return input, nil, wfapi.ErrorGit(fmt.Sprintf("failed to resolve git revision for repository %q", path), gitErr)
 		}
 
 		// create our formula ware id using the resolved hash
@@ -197,29 +219,44 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 		// checkout the git repository to the cache path
 		cachePath, err := ws.CachePath(*input.WareID)
 		if err != nil {
-			return input, nil, err
+			return input, nil, wfapi.ErrorPlotInvalid(fmt.Sprintf("plot contains invalid WareID %q", *input.WareID))
 		}
-		if _, err = os.Stat(cachePath); os.IsNotExist(err) {
-			_, err = git.PlainClone(cachePath, false, &git.CloneOptions{
+		if _, errRaw = os.Stat(cachePath); os.IsNotExist(errRaw) {
+			_, gitErr = git.PlainClone(cachePath, false, &git.CloneOptions{
 				URL:               "file://" + path,
 				RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 			})
 
-			if err != nil {
-				return input, nil, fmt.Errorf("failed to checkout git ingest: %s", err)
+			if gitErr != nil {
+				return input, nil, wfapi.ErrorGit(fmt.Sprintf("failed to checkout git ingest for repository %s", path), gitErr)
 			}
 		}
 		return input, nil, nil
 
 	}
-	return wfapi.FormulaInputSimple{}, nil, fmt.Errorf("invalid type in plot input")
+	return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid("invalid type in plot input")
 }
 
+// Executes a protoformula within a Plot
+//
+// Errors:
+//
+//    - warpforge-error-io -- when an IO error occurs
+//    - warpforge-error-formula-execution-failed -- when an error occurs during formula execution
+//    - warpforge-error-executor-failed -- when the execution step of the formula fails
+//    - warpforge-error-ware-unpack -- when a ware unpack operation fails for a formula input
+//    - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
+//    - warpforge-error-workspace -- when an invalid workspace is provided
+//    - warpforge-error-formula-invalid -- when an invalid formula is provided
+//    - warpforge-error-git -- when an error handing a git ingest occurs
+//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
+//    - warpforge-error-missing-catalog-entry -- when a referenced catalog entry cannot be found
+//    - warpforge-error-plot-invalid -- when the plot contains invalid data
 func execProtoformula(wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	ctx wfapi.FormulaContext,
 	pipeCtx pipeMap,
-	logger logging.Logger) (wfapi.RunRecord, error) {
+	logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
 	// create an empty Formula and FormulaContext
 	formula := wfapi.Formula{
 		Action: pf.Action,
@@ -259,6 +296,16 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 	return rr, err
 }
 
+// Execute a Plot using the provided WorkspaceSet
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the provided plot input is invalid
+//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-git -- when a git related error occurs during a git ingest
+//    - warpforge-error-io -- when an IO error occurs during conversion
+//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
+//    - warpforge-error-plot-step-failed -- when execution of a plot step fails
 func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) (wfapi.PlotResults, error) {
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
@@ -266,13 +313,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 	logger.Info(LOG_TAG_START, "")
 
 	// convert plot to node
-
 	nPlot := bindnode.Wrap(&plot, wfapi.TypeSystem.TypeByName("Plot"))
-	/*
-		if err != nil {
-			return results, fmt.Errorf("could not wrap plot: %s", err)
-		}
-	*/
 	logger.Debug(LOG_TAG, printer.Sprint(nPlot))
 
 	// collect the plot inputs
@@ -312,7 +353,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 			)
 			rr, err := execProtoformula(wsSet, *step.Protoformula, inputContext, pipeCtx, logger)
 			if err != nil {
-				return results, fmt.Errorf("failed to execute protoformula for step %s: %s", name, err)
+				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
 			// accumulate the results of the Protoformula our map of Pipes
 			pipeCtx[name] = make(map[wfapi.LocalLabel]wfapi.FormulaInput)
@@ -335,7 +376,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 
 			stepResults, err := Exec(wsSet, *step.Plot, logger)
 			if err != nil {
-				return results, fmt.Errorf("failed to execute plot for step %s: %s", name, err)
+				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
 			// accumulate the results of the Plot into our map of Pipes
 			pipeCtx[name] = make(map[wfapi.LocalLabel]wfapi.FormulaInput)
@@ -353,7 +394,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 				}
 			}
 		default:
-			return results, fmt.Errorf("invalid step %s", name)
+			return results, wfapi.ErrorPlotInvalid(fmt.Sprintf("plot step %q does not contain a Protoformula or Plot", name))
 		}
 
 		logger.Info(LOG_TAG_MID, "(%s) %s",

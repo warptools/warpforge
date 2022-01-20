@@ -99,9 +99,8 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 // Errors:
 //
 //    - warpforge-error-io -- when file reads, writes, and dir creation fails
-//    - warpforge-error-executor-failed -- when generation of the base spec by invoking runc fails
-//    - warpforge-error-serialization -- when deserialization of the runc generated config fails
-func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
+//    - warpforge-error-executor-failed -- when generation of the base spec by runc fails
+func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 	rc := runConfig{
 		runPath: runPath,
 		wsPath:  wsPath,
@@ -112,7 +111,7 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 	configFile := filepath.Join(runPath, "config.json")
 	err := os.RemoveAll(configFile)
 	if err != nil {
-		return rc, wfapi.ErrorIo("failed to remove config.json", err)
+		return rc, wfapi.ErrorIo("failed to remove config.json", &configFile, err)
 	}
 	var cmd *exec.Cmd
 	if os.Getuid() == 0 {
@@ -131,18 +130,19 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 	}
 	configFileBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return rc, wfapi.ErrorIo("failed to read runc config", err)
+		return rc, wfapi.ErrorIo("failed to read runc config", &configFile, err)
 	}
 	err = json.Unmarshal(configFileBytes, &rc.spec)
 	if err != nil {
-		return rc, wfapi.ErrorSerialization("failed to parse runc config", err)
+		return rc, wfapi.ErrorExecutorFailed("runc",
+			wfapi.ErrorSerialization("failed to parse runc config", err))
 	}
 
 	// set up root -- this is not actually used since it is replaced with an overlayfs
 	rootPath := filepath.Join(runPath, "root")
 	err = os.MkdirAll(rootPath, 0755)
 	if err != nil {
-		return rc, wfapi.ErrorIo("failed to create root directory", err)
+		return rc, wfapi.ErrorIo("failed to create root directory", &rootPath, err)
 	}
 
 	root := specs.Root{
@@ -201,14 +201,13 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, error) {
 //
 //     - warpforge-error-io -- when IO error occurs during setup
 //     - warpforge-error-executor-failed -- when runc execution of `rio unpack` fails
-//     - warpforge-error-serialization -- when rio output cannot be deserialized
-//     - warpforge-error-ware-unpack -- when rio output cannot be deserialized
+//     - warpforge-error-ware-unpack -- when `rio unpack` operation fails
 func makeWareMount(config runConfig,
 	wareId wfapi.WareID,
 	dest string,
 	context *wfapi.FormulaContext,
 	filters wfapi.FilterMap,
-	logger logging.Logger) (specs.Mount, error) {
+	logger logging.Logger) (specs.Mount, wfapi.Error) {
 	// default warehouse to unpack from
 	src := "ca+file://" + containerWarehousePath()
 
@@ -277,7 +276,7 @@ func makeWareMount(config runConfig,
 	expectCachePath := fmt.Sprintf("cache/%s/fileset/%s/%s/%s",
 		strings.Split(wareId.String(), ":")[0],
 		wareId.String()[4:7], wareId.String()[7:10], wareId.String()[4:])
-	if _, err := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(err) {
+	if _, errRaw := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(errRaw) {
 		// no cached ware, run the unpack
 		outStr, err := invokeRunc(config, nil)
 		if err != nil {
@@ -288,9 +287,9 @@ func makeWareMount(config runConfig,
 		}
 		out := RioOutput{}
 		for _, line := range strings.Split(outStr, "\n") {
-			err := json.Unmarshal([]byte(line), &out)
+			errRaw := json.Unmarshal([]byte(line), &out)
 			if err != nil {
-				wfapi.ErrorSerialization("deserializing rio output", err)
+				return specs.Mount{}, wfapi.ErrorWareUnpack(wareId, wfapi.ErrorSerialization("deserializing rio output", errRaw))
 			}
 			if out.Result.WareId != "" {
 				// found wareId
@@ -298,7 +297,7 @@ func makeWareMount(config runConfig,
 			}
 		}
 		if out.Result.WareId == "" {
-			return specs.Mount{}, wfapi.ErrorWareUnpack(wareId, err)
+			return specs.Mount{}, wfapi.ErrorWareUnpack(wareId, fmt.Errorf("rio unpack resulted in empty WareID output"))
 		}
 		wareType = strings.SplitN(out.Result.WareId, ":", 2)[0]
 		cacheWareId = strings.SplitN(out.Result.WareId, ":", 2)[1]
@@ -313,13 +312,13 @@ func makeWareMount(config runConfig,
 	workdirPath := filepath.Join(config.runPath, "overlays", fmt.Sprintf("work-%s", cacheWareId))
 
 	// create upper and work dirs
-	err := os.MkdirAll(upperdirPath, 0755)
-	if err != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", err)
+	errRaw := os.MkdirAll(upperdirPath, 0755)
+	if errRaw != nil {
+		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", &upperdirPath, errRaw)
 	}
-	err = os.MkdirAll(workdirPath, 0755)
-	if err != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", err)
+	errRaw = os.MkdirAll(workdirPath, 0755)
+	if errRaw != nil {
+		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", &workdirPath, errRaw)
 	}
 
 	return specs.Mount{
@@ -339,7 +338,7 @@ func makeWareMount(config runConfig,
 // Errors:
 //
 //     - warpforge-error-io -- when creation of dirs fails
-func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mount, error) {
+func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mount, wfapi.Error) {
 	mountId := strings.Replace(path, "/", "-", -1)
 	mountId = strings.Replace(mountId, ".", "-", -1)
 	upperdirPath := filepath.Join(config.runPath, "overlays/upper-", mountId)
@@ -348,11 +347,11 @@ func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mou
 	// create upper and work dirs
 	err := os.MkdirAll(upperdirPath, 0755)
 	if err != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", err)
+		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", &upperdirPath, err)
 	}
 	err = os.MkdirAll(workdirPath, 0755)
 	if err != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", err)
+		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", &workdirPath, err)
 	}
 
 	return specs.Mount{
@@ -370,7 +369,7 @@ func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mou
 // Creates an overlay mount for a path on the host filesystem
 //
 // Errors: none -- this function only adds an entry to the runc config and cannot fail
-func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount, error) {
+func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount, wfapi.Error) {
 	return specs.Mount{
 		Source:      path,
 		Destination: dest,
@@ -385,19 +384,19 @@ func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount,
 //
 //    - warpforge-error-executor-failed -- invocation of runc caused an error
 //    - warpforge-error-io -- i/o error occurred during setup of runc invocation
-//    - warpforge-error-serialization -- serialization of runc config failed
-func invokeRunc(config runConfig, logWriter io.Writer) (string, error) {
+func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 	configBytes, err := json.Marshal(config.spec)
 	if err != nil {
-		return "", wfapi.ErrorSerialization("serializing runc config", err)
+		return "", wfapi.ErrorExecutorFailed("runc", wfapi.ErrorSerialization("failed to serialize runc config", err))
 	}
 	bundlePath, err := ioutil.TempDir(config.runPath, "bundle-")
 	if err != nil {
-		return "", wfapi.ErrorIo("creating bundle tmpdir", err)
+		return "", wfapi.ErrorIo("creating bundle tmpdir", nil, err)
 	}
-	err = ioutil.WriteFile(filepath.Join(bundlePath, "config.json"), configBytes, 0644)
+	configPath := filepath.Join(bundlePath, "config.json")
+	err = ioutil.WriteFile(configPath, configBytes, 0644)
 	if err != nil {
-		return "", wfapi.ErrorIo("writing config.json", err)
+		return "", wfapi.ErrorIo("writing config.json", &configPath, err)
 	}
 
 	cmd := exec.Command(filepath.Join(config.binPath, "runc"),
@@ -431,7 +430,6 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, error) {
 // Errors:
 //
 //    - warpforge-error-executor-failed -- if runc execution fails
-//    - warpforge-error-serialization -- if deserialiation of rio output fails
 //    - warpforge-error-ware-pack -- if rio pack of ware fails
 func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 	config.spec.Process.Args = []string{
@@ -454,7 +452,8 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 	for _, line := range strings.Split(outStr, "\n") {
 		err := json.Unmarshal([]byte(line), &out)
 		if err != nil {
-			return wfapi.WareID{}, wfapi.ErrorSerialization("deserializing rio pack output", err)
+			return wfapi.WareID{}, wfapi.ErrorWarePack(path,
+				wfapi.ErrorSerialization("deserializing rio pack output", err))
 		}
 		if out.Result.WareId != "" {
 			// found wareId
@@ -477,7 +476,7 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 // Errors:
 //
 //     - warpforge-error-io -- when locating path of this executable fails
-func GetBinPath() (string, error) {
+func GetBinPath() (string, wfapi.Error) {
 	// determine the path of the running executable
 	// other binaries (runc, rio) will be located here as well
 	path, override := os.LookupEnv("WARPFORGE_PATH")
@@ -486,13 +485,13 @@ func GetBinPath() (string, error) {
 	} else {
 		binPath, err := os.Executable()
 		if err != nil {
-			return "", wfapi.ErrorIo("locating binary path", err)
+			return "", wfapi.ErrorIo("failed to locate binary path", nil, err)
 		}
 		return filepath.Dir(binPath), nil
 	}
 }
 
-// Execute a formula
+// Internal function for executing a formula
 //
 // Errors:
 //
@@ -500,12 +499,10 @@ func GetBinPath() (string, error) {
 // - warpforge-error-executor-failed -- when the execution step of the formula fails
 // - warpforge-error-ware-unpack -- when a ware unpack operation fails for a formula input
 // - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
-// - warpforge-error-serialization -- when serialization or deserialization operations fail
 // - warpforge-error-workspace -- when an invalid workspace is provided
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
 // - warpforge-error-ipld -- when an IPLD error occurs during formula wrapping or computing formula ID
-// - warpforge-error-unimplemented -- when an unimplemented feature is used
-func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, error) {
+func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
 	formula := fc.Formula
 	context := fc.Context
 	rr := wfapi.RunRecord{}
@@ -536,7 +533,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 
 	pwd, errRaw := os.Getwd()
 	if errRaw != nil {
-		return rr, wfapi.ErrorIo("failed to get working dir", errRaw)
+		return rr, wfapi.ErrorIo("failed to get working dir", nil, errRaw)
 	}
 
 	// get the home workspace location
@@ -552,9 +549,10 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 	wsPath = filepath.Join("/", wsPath, ".warpforge")
 
 	// ensure a warehouse dir exists within the home workspace
-	errRaw = os.MkdirAll(filepath.Join(wsPath, "warehouse"), 0755)
+	warehousePath := filepath.Join(wsPath, "warehouse")
+	errRaw = os.MkdirAll(warehousePath, 0755)
 	if errRaw != nil {
-		return rr, wfapi.ErrorIo("failed to create warehouse", errRaw)
+		return rr, wfapi.ErrorIo("failed to create warehouse", &warehousePath, errRaw)
 	}
 
 	binPath, err := GetBinPath()
@@ -566,7 +564,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 	// this is used to store working files and is destroyed upon completion
 	runPath, errRaw := ioutil.TempDir(os.TempDir(), "warpforge-run-")
 	if err != nil {
-		return rr, wfapi.ErrorIo("failed to create temp run directory", errRaw)
+		return rr, wfapi.ErrorIo("failed to create temp run directory", nil, errRaw)
 	}
 
 	_, keep := os.LookupEnv("WARPFORGE_KEEP_RUNDIR")
@@ -713,14 +711,14 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 		scriptPath := filepath.Join(runPath, "script")
 		errRaw = os.MkdirAll(scriptPath, 0755)
 		if errRaw != nil {
-			return rr, wfapi.ErrorIo(fmt.Sprintf("failed to create script dir %q", scriptPath), errRaw)
+			return rr, wfapi.ErrorIo("failed to create script dir", &scriptPath, errRaw)
 		}
 
 		// open the script file
 		scriptFilePath := filepath.Join(scriptPath, "run")
-		scriptFile, err := os.OpenFile(scriptFilePath, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return rr, wfapi.ErrorIo(fmt.Sprintf("failed to open script file for writing: %s", scriptFilePath), err)
+		scriptFile, errRaw := os.OpenFile(scriptFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+		if errRaw != nil {
+			return rr, wfapi.ErrorIo("failed to open script file for writing", &scriptFilePath, errRaw)
 		}
 		defer scriptFile.Close()
 
@@ -730,14 +728,14 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 			entryFilePath := filepath.Join(scriptPath, fmt.Sprintf("entry-%d", n))
 			entryFile, err := os.OpenFile(entryFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
-				return rr, wfapi.ErrorIo(fmt.Sprintf("failed to open entry file %q for writing", entryFilePath), err)
+				return rr, wfapi.ErrorIo("failed to open entry file for writing", &entryFilePath, err)
 			}
 			defer entryFile.Close()
 
 			// write the entry file
 			_, err = entryFile.WriteString(entry + "\n")
 			if err != nil {
-				return rr, wfapi.ErrorIo(fmt.Sprintf("error writing entry file %q", entryFilePath), err)
+				return rr, wfapi.ErrorIo("error writing entry file", &entryFilePath, err)
 			}
 
 			// write a line to execute this entry into the main script file
@@ -747,14 +745,14 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 				filepath.Join(containerScriptPath(), fmt.Sprintf("entry-%d", n)))
 			_, err = scriptFile.WriteString(entrySrc)
 			if err != nil {
-				return rr, wfapi.ErrorIo("error writing script file", err)
+				return rr, wfapi.ErrorIo("error writing entry to script file", &scriptFilePath, err)
 			}
 		}
 
 		// create a mount for the script file
 		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath())
 		if err != nil {
-			return rr, wfapi.ErrorIo("failed to create script mount", err)
+			return rr, err
 		}
 		execConfig.spec.Mounts = append(execConfig.spec.Mounts, scriptMount)
 
@@ -796,7 +794,7 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 				color.HiBlueString("wareId"),
 				color.WhiteString(wareId.String()))
 		case gather.From.SandboxVar != nil:
-			return rr, wfapi.ErrorUnimplemented("SandboxVar output type not supported")
+			panic("SandboxVar output type not supported")
 		default:
 			return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("invalid gather directive provided for output %q", name))
 		}
@@ -820,5 +818,31 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 
 	logger.Info(LOG_TAG_END, "")
 
+	return rr, nil
+}
+
+// Execute a Formula using the provided root Workspace
+//
+// Errors:
+//
+//     - warpforge-error-formula-execution-failed -- when an error occurs during formula execution
+//     - warpforge-error-executor-failed -- when the execution step of the formula fails
+//     - warpforge-error-ware-unpack -- when a ware unpack operation fails for a formula input
+//     - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
+//     - warpforge-error-workspace -- when an invalid workspace is provided
+//     - warpforge-error-formula-invalid -- when an invalid formula is provided
+func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+	rr, err := execFormula(ws, fc, logger)
+	if err != nil {
+		switch err.(*wfapi.ErrorVal).Code() {
+		case "warpforge-error-io":
+			return rr, wfapi.ErrorFormulaExecutionFailed(err)
+		case "warpforge-error-ipld":
+			return rr, wfapi.ErrorFormulaExecutionFailed(err)
+		default:
+			// Error Codes -= warpforge-error-io, warpforge-error-ipld
+			return rr, err
+		}
+	}
 	return rr, nil
 }

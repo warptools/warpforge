@@ -195,6 +195,9 @@ func OrderStepsAll(plot wfapi.Plot) ([]wfapi.StepName, error) {
 }
 
 // Return the ordered list of steps for a single plot.
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the plot is not a DAG
 func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 	// initialize results accumulator
 	result := make([]wfapi.StepName, 0, len(plot.Steps.Keys))
@@ -225,7 +228,7 @@ func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 		// check StepName exists
 		stepOutputs, ok := outputPipes[output.Pipe.StepName]
 		if !ok {
-			return []wfapi.StepName{}, fmt.Errorf("could not resolve plot outputs: no step named %q", output.Pipe.StepName)
+			return []wfapi.StepName{}, wfapi.ErrorPlotInvalid(fmt.Sprintf("could not resolve plot outputs: no step named %q", output.Pipe.StepName))
 		}
 
 		labelFound := false
@@ -236,13 +239,18 @@ func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 			}
 		}
 		if !labelFound {
-			return []wfapi.StepName{}, fmt.Errorf("could not resolve plot outputs: no output %q in step %q", output.Pipe.Label, output.Pipe.StepName)
+			return []wfapi.StepName{}, wfapi.ErrorPlotInvalid(fmt.Sprintf("could not resolve plot outputs: no output %q in step %q", output.Pipe.Label, output.Pipe.StepName))
 		}
 	}
 
 	return result, nil
 }
 
+// Visit a step of the plot to perform ordering
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the plot is not a DAG
 func orderSteps_visit(
 	name wfapi.StepName,
 	step wfapi.Step,
@@ -260,7 +268,7 @@ func orderSteps_visit(
 
 	// if step is in loop detection, fail
 	if _, ok := loopDetector[name]; ok {
-		return fmt.Errorf("plot inputs not a DAG: loop detected at step '%s'", name)
+		return wfapi.ErrorPlotInvalid(fmt.Sprintf("plot inputs not a DAG: loop detected at step '%s'", name))
 	}
 	// mark step for loop detection
 	loopDetector[name] = struct{}{}
@@ -294,7 +302,7 @@ func orderSteps_visit(
 		if pipe.StepName == "" {
 			// plot inputs, check input list
 			if !labelInList(plot.Inputs.Keys, pipe.Label) {
-				return fmt.Errorf("invalid pipe 'pipe::%s', input '%s' does not exist", pipe.Label, pipe.Label)
+				return wfapi.ErrorPlotInvalid(fmt.Sprintf("invalid pipe 'pipe::%s', input '%s' does not exist", pipe.Label, pipe.Label))
 			}
 		} else {
 			// handle step pipes
@@ -309,10 +317,10 @@ func orderSteps_visit(
 					panic("unreachable")
 				}
 				if !labelInList(outputs, pipe.Label) {
-					return fmt.Errorf("invalid pipe 'pipe:%s:%s', label '%s' does not exist for step %s", pipe.StepName, pipe.Label, pipe.Label, pipe.StepName)
+					return wfapi.ErrorPlotInvalid(fmt.Sprintf("invalid pipe 'pipe:%s:%s', label '%s' does not exist for step %s", pipe.StepName, pipe.Label, pipe.Label, pipe.StepName))
 				}
 			} else {
-				return fmt.Errorf("invalid pipe 'pipe:%s:%s', step '%s' does not exist", pipe.StepName, pipe.Label, pipe.StepName)
+				return wfapi.ErrorPlotInvalid(fmt.Sprintf("invalid pipe 'pipe:%s:%s', step '%s' does not exist", pipe.StepName, pipe.Label, pipe.StepName))
 			}
 		}
 	}

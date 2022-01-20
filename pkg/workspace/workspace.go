@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -74,7 +73,7 @@ func (ws *Workspace) IsHomeWorkspace() bool {
 // opens a full WorkspaceSet
 // searches from searchPath up to basisPath for workspaces
 // root workspace will be the first workspace found that is marked as a root, or the home workspace if none exists
-func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (WorkspaceSet, error) {
+func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (WorkspaceSet, wfapi.Error) {
 	set := WorkspaceSet{}
 	home, err := OpenHomeWorkspace(fsys)
 	if err != nil {
@@ -99,10 +98,13 @@ func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (Workspac
 	return set, nil
 }
 
-// returns the path for a cached ware within a workspace
-func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
+// Returns the path for a cached ware within a workspace
+// Errors:
+//
+//    - warpforge-error-wareid-invalid -- when a malformed WareID is provided
+func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
 	if len(wareId.Hash) < 7 {
-		return "", fmt.Errorf("invalid WareID hash")
+		return "", wfapi.ErrorWareIdInvalid(wareId)
 	}
 	return filepath.Join(
 		"/",
@@ -141,8 +143,12 @@ func (ws *Workspace) CatalogPath(name *string) string {
 	}
 }
 
-// list the catalogs available within a workspace
-func (ws *Workspace) ListCatalogPaths() ([]string, error) {
+// List the catalogs available within a workspace
+//
+// Errors:
+//
+//    - warpforge-error-io -- when listing directory fails
+func (ws *Workspace) ListCatalogPaths() ([]string, wfapi.Error) {
 	catalogsPath := filepath.Join(
 		ws.rootPath,
 		".warpforge",
@@ -154,13 +160,13 @@ func (ws *Workspace) ListCatalogPaths() ([]string, error) {
 		// no catalogs directory, return an empty list
 		return []string{}, nil
 	} else if err != nil {
-		return []string{}, err
+		return []string{}, wfapi.ErrorIo("failed to stat catalogs path", &catalogsPath, err)
 	}
 
 	// list the directory
 	catalogs, err := fs.ReadDir(ws.fsys, catalogsPath)
 	if err != nil {
-		return []string{}, err
+		return []string{}, wfapi.ErrorIo("failed to read catalogs dir", &catalogsPath, err)
 	}
 
 	// build a list of subdirectories, each is a catalog

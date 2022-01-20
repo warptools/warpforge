@@ -124,14 +124,18 @@ func ErrorExecutorFailed(executorEngineName string, cause error) Error {
 // Errors:
 //
 //    - warpforge-error-io --
-func ErrorIo(context string, cause error) Error {
+func ErrorIo(context string, path *string, cause error) Error {
+	var details [][2]string
+	if path != nil {
+		details = [][2]string{{"context", context}, {"path", *path}}
+	} else {
+		details = [][2]string{{"context", context}, {"path", "none"}}
+	}
 	return &ErrorVal{
 		CodeString: "warpforge-error-io",
 		Message:    fmt.Sprintf("io error: %s: %s", context, cause),
-		Details: [][2]string{
-			{"context", context},
-		},
-		Cause: wrapErr(cause),
+		Details:    details,
+		Cause:      wrapErr(cause),
 	}
 }
 
@@ -183,6 +187,21 @@ func ErrorWarePack(path string, cause error) Error {
 	}
 }
 
+// ErrorWareIdInvalid is returned when a malformed WareID is parsed
+//
+// Errors:
+//
+//    - warpforge-error-wareid-invalid --
+func ErrorWareIdInvalid(wareId WareID) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-wareid-invalid",
+		Message:    fmt.Sprintf("invalid WareID: %s", wareId),
+		Details: [][2]string{
+			{"wareId", wareId.String()},
+		},
+	}
+}
+
 // ErrorFormulaInvalid is returned when a formula contains invalid data
 //
 // Errors:
@@ -198,20 +217,23 @@ func ErrorFormulaInvalid(reason string) Error {
 	}
 }
 
-// ErrorUnimplemented is returned when a feature is not implemented
+// ErrorFormulaExecutionFailed is returned to wrap generic errors that cause
+// formula execution to fail.
 //
 // Errors:
 //
-//    - warpforge-error-unimplemented --
-func ErrorUnimplemented(feature string) Error {
+//    - warpforge-error-formula-execution-failed --
+func ErrorFormulaExecutionFailed(cause error) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-unimplemented",
-		Message:    fmt.Sprintf("unimplemented: %s", feature),
-		Details:    [][2]string{},
+		CodeString: "warpforge-error-formula-execution-failed",
+		Message:    fmt.Sprintf("formula execution failed: %s", cause),
+		Cause:      wrapErr(cause),
 	}
 }
 
 // ErrorIpld is returned to wrap IPLD errors
+//
+// Note, this should *only* be using sparingly in cases where IPLD should not fail.
 //
 // Errors:
 //
@@ -222,6 +244,84 @@ func ErrorIpld(context string, cause error) Error {
 		Message:    fmt.Sprintf("ipld error: %s: %s", context, cause),
 		Details: [][2]string{
 			{"context", context},
+		},
+		Cause: wrapErr(cause),
+	}
+}
+
+// ErrorPlotInvalid is returned when a plot contains invalid data
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid --
+func ErrorPlotInvalid(reason string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-plot-invalid",
+		Message:    fmt.Sprintf("invalid plot: %s", reason),
+		Details: [][2]string{
+			{"reason", reason},
+		},
+	}
+}
+
+// ErrorMissingCatalogEntry is returned when a catalog entry cannot be found
+//
+// Errors:
+//
+//    - warpforge-error-missing-catalog-entry --
+func ErrorMissingCatalogEntry(ref CatalogRef) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-missing-catalog-entry",
+		Message:    fmt.Sprintf("missing catalog entry: %s", ref),
+		Details: [][2]string{
+			{"catalogRef", ref.String()},
+		},
+	}
+}
+
+// ErrorGit is returned when a go-git error occurs
+//
+// Errors:
+//
+//    - warpforge-error-git --
+func ErrorGit(context string, cause error) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-git",
+		Message:    fmt.Sprintf("git error: %s: %s", context, cause),
+		Details: [][2]string{
+			{"context", context},
+		},
+		Cause: wrapErr(cause),
+	}
+}
+
+// ErrorPlotStepFailed is returned execution of a Step within a Plot fails
+//
+// Errors:
+//
+//    - warpforge-error-plot-step-failed --
+func ErrorPlotStepFailed(stepName StepName, cause error) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-plot-step-failed",
+		Message:    fmt.Sprintf("plot step %q failed: %s", stepName, cause),
+		Details: [][2]string{
+			{"stepName", string(stepName)},
+		},
+		Cause: wrapErr(cause),
+	}
+}
+
+// ErrorCatalogParse is returned when parsing of a catalog file fails
+//
+// Errors:
+//
+//    - warpforge-error-catalog-parse --
+func ErrorCatalogParse(path string, cause error) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-catalog-parse",
+		Message:    fmt.Sprintf("parsing of catalog file %q failed: %s", path, cause),
+		Details: [][2]string{
+			{"path", path},
 		},
 		Cause: wrapErr(cause),
 	}
