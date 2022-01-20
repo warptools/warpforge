@@ -231,24 +231,6 @@ func ErrorFormulaExecutionFailed(cause error) Error {
 	}
 }
 
-// ErrorIpld is returned to wrap IPLD errors
-//
-// Note, this should *only* be using sparingly in cases where IPLD should not fail.
-//
-// Errors:
-//
-//    - warpforge-error-ipld --
-func ErrorIpld(context string, cause error) Error {
-	return &ErrorVal{
-		CodeString: "warpforge-error-ipld",
-		Message:    fmt.Sprintf("ipld error: %s: %s", context, cause),
-		Details: [][2]string{
-			{"context", context},
-		},
-		Cause: wrapErr(cause),
-	}
-}
-
 // ErrorPlotInvalid is returned when a plot contains invalid data
 //
 // Errors:

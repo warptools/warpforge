@@ -501,7 +501,6 @@ func GetBinPath() (string, wfapi.Error) {
 // - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
 // - warpforge-error-workspace -- when an invalid workspace is provided
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
-// - warpforge-error-ipld -- when an IPLD error occurs during formula wrapping or computing formula ID
 func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
 	formula := fc.Formula
 	context := fc.Context
@@ -510,7 +509,8 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 	// convert formula to node
 	nFormulaAndContext, errRaw := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
 	if errRaw != nil {
-		return rr, wfapi.ErrorIpld("failed to wrap formula", errRaw)
+		// panic! this should never fail unless the TypeSystem is broken
+		panic(fmt.Sprintf("Fatal IPLD Error: bindnode.Wrap failed for FormulaAndContext: %s", errRaw))
 	}
 
 	// set up the runrecord result
@@ -524,7 +524,8 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
 	}}, nFormulaAndContext.(schema.TypedNode).Representation())
 	if errRaw != nil {
-		return rr, wfapi.ErrorIpld("failed to compute formula ID", errRaw)
+		// panic! this should never fail unless IPLD is broken
+		panic(fmt.Sprintf("Fatal IPLD Error: lsys.ComputeLink failed for FormulaAndContext: %s", errRaw))
 	}
 	rr.FormulaID = lnk.String()
 
@@ -837,10 +838,8 @@ func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Lo
 		switch err.(*wfapi.ErrorVal).Code() {
 		case "warpforge-error-io":
 			return rr, wfapi.ErrorFormulaExecutionFailed(err)
-		case "warpforge-error-ipld":
-			return rr, wfapi.ErrorFormulaExecutionFailed(err)
 		default:
-			// Error Codes -= warpforge-error-io, warpforge-error-ipld
+			// Error Codes -= warpforge-error-io
 			return rr, err
 		}
 	}
