@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -163,6 +162,12 @@ func (ws *Workspace) getCatalogLineage(catalogPath string, ref wfapi.CatalogRef)
 // Adds a new item to the specified catalog.
 // If nil is provided as a catalog name, this will write to the workspace's "catalog" subdirectory
 // Otherwise, it will write to the catalog at "catalogs/[catalogName]"
+//
+// Errors:
+//
+//    - warpforge-error-catalog-parse -- when parsing of the lineage file fails
+//    - warpforge-error-io -- when reading or writing the lineage file fails
+//    - warpforge-error-serialization -- when serializing the lineage fails
 func (ws *Workspace) AddCatalogItem(catalogName *string,
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID) error {
@@ -183,10 +188,10 @@ func (ws *Workspace) AddCatalogItem(catalogName *string,
 	} else if err == nil {
 		_, err = ipld.Unmarshal(lineageBytes, json.Decode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
 		if err != nil {
-			return fmt.Errorf("could not parse lineage file %q: %s", lineagePath, err)
+			return wfapi.ErrorCatalogParse(lineagePath, err)
 		}
 	} else {
-		return fmt.Errorf("could not open lineage file %q: %s", lineagePath, err)
+		return wfapi.ErrorIo("could not open lineage file", &lineagePath, err)
 	}
 
 	// add this item to the lineage file
@@ -224,21 +229,30 @@ func (ws *Workspace) AddCatalogItem(catalogName *string,
 	// write the updated structure
 	lineageSerial, err := ipld.Marshal(json.Encode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
 	if err != nil {
-		return fmt.Errorf("failed to serialize lineage: %s", err)
+		return wfapi.ErrorSerialization("failed to serialize lineage", err)
 	}
 
-	err = os.MkdirAll(filepath.Dir(filepath.Join("/", lineagePath)), 0755)
+	path := filepath.Dir(filepath.Join("/", lineagePath))
+	err = os.MkdirAll(path, 0755)
 	if err != nil {
-		return fmt.Errorf("failed to create directory for catalog entry: %s", err)
+		return wfapi.ErrorIo("failed to create directory for catalog entry", &path, err)
 	}
 	err = os.WriteFile(filepath.Join("/", lineagePath), lineageSerial, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write lineage file: %s", err)
+		return wfapi.ErrorIo("failed to write lineage file", &lineagePath, err)
 	}
 
 	return nil
 }
 
+// Adds a ByWare mirror to a catalog entry
+//
+// Errors:
+//
+//    - warpforge-error-io -- when reading or writing mirror file fails
+//    - warpforge-error-catalog-parse -- when parsing existing mirror file fails
+//    - warpforge-error-serialization -- when serializing the new mirror file fails
+//    - warpforge-error-catalog-invalid -- when the wrong type of mirror file already exists
 func (ws *Workspace) AddByWareMirror(catalogName *string,
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID,
@@ -259,15 +273,15 @@ func (ws *Workspace) AddByWareMirror(catalogName *string,
 	} else if err == nil {
 		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
 		if err != nil {
-			return fmt.Errorf("could not parse mirrors file %q: %s", mirrorsPath, err)
+			return wfapi.ErrorCatalogParse(mirrorsPath, err)
 		}
 	} else {
-		return fmt.Errorf("could not open mirrors file %q: %s", mirrorsPath, err)
+		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)
 	}
 
 	// add this item to the mirrors file
 	if mirrors.ByWare == nil {
-		return fmt.Errorf("existing mirrors file is not of type ByWare")
+		return wfapi.ErrorCatalogInvalid(mirrorsPath, "existing mirrors file is not of type ByWare")
 	}
 	mirrorList, wareIdExists := mirrors.ByWare.Values[wareId]
 	if wareIdExists {
@@ -291,17 +305,18 @@ func (ws *Workspace) AddByWareMirror(catalogName *string,
 	}
 
 	// write the updated data to the mirrors file
-	err = os.MkdirAll(filepath.Join("/", filepath.Dir(mirrorsPath)), 0755)
+	path := filepath.Join("/", filepath.Dir(mirrorsPath))
+	err = os.MkdirAll(path, 0755)
 	if err != nil {
-		return fmt.Errorf("failed to create catalog dir: %s", err)
+		return wfapi.ErrorIo("could not create catalog path", &path, err)
 	}
 	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
 	if err != nil {
-		return fmt.Errorf("failed to serialize mirrors: %s", err)
+		return wfapi.ErrorSerialization("could not serialize mirror", err)
 	}
 	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write mirrors file: %s", err)
+		return wfapi.ErrorIo("failed to write mirrors file", &mirrorsPath, err)
 	}
 
 	return nil

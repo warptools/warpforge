@@ -46,6 +46,10 @@ func init() {
 // returning nils in the same way as if no workspace was found.
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+//
+// Errors:
+//
+//    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
 func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, remainingSearchPath string, err wfapi.Error) {
 	// Our search loops over searchPath, popping a path segment off at the end of every round.
 	//  Keep the given searchPath in hand; we might need it for an error report.
@@ -87,7 +91,9 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
 //
-// TODO: reconsider this interface... it's not very clear if it gets a bunch of file-not-found -- right now you just get the homedir workspace and no comment.
+// Errors:
+//
+//    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
 func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Workspace, err wfapi.Error) {
 	// Repeatedly apply FindWorkspace and stack stuff up.
 	for {
@@ -106,39 +112,4 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 		wss = append(wss, openWorkspace(fsys, homedir))
 	}
 	return wss, nil
-}
-
-// OpenHomeWorkspace calls OpenWorkspace on the user's homedir.
-// It will error if there's no workspace files yet there (it does not create them).
-//
-// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
-	return OpenWorkspace(fsys, homedir)
-}
-
-// OpenRootWorkspace calls OpenWorkspace on the first root workspace in the stack.
-//
-// A root workspace is marked by containing a file named "root"
-//
-// If no root filesystems are marked, this will default to the last item in the
-// stack, which is the home workspace.
-//
-// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-func OpenRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, wfapi.Error) {
-	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, ws := range stack {
-		// check if the root marker file exists
-		_, err := fsys.Open(filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
-		if err == nil {
-			// it does, so this is our root workspace and we're done
-			return ws, nil
-		}
-	}
-
-	// no matches, default to the last item in the stack
-	return stack[len(stack)-1], nil
 }

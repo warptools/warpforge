@@ -17,7 +17,7 @@ func Graph(plot wfapi.Plot, format graphviz.Format, out *bytes.Buffer) error {
 	g := graphviz.New()
 	graph, err := g.Graph()
 	if err != nil {
-		return err
+		panic(err)
 	}
 	defer func() {
 		if err := graph.Close(); err != nil {
@@ -32,22 +32,22 @@ func Graph(plot wfapi.Plot, format graphviz.Format, out *bytes.Buffer) error {
 	// create top level input and output nodes
 	inputsTop, err := graph.CreateNode("inputs")
 	if err != nil {
-		return err
+		panic(err)
 	}
 	outputsTop, err := graph.CreateNode("outputs")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	// generate graph
 	err = graphPlot(graph, plot, "", inputsTop, outputsTop)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	// render result as requested format to provided buffer
 	if err := g.Render(graph, format, out); err != nil {
-		return err
+		panic(err)
 	}
 
 	return nil
@@ -171,6 +171,10 @@ func graphPlot(graph *cgraph.Graph, plot wfapi.Plot, prefix string, inputNode *c
 }
 
 // Return the ordered list of steps for a plot, recursing into nested plots.
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the provided plot is malformed
 func OrderStepsAll(plot wfapi.Plot) ([]wfapi.StepName, error) {
 	var result []wfapi.StepName
 	ordered, err := OrderSteps(plot)

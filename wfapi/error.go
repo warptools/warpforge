@@ -73,6 +73,11 @@ func ErrorUnknown(msgTmpl string, cause error) Error {
 	}
 }
 
+// ErrorSearchingFilesystem is returned when an error occurs during search
+//
+// Errors:
+//
+//    - warpforge-error-searching-filesystem --
 func ErrorSearchingFilesystem(searchingFor string, cause error) Error {
 	return &ErrorVal{
 		CodeString: "warpforge-error-searching-filesystem",
@@ -306,5 +311,21 @@ func ErrorCatalogParse(path string, cause error) Error {
 			{"path", path},
 		},
 		Cause: wrapErr(cause),
+	}
+}
+
+// ErrorCatalogInvalid is returned when a catalog contains invalid data
+//
+// Errors:
+//
+//    - warpforge-error-catalog-invalid --
+func ErrorCatalogInvalid(path string, reason string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-catalog-invalid",
+		Message:    fmt.Sprintf("invalid catalog file %q: %s", path, reason),
+		Details: [][2]string{
+			{"path", path},
+			{"reason", reason},
+		},
 	}
 }

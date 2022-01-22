@@ -33,6 +33,10 @@ type WorkspaceSet struct {
 // Consider using FindWorkspace or FindWorkspaceStack in most application code.
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+//
+// Errors:
+//
+//    - warpforge-error-workspace -- when the workspace directory fails to open
 func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
 	f, err := fsys.Open(filepath.Join(rootPath, magicWorkspaceDirname))
 	if f != nil {
@@ -70,9 +74,56 @@ func (ws *Workspace) IsHomeWorkspace() bool {
 	return ws.isHomeWorkspace
 }
 
+// OpenHomeWorkspace calls OpenWorkspace on the user's homedir.
+// It will error if there's no workspace files yet there (it does not create them).
+//
+// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+//
+// Errors:
+//
+//    - warpforge-error-workspace -- when the workspace directory fails to open
+func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
+	return OpenWorkspace(fsys, homedir)
+}
+
+// OpenRootWorkspace calls OpenWorkspace on the first root workspace in the stack.
+//
+// A root workspace is marked by containing a file named "root"
+//
+// If no root filesystems are marked, this will default to the last item in the
+// stack, which is the home workspace.
+//
+// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+//
+// Errors:
+//
+//    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
+func OpenRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, wfapi.Error) {
+	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ws := range stack {
+		// check if the root marker file exists
+		_, err := fsys.Open(filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
+		if err == nil {
+			// it does, so this is our root workspace and we're done
+			return ws, nil
+		}
+	}
+
+	// no matches, default to the last item in the stack
+	return stack[len(stack)-1], nil
+}
+
 // opens a full WorkspaceSet
 // searches from searchPath up to basisPath for workspaces
 // root workspace will be the first workspace found that is marked as a root, or the home workspace if none exists
+// Errors:
+//
+//    - warpforge-error-workspace -- when the workspace directory fails to open
+//    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
 func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (WorkspaceSet, wfapi.Error) {
 	set := WorkspaceSet{}
 	home, err := OpenHomeWorkspace(fsys)

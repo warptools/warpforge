@@ -70,6 +70,9 @@ func (l *Logger) InfoWriter(tag string) *Writer {
 	}
 }
 
+// Write raw bytes to to the log
+//
+// Errors: none -- return value used keep io.Writer interface
 func (w *Writer) Write(data []byte) (n int, err error) {
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		fmt.Fprintf(w.pipe, "%s  %s\n",
