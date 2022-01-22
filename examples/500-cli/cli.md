@@ -483,14 +483,3 @@ warpforge -v catalog bundle module.wf
 ```
 bundled "alpinelinux.org/alpine:v3.14.2:x86_64"
 ```
-
-## Graph a Plot
-
-[testmark]:# (graphplot/not-actually-executable)
-```
-warpforge plot graph --png graph.png plot.wf
-```
-
-(TODO: refactor this to use the testmark "then" feature upon the existing data -- that file is just too big to keep repeating.)
-
-![Plot Graph](graph.png)

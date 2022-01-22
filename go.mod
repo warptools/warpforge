@@ -6,7 +6,6 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/frankban/quicktest v1.13.1
 	github.com/go-git/go-git/v5 v5.4.2
-	github.com/goccy/go-graphviz v0.0.9
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipld/go-datalark v0.0.0-20210919061815-cfad52904ed8
