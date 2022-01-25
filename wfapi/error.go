@@ -259,7 +259,7 @@ func ErrorPlotInvalid(reason string) Error {
 func ErrorMissingCatalogEntry(ref CatalogRef) Error {
 	return &ErrorVal{
 		CodeString: "warpforge-error-missing-catalog-entry",
-		Message:    fmt.Sprintf("missing catalog entry: %s", ref),
+		Message:    fmt.Sprintf("missing catalog entry %q", ref.String()),
 		Details: [][2]string{
 			{"catalogRef", ref.String()},
 		},

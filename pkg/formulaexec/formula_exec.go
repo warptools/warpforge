@@ -419,7 +419,7 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 	}
 	err = cmd.Run()
 	if err != nil {
-		return "", wfapi.ErrorExecutorFailed("runc", err)
+		return "", wfapi.ErrorExecutorFailed("runc", fmt.Errorf("%s", stderrBuf.String()))
 	}
 	// TODO what exitcode do we care about?
 	return stdoutBuf.String(), nil
