@@ -114,7 +114,7 @@ func cmdCatalogInit(c *cli.Context) error {
 
 func cmdCatalogAdd(c *cli.Context) error {
 	if c.Args().Len() != 3 {
-		return fmt.Errorf("invalid input")
+		return fmt.Errorf("invalid input. usage: warpforge catalog add [pack type] [catalog ref] [url]")
 	}
 
 	catalog := c.String("name")

@@ -265,7 +265,7 @@ func (ws *Workspace) AddByWareMirror(catalogName *string,
 	)
 
 	var mirrors wfapi.CatalogMirror
-	mirrorsBytes, err := os.ReadFile(mirrorsPath)
+	mirrorsBytes, err := fs.ReadFile(ws.fsys, mirrorsPath)
 	if os.IsNotExist(err) {
 		mirrors = wfapi.CatalogMirror{
 			ByWare: &wfapi.CatalogMirrorByWare{},
