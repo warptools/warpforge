@@ -9,8 +9,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
-	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/workspace"
@@ -311,10 +309,6 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 	results := wfapi.PlotResults{}
 
 	logger.Info(LOG_TAG_START, "")
-
-	// convert plot to node
-	nPlot := bindnode.Wrap(&plot, wfapi.TypeSystem.TypeByName("Plot"))
-	logger.Debug(LOG_TAG, printer.Sprint(nPlot))
 
 	// collect the plot inputs
 	// these have an empty string for the step name (e.g., `pipe::foo`)

@@ -9,7 +9,6 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/urfave/cli/v2"
 )
 
@@ -87,10 +86,6 @@ func afterFunc(c *cli.Context) error {
 				panic("failed to serialize output")
 			}
 			fmt.Fprintf(c.App.Writer, "%s\n", serial)
-		} else {
-			if c.Bool("verbose") {
-				fmt.Fprintf(c.App.Writer, "ok: %s\n", printer.Sprint(n))
-			}
 		}
 	}
 	return nil

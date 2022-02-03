@@ -15,10 +15,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
+	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
-	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/warpfork/warpforge/pkg/logging"
@@ -530,7 +531,12 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 	rr.FormulaID = lnk.String()
 
 	logger.Info(LOG_TAG_START, "")
-	logger.Debug(LOG_TAG, printer.Sprint(nFormulaAndContext))
+	formulaSerial, errRaw := ipld.Marshal(ipldjson.Encode, &formula, wfapi.TypeSystem.TypeByName("Formula"))
+	if errRaw != nil {
+		return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("failed to re-serialize formula: %s", errRaw))
+	}
+	logger.Debug(LOG_TAG, "resolved formula:")
+	logger.Debug(LOG_TAG, string(formulaSerial))
 
 	pwd, errRaw := os.Getwd()
 	if errRaw != nil {

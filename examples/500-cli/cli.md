@@ -137,14 +137,10 @@ We'll run this in a filesystem that contains a `module.wf` (albeit a pretty sill
 }
 ```
 
-Because we've asked for verbose output, this'll say "ok", and then print a debug representation of the module spec.
+Because the module is valid, there is no output to this command.
 
 [testmark]:# (checkmodule/output)
 ```
-ok: struct<Module>{
-	name: string<ModuleName>{"test"}
-	plot: absent
-}
 ```
 
 ## Check a Plot is Valid
