@@ -117,9 +117,9 @@ func cmdCatalogAdd(c *cli.Context) error {
 		return fmt.Errorf("invalid input. usage: warpforge catalog add [pack type] [catalog ref] [url]")
 	}
 
-	catalog := c.String("name")
-	if catalog == "" {
-		catalog = "default"
+	catalogName := c.String("name")
+	if catalogName == "" {
+		catalogName = "default"
 	}
 
 	packType := c.Args().Get(0)
@@ -133,21 +133,23 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	// ensure the catalog exists
-	paths, err := wsSet.Root.ListCatalogPaths()
+	/* TODO MOVE THIS
+	cats, err := wsSet.Root.ListCatalogs()
 	if err != nil {
 		return fmt.Errorf("failed to list catalogs")
 	}
 	found := false
-	for _, p := range paths {
+	for _, c := range cats {
 		_, err := os.Stat(filepath.Join("/", p))
 		if err == nil {
 			found = true
 			break
 		}
 	}
-	if !found && catalog != "default" {
-		return fmt.Errorf("catalog %q does not exist", catalog)
+	if !found && catalogName != "default" {
+		return fmt.Errorf("catalog %q does not exist", catalogName)
 	}
+	*/
 
 	// get the module, release, and item values (in format `module:release:item`)
 	catalogRefSplit := strings.Split(catalogRefStr, ":")
@@ -160,8 +162,8 @@ func cmdCatalogAdd(c *cli.Context) error {
 
 	ref := wfapi.CatalogRef{
 		ModuleName:  wfapi.ModuleName(moduleName),
-		ReleaseName: releaseName,
-		ItemName:    itemName,
+		ReleaseName: wfapi.ReleaseName(releaseName),
+		ItemName:    wfapi.ItemLabel(itemName),
 	}
 
 	// perform rio scan to determine the ware id of the provided item
@@ -171,17 +173,18 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	// add the new item
-	err = wsSet.Root.AddCatalogItem(&catalog, ref, scanWareId)
+	cat := wsSet.Root.OpenCatalog(&catalogName)
+	err = cat.AddItem(ref, scanWareId)
 	if err != nil {
 		return fmt.Errorf("failed to add item to catalog: %s", err)
 	}
-	err = wsSet.Root.AddByWareMirror(&catalog, ref, scanWareId, wfapi.WarehouseAddr(url))
+	err = cat.AddByWareMirror(ref, scanWareId, wfapi.WarehouseAddr(url))
 	if err != nil {
 		return fmt.Errorf("failed to add mirror: %s", err)
 	}
 
 	if c.Bool("verbose") {
-		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root.CatalogPath(&catalog))
+		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root.CatalogPath(&catalogName))
 	}
 
 	return nil
@@ -194,14 +197,16 @@ func cmdCatalogLs(c *cli.Context) error {
 	}
 
 	// get the list of catalogs in this workspace
-	catalogs, err := wsSet.Root.ListCatalogPaths()
+	catalogs, err := wsSet.Root.ListCatalogs()
 	if err != nil {
 		return fmt.Errorf("failed to list catalogs: %s", err)
 	}
 
 	// print the list
 	for _, catalog := range catalogs {
-		fmt.Fprintf(c.App.Writer, "%s\n", catalog)
+		if catalog != nil {
+			fmt.Fprintf(c.App.Writer, "%s\n", *catalog)
+		}
 	}
 	return nil
 }
@@ -286,9 +291,10 @@ func cmdCatalogBundle(c *cli.Context) error {
 		}
 
 		fmt.Fprintf(c.App.Writer, "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
-		wsSet.Stack[0].AddCatalogItem(nil, ref, *wareId)
+		cat := wsSet.Stack[0].OpenCatalog(nil)
+		cat.AddItem(ref, *wareId)
 		if wareAddr != nil {
-			wsSet.Stack[0].AddByWareMirror(nil, ref, *wareId, *wareAddr)
+			cat.AddByWareMirror(ref, *wareId, *wareAddr)
 		}
 	}
 

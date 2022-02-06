@@ -203,14 +203,18 @@ func init() {
 		},
 		schema.SpawnStructRepresentationStringjoin(":")))
 	TypeSystem.Accumulate(schema.SpawnString("ModuleName"))
+	TypeSystem.Accumulate(schema.SpawnString("ReleaseName"))
+	TypeSystem.Accumulate(schema.SpawnString("ItemLabel"))
 }
 
 type ModuleName string
+type ReleaseName string
+type ItemLabel string
 
 type CatalogRef struct {
 	ModuleName  ModuleName
-	ReleaseName string
-	ItemName    string
+	ReleaseName ReleaseName
+	ItemName    ItemLabel
 }
 
 func (c *CatalogRef) String() string {

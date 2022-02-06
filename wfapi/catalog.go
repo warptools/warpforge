@@ -21,13 +21,6 @@ func init() {
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnList("List__CatalogRelease",
 		"CatalogRelease", false))
-	TypeSystem.Accumulate(schema.SpawnStruct("CatalogRelease",
-		[]schema.StructField{
-			schema.SpawnStructField("name", "String", false, false),
-			schema.SpawnStructField("items", "Map__String__WareID", false, false),
-			schema.SpawnStructField("metadata", "Map__String__String", false, false),
-		},
-		schema.SpawnStructRepresentationMap(nil)))
 }
 
 type CatalogLineageEnvelope struct {
@@ -41,18 +34,6 @@ type CatalogLineage struct {
 		Values map[string]string
 	}
 	Releases []CatalogRelease
-}
-
-type CatalogRelease struct {
-	Name  string
-	Items struct {
-		Keys   []string
-		Values map[string]WareID
-	}
-	Metadata struct {
-		Keys   []string
-		Values map[string]string
-	}
 }
 
 func init() {
@@ -107,4 +88,60 @@ type CatalogMirrorsByPacktype struct {
 type CatalogMirror struct {
 	ByWare   *CatalogMirrorByWare
 	ByModule *CatalogMirrorByModule
+}
+
+// NEW CATALOG TYPES
+func init() {
+	TypeSystem.Accumulate(schema.SpawnMap("Catalog", "ModuleName", "CatalogModule", false))
+
+	TypeSystem.Accumulate(schema.SpawnStruct("CatalogModule",
+		[]schema.StructField{
+			schema.SpawnStructField("name", "ModuleName", false, false),
+			schema.SpawnStructField("releases", "Map__ReleaseName__CatalogRelease", false, false),
+			schema.SpawnStructField("metadata", "Map__String__String", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+
+	TypeSystem.Accumulate(schema.SpawnMap("Map__ReleaseName__CatalogRelease", "ReleaseName",
+		"CatalogRelease", false))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__ItemLabel__WareID", "ItemLabel",
+		"WareID", false))
+
+	TypeSystem.Accumulate(schema.SpawnStruct("CatalogRelease",
+		[]schema.StructField{
+			schema.SpawnStructField("name", "ReleaseName", false, false),
+			schema.SpawnStructField("items", "Map__ItemLabel__WareID", false, false),
+			schema.SpawnStructField("metadata", "Map__String__String", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+
+}
+
+type Catalog struct {
+	Keys   []ModuleName
+	Values map[ModuleName]CatalogModule
+}
+
+type CatalogModule struct {
+	Name     ModuleName
+	Releases struct {
+		Keys   []ReleaseName
+		Values map[ReleaseName]CatalogRelease
+	}
+	Metadata struct {
+		Keys   []string
+		Values map[string]string
+	}
+}
+
+type CatalogRelease struct {
+	Name  ReleaseName
+	Items struct {
+		Keys   []ItemLabel
+		Values map[ItemLabel]WareID
+	}
+	Metadata struct {
+		Keys   []string
+		Values map[string]string
+	}
 }

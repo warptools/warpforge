@@ -14,17 +14,6 @@ type Workspace struct {
 	isHomeWorkspace bool   // if it's the ultimate workspace (the one in your homedir).
 }
 
-// a workspace set consists of the 3 types of workspace we operate on
-//  home: a workspace containing configuration information and other global info
-//  root: a workspace containing catalogs to use, which also stores wares and cache
-//        the home workspace is the default root workspace
-//  stack: a set of workspaces that may contain additional catalogs and other project-specific info
-type WorkspaceSet struct {
-	Home  *Workspace
-	Root  *Workspace
-	Stack []*Workspace
-}
-
 // OpenWorkspace returns a pointer to a Workspace object.
 // It does a basic check that the workspace exists on the filesystem, but little other work;
 // most info loading will be done on-demand later.
@@ -117,38 +106,6 @@ func OpenRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Worksp
 	return stack[len(stack)-1], nil
 }
 
-// opens a full WorkspaceSet
-// searches from searchPath up to basisPath for workspaces
-// root workspace will be the first workspace found that is marked as a root, or the home workspace if none exists
-// Errors:
-//
-//    - warpforge-error-workspace -- when the workspace directory fails to open
-//    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
-func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (WorkspaceSet, wfapi.Error) {
-	set := WorkspaceSet{}
-	home, err := OpenHomeWorkspace(fsys)
-	if err != nil {
-		// if this failed, continue with no home workspace
-		home = nil
-	}
-
-	root, err := OpenRootWorkspace(fsys, basisPath, searchPath)
-	if err != nil {
-		return set, err
-	}
-
-	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
-	if err != nil {
-		return set, err
-	}
-
-	set.Home = home
-	set.Root = root
-	set.Stack = stack
-
-	return set, nil
-}
-
 // Returns the path for a cached ware within a workspace
 // Errors:
 //
@@ -194,12 +151,24 @@ func (ws *Workspace) CatalogPath(name *string) string {
 	}
 }
 
+// Open a catalog within this workspace with a given name
+func (ws *Workspace) OpenCatalog(name *string) Catalog {
+	path := ws.CatalogPath(name)
+	return NewCatalog(ws, path)
+}
+
+// Open a catalog within this workspace with a given path
+func (ws *Workspace) OpenCatalogByPath(name *string) Catalog {
+	path := ws.CatalogPath(name)
+	return NewCatalog(ws, path)
+}
+
 // List the catalogs available within a workspace
 //
 // Errors:
 //
 //    - warpforge-error-io -- when listing directory fails
-func (ws *Workspace) ListCatalogPaths() ([]string, wfapi.Error) {
+func (ws *Workspace) ListCatalogs() ([]*string, wfapi.Error) {
 	catalogsPath := filepath.Join(
 		ws.rootPath,
 		".warpforge",
@@ -209,23 +178,65 @@ func (ws *Workspace) ListCatalogPaths() ([]string, wfapi.Error) {
 	_, err := fs.Stat(ws.fsys, catalogsPath)
 	if os.IsNotExist(err) {
 		// no catalogs directory, return an empty list
-		return []string{}, nil
+		return []*string{}, nil
 	} else if err != nil {
-		return []string{}, wfapi.ErrorIo("failed to stat catalogs path", &catalogsPath, err)
+		return []*string{}, wfapi.ErrorIo("failed to stat catalogs path", &catalogsPath, err)
 	}
 
 	// list the directory
 	catalogs, err := fs.ReadDir(ws.fsys, catalogsPath)
 	if err != nil {
-		return []string{}, wfapi.ErrorIo("failed to read catalogs dir", &catalogsPath, err)
+		return []*string{}, wfapi.ErrorIo("failed to read catalogs dir", &catalogsPath, err)
 	}
 
 	// build a list of subdirectories, each is a catalog
-	var list []string
+	var list []*string
 	for _, c := range catalogs {
 		if c.IsDir() {
-			list = append(list, filepath.Join(catalogsPath, c.Name()))
+			name := c.Name()
+			list = append(list, &name)
 		}
 	}
 	return list, nil
+}
+
+// Get a catalog ware from a workspace, doing lookup by CatalogRef.
+// This will first check all catalogs within the "catalogs" subdirectory, if it exists
+// then, it will check the "catalog" subdirectory, if it exists
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading of lineage or mirror files fails
+//     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
+func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
+	// list the catalogs within the "catalogs" subdirectory
+	cats, err := ws.ListCatalogs()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// if it exists, add the "catalog" subdirectory to the end of the list
+	// this is done by adding a catalog with nil name, which refers to the catalog subdir
+	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
+	_, errRaw := fs.Stat(ws.fsys, catalogPath)
+	if errRaw == nil {
+		// "catalog" subdirectory exists
+		cats = append(cats, nil)
+	}
+
+	for _, c := range cats {
+		cat := ws.OpenCatalog(c)
+		wareId, wareAddr, err := cat.GetWare(ref)
+		if err != nil {
+			return nil, nil, err
+		}
+		if wareId == nil {
+			// not found in this catalog, keep trying
+			continue
+		}
+		return wareId, wareAddr, nil
+	}
+
+	// nothing found
+	return nil, nil, nil
 }
