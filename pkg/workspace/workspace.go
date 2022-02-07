@@ -126,7 +126,7 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
 		wareId.Hash), nil
 }
 
-// returns the base path which contains named catalogs (i.e., `.../.warpforge/catalogs`)
+// Returns the base path which contains named catalogs (i.e., `.../.warpforge/catalogs`)
 func (ws *Workspace) CatalogBasePath() string {
 	return filepath.Join(
 		ws.rootPath,
@@ -135,7 +135,7 @@ func (ws *Workspace) CatalogBasePath() string {
 	)
 }
 
-// returns the catalog path for catalog with a given name within a workspace
+// Returns the catalog path for catalog with a given name within a workspace
 func (ws *Workspace) CatalogPath(name *string) string {
 	if name == nil {
 		return filepath.Join(
@@ -152,15 +152,11 @@ func (ws *Workspace) CatalogPath(name *string) string {
 }
 
 // Open a catalog within this workspace with a given name
-func (ws *Workspace) OpenCatalog(name *string) Catalog {
+//
+// Errors: none -- TODO
+func (ws *Workspace) OpenCatalog(name *string) (Catalog, wfapi.Error) {
 	path := ws.CatalogPath(name)
-	return NewCatalog(ws, path)
-}
-
-// Open a catalog within this workspace with a given path
-func (ws *Workspace) OpenCatalogByPath(name *string) Catalog {
-	path := ws.CatalogPath(name)
-	return NewCatalog(ws, path)
+	return openCatalog(ws, path)
 }
 
 // List the catalogs available within a workspace
@@ -169,11 +165,7 @@ func (ws *Workspace) OpenCatalogByPath(name *string) Catalog {
 //
 //    - warpforge-error-io -- when listing directory fails
 func (ws *Workspace) ListCatalogs() ([]*string, wfapi.Error) {
-	catalogsPath := filepath.Join(
-		ws.rootPath,
-		".warpforge",
-		"catalogs",
-	)
+	catalogsPath := ws.CatalogBasePath()
 
 	_, err := fs.Stat(ws.fsys, catalogsPath)
 	if os.IsNotExist(err) {
@@ -216,16 +208,20 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 	}
 
 	// if it exists, add the "catalog" subdirectory to the end of the list
-	// this is done by adding a catalog with nil name, which refers to the catalog subdir
+	// this is done by adding a catalog with nil name, which refers to the unnamed catalog
+	// in the "catalog" subdirectory
 	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
 	_, errRaw := fs.Stat(ws.fsys, catalogPath)
 	if errRaw == nil {
-		// "catalog" subdirectory exists
+		// "catalog" subdirectory exists, append nil
 		cats = append(cats, nil)
 	}
 
 	for _, c := range cats {
-		cat := ws.OpenCatalog(c)
+		cat, err := ws.OpenCatalog(c)
+		if err != nil {
+			return nil, nil, err
+		}
 		wareId, wareAddr, err := cat.GetWare(ref)
 		if err != nil {
 			return nil, nil, err

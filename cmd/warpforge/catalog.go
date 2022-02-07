@@ -173,7 +173,10 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	// add the new item
-	cat := wsSet.Root.OpenCatalog(&catalogName)
+	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
+	}
 	err = cat.AddItem(ref, scanWareId)
 	if err != nil {
 		return fmt.Errorf("failed to add item to catalog: %s", err)
@@ -291,7 +294,10 @@ func cmdCatalogBundle(c *cli.Context) error {
 		}
 
 		fmt.Fprintf(c.App.Writer, "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
-		cat := wsSet.Stack[0].OpenCatalog(nil)
+		cat, err := wsSet.Stack[0].OpenCatalog(nil)
+		if err != nil {
+			return fmt.Errorf("failed to open catalog: %s", err)
+		}
 		cat.AddItem(ref, *wareId)
 		if wareAddr != nil {
 			cat.AddByWareMirror(ref, *wareId, *wareAddr)

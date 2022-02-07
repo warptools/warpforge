@@ -20,13 +20,18 @@ type Catalog struct {
 	basePath  string
 }
 
-func NewCatalog(ws *Workspace, basePath string) Catalog {
+// Open a catalog.
+// This is only intended to be used internally in the workspace package. It
+// should be publically accessed through Workspace.OpenCatalog()
+//
+// Errors: None -- TODO
+func openCatalog(ws *Workspace, basePath string) (Catalog, wfapi.Error) {
 	// TODO validate path?
 	// TODO maybe open lineage/index here?
 	return Catalog{
 		workspace: ws,
 		basePath:  basePath,
-	}
+	}, nil
 }
 
 // Get a ware from a given catalog.
