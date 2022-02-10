@@ -73,8 +73,8 @@ are created in it. This file marks the workspace as a root workspace.
 ## Creating a Catalog
 
 Warpforge *catalogs* give friendly names to *wares*. This allows us to use a string like
-`catalog:alpinelinux.org/alpine:v3.14.2:x86_64` to refer to a ware instead of 
-`ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS`.
+`catalog:alpinelinux.org/alpine:v3.15.0:x86_64` to refer to a ware instead of 
+`ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN`.
 
 Additionally, catalogs allow us to specify mirrors which provide the ware. When a catalog
 reference input is used, the provided mirrors will be used to fetch the ware.
@@ -86,7 +86,7 @@ We can add items to the catalog using the `catalog` subcommand. This will
 
 [testmark]:# (quickstart/add-catalog/sequence)
 ```
-warpforge -v catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
+warpforge -v catalog add tar alpinelinux.org/alpine:v3.15.0:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
 ```
 
 Catalog entries consist of two file `lineage.json` and `mirrors.json`. The files created
@@ -105,9 +105,9 @@ cat .warpforge/catalogs/default/alpinelinux.org/alpine/lineage.json
 	"metadata": {},
 	"releases": [
 		{
-			"name": "v3.14.2",
+			"name": "v3.15.0",
 			"items": {
-				"x86_64": "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+				"x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 			},
 			"metadata": {}
 		}
@@ -125,8 +125,8 @@ cat .warpforge/catalogs/default/alpinelinux.org/alpine/mirrors.json
 ```
 {
 	"byWare": {
-		"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": [
-			"https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
+			"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		]
 	}
 }
@@ -153,7 +153,7 @@ Our simple plot consists of a single step. This step is a *protoformula*, which 
 ```
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 	},
 	"steps": {
 		"hello": {

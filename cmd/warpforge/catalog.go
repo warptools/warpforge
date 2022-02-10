@@ -132,24 +132,17 @@ func cmdCatalogAdd(c *cli.Context) error {
 		return err
 	}
 
-	// ensure the catalog exists
-	/* TODO MOVE THIS
-	cats, err := wsSet.Root.ListCatalogs()
+	// create the catalog if it does not exist
+	exists, err := wsSet.Root.HasCatalog(catalogName)
 	if err != nil {
-		return fmt.Errorf("failed to list catalogs")
+		return err
 	}
-	found := false
-	for _, c := range cats {
-		_, err := os.Stat(filepath.Join("/", p))
-		if err == nil {
-			found = true
-			break
+	if !exists {
+		err := wsSet.Root.CreateCatalog(catalogName)
+		if err != nil {
+			return err
 		}
 	}
-	if !found && catalogName != "default" {
-		return fmt.Errorf("catalog %q does not exist", catalogName)
-	}
-	*/
 
 	// get the module, release, and item values (in format `module:release:item`)
 	catalogRefSplit := strings.Split(catalogRefStr, ":")

@@ -24,7 +24,7 @@ This plot has a single protoformula step, which creates a file. This file is use
 ```json
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 	},
 	"steps": {
 		"one": {
@@ -83,7 +83,7 @@ The execution order is automatically determined.
 ```json
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 	},
 	"steps": {
 		"zero": {
@@ -159,13 +159,13 @@ The execution order is computed automatically.
 ```json
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 	},
 	"steps": {
 		"zero-outer": {
 			"plot": {
 				"inputs": {
-					"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+					"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 				},
 				"steps": {
 					"zero-inner": {
@@ -270,7 +270,7 @@ the protoformula.
 ```json
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64",
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64",
 		"pwd": "mount:overlay:."
 	},
 	"steps": {

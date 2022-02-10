@@ -59,6 +59,7 @@ func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (Workspac
 //
 //     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
 //     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
+//     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
 func (wsSet *WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
 	// traverse workspace stack
 	for _, ws := range wsSet.Stack {

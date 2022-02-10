@@ -57,6 +57,7 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
+//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
@@ -91,6 +92,7 @@ func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
+//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
@@ -250,6 +252,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-missing-catalog-entry -- when a referenced catalog entry cannot be found
 //    - warpforge-error-plot-invalid -- when the plot contains invalid data
+//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 func execProtoformula(wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	ctx wfapi.FormulaContext,
@@ -303,6 +306,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
+//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
 func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) (wfapi.PlotResults, error) {
 	pipeCtx := make(pipeMap)

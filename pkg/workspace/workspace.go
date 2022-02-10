@@ -153,7 +153,10 @@ func (ws *Workspace) CatalogPath(name *string) string {
 
 // Open a catalog within this workspace with a given name
 //
-// Errors: none -- TODO
+// Errors:
+//
+//    - warpforge-error-catalog-invalid -- when opened catalog has invalid data
+//    - warpforge-error-io -- when IO error occurs during opening of catalog
 func (ws *Workspace) OpenCatalog(name *string) (Catalog, wfapi.Error) {
 	path := ws.CatalogPath(name)
 	return openCatalog(ws, path)
@@ -200,6 +203,7 @@ func (ws *Workspace) ListCatalogs() ([]*string, wfapi.Error) {
 //
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
+//     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
 func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
@@ -235,4 +239,48 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 
 	// nothing found
 	return nil, nil, nil
+}
+
+// Check if this workspace has a catalog with a given name.
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading or writing the catalog directory fails
+func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
+	path := ws.CatalogPath(&name)
+	if _, errRaw := fs.Stat(ws.fsys, path); os.IsNotExist(errRaw) {
+		return false, nil
+	} else if errRaw == nil {
+		return true, nil
+	} else {
+		return false, wfapi.ErrorIo("could not stat catalog path", &path, errRaw)
+	}
+}
+
+// Create a new catalog.
+// This only creates the catalog and does not open it.
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading or writing the catalog directory fails
+//     - warpforge-error-catalog-invalid -- when the catalog already exists
+func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
+	path := filepath.Join("/", ws.CatalogPath(&name))
+
+	// check if the catalog path exists
+	exists, err := ws.HasCatalog(name)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return wfapi.ErrorCatalogInvalid(path, "catalog already exists")
+	}
+
+	// catalog does not exist, create it
+	errRaw := os.MkdirAll(path, 0755)
+	if errRaw != nil {
+		return wfapi.ErrorIo("could not create catalog directory", &path, errRaw)
+	}
+
+	return nil
 }

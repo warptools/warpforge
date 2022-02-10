@@ -79,12 +79,12 @@ warpforge run
 ┌─ plot  
 │  plot  inputs:
 │  plot         type = catalog
-│  plot                 ref = catalog:alpinelinux.org/alpine:v3.14.2:x86_64
-│  plot                 wareId = tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS
-│  plot                 wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
+│  plot                 ref = catalog:alpinelinux.org/alpine:v3.15.0:x86_64
+│  plot                 wareId = tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN
+│  plot                 wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
 ├─ plot  (hello-world) evaluating protoformula
 │ ┌─ formula  
-│ │  formula  ware mount:       wareId = tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS destPath = /
+│ │  formula  ware mount:       wareId = tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN destPath = /
 │ │  formula  executing script  interpreter = /bin/sh
 │ │ ┌─ output   
 │ │ │  output   hello world

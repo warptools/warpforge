@@ -1,6 +1,11 @@
 package wfapi
 
 import (
+	"fmt"
+
+	"github.com/ipfs/go-cid"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 )
 
@@ -94,16 +99,18 @@ type CatalogMirror struct {
 func init() {
 	TypeSystem.Accumulate(schema.SpawnMap("Catalog", "ModuleName", "CatalogModule", false))
 
+	TypeSystem.Accumulate(schema.SpawnString("CatalogReleaseCID"))
+
 	TypeSystem.Accumulate(schema.SpawnStruct("CatalogModule",
 		[]schema.StructField{
 			schema.SpawnStructField("name", "ModuleName", false, false),
-			schema.SpawnStructField("releases", "Map__ReleaseName__CatalogRelease", false, false),
+			schema.SpawnStructField("releases", "Map__ReleaseName__CatalogReleaseCID", false, false),
 			schema.SpawnStructField("metadata", "Map__String__String", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 
-	TypeSystem.Accumulate(schema.SpawnMap("Map__ReleaseName__CatalogRelease", "ReleaseName",
-		"CatalogRelease", false))
+	TypeSystem.Accumulate(schema.SpawnMap("Map__ReleaseName__CatalogReleaseCID", "ReleaseName",
+		"CatalogReleaseCID", false))
 	TypeSystem.Accumulate(schema.SpawnMap("Map__ItemLabel__WareID", "ItemLabel",
 		"WareID", false))
 
@@ -114,8 +121,9 @@ func init() {
 			schema.SpawnStructField("metadata", "Map__String__String", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
-
 }
+
+type CatalogReleaseCID string
 
 type Catalog struct {
 	Keys   []ModuleName
@@ -126,7 +134,7 @@ type CatalogModule struct {
 	Name     ModuleName
 	Releases struct {
 		Keys   []ReleaseName
-		Values map[ReleaseName]CatalogRelease
+		Values map[ReleaseName]CatalogReleaseCID
 	}
 	Metadata struct {
 		Keys   []string
@@ -144,4 +152,23 @@ type CatalogRelease struct {
 		Keys   []string
 		Values map[string]string
 	}
+}
+
+func (rel *CatalogRelease) Cid() CatalogReleaseCID {
+	// convert parsed release to node
+	nRelease := bindnode.Wrap(rel, TypeSystem.TypeByName("CatalogRelease"))
+
+	// compute CID of parsed release data
+	lsys := cidlink.DefaultLinkSystem()
+	lnk, errRaw := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+		Version:  1,    // Usually '1'.
+		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+	}}, nRelease.(schema.TypedNode).Representation())
+	if errRaw != nil {
+		// panic! this should never fail unless IPLD is broken
+		panic(fmt.Sprintf("Fatal IPLD Error: lsys.ComputeLink failed for CatalogRelease: %s", errRaw))
+	}
+	return CatalogReleaseCID(lnk.String())
 }

@@ -70,7 +70,7 @@ We'll run this in a filesystem that contains a `formula.json`:
 {
     "formula": {
         "inputs": {
-            "/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+            "/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
         },
         "action": {
             "exec": {
@@ -85,7 +85,7 @@ We'll run this in a filesystem that contains a `formula.json`:
     },
     "context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
     }
 }
@@ -98,7 +98,7 @@ Together with the verbosity and output formatting flags used above, this will al
 {
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 		},
 		"action": {
 			"exec": {
@@ -113,7 +113,7 @@ Together with the verbosity and output formatting flags used above, this will al
 	},
 	"context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
 	}
 }
@@ -187,7 +187,7 @@ We'll run this in a filesystem that contains a `formula.json`
 {
     "formula": {
         "inputs": {
-            "/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+            "/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
         },
         "action": {
             "exec": {
@@ -202,7 +202,7 @@ We'll run this in a filesystem that contains a `formula.json`
     },
     "context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
     }
 }
@@ -217,7 +217,7 @@ The result of this will be a `RunRecord` object printed to stdout:
 {
 	"guid": "389c442f-5343-497e-b74d-d31fd487af53",
 	"time": "22222222222",
-	"formulaID": "bafyrgqc7oxykn4nsfru4snk33vumhszb25zehgnrqkusuk7rx3umaubnv7u3oye7awaeipif4u3wtkpxisk3cofhjc7gzcd3xscvb3z4xh7qy",
+	"formulaID": "bafyrgqhdywzmzh4bocoldc3ncwwbucuzzjkiadib5khpvhgi33qx7k63kg5i53rmszd6t2a7agdue6vuihjwx7whvciiktkwytczeronejynk",
 	"exitcode": 0,
 	"results": {}
 }
@@ -257,13 +257,13 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 ```
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 	},
 	"steps": {
 		"zero-outer": {
 			"plot": {
 				"inputs": {
-					"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+					"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 				},
 				"steps": {
 					"zero-inner": {
@@ -345,23 +345,29 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 (That's not the smallest plot you could have -- it's actually quite complex,
 and demonstrates multiple steps, including subplots, and how to wire them all up!)
 
-This will also require a catalog entry for the referenced input (`catalog:alpinelinux.org/alpine:v3.14.2:x86_64`).
-This consists of two files: `lineage.json` and `mirrors.json`
+This will also require a catalog entry for the referenced input (`catalog:alpinelinux.org/alpine:v3.15.0:x86_64`).
+This consists of a `module.json` file at the path of the module name, a `releases/[release name].json` file, and a
+a `mirrors.json` file to show where the ware can be fetched.
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/lineage.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/module.json)
 ```json
 {
-    "name": "alpinelinux.org/alpine",
-    "metadata": {},
-    "releases": [
-        {
-            "name": "v3.14.2",
-            "metadata": {},
-            "items": {
-                "x86_64": "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-            }
-        }
-    ]
+        "name": "alpinelinux.org/alpine",
+        "releases": {
+                "v3.15.0": "bafyrgqbk3rkp3iamateldm6akhxc2bd7syptofs4gv5s2sgh5osu76cyblxlweonfnokr555hoskl76zi32jq4nm3aze4yczyuwmnalpiwvp2"
+        },
+        "metadata": {}
+}
+```
+
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/releases/v3.15.0.json)
+```json
+{
+        "name": "v3.15.0",
+        "items": {
+                "x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+        },
+        "metadata": {}
 }
 ```
 
@@ -369,8 +375,8 @@ This consists of two files: `lineage.json` and `mirrors.json`
 ```json
 {
     "byWare": {
-        "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": [
-            "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+        "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
+            "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
         ]
     }
 }
@@ -414,12 +420,13 @@ warpforge catalog ls
 
 [testmark]:# (catalog/then-add/sequence)
 ```
-warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.14.2:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz
+warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.15.0:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
 ```
 
 [testmark]:# (catalog/then-add/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/lineage.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/module.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/releases/v3.15.0.json
 cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 ```
 
@@ -427,21 +434,22 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 ```
 {
 	"name": "alpinelinux.org/alpine",
-	"metadata": {},
-	"releases": [
-		{
-			"name": "v3.14.2",
-			"items": {
-				"x86_64": "tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
-			},
-			"metadata": {}
-		}
-	]
+	"releases": {
+		"v3.15.0": "bafyrgqbk3rkp3iamateldm6akhxc2bd7syptofs4gv5s2sgh5osu76cyblxlweonfnokr555hoskl76zi32jq4nm3aze4yczyuwmnalpiwvp2"
+	},
+	"metadata": {}
+}
+{
+	"name": "v3.15.0",
+	"items": {
+		"x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+	},
+	"metadata": {}
 }
 {
 	"byWare": {
-		"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": [
-			"https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+		"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
+			"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		]
 	}
 }
@@ -462,7 +470,7 @@ Test module that uses a catalog input:
 ```
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.14.2:x86_64"
+		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
 	},
 	"steps": {},
 	"outputs": {}
@@ -477,5 +485,5 @@ warpforge -v catalog bundle module.wf
 
 [testmark]:# (catalog/then-add/then-bundle/stdout)
 ```
-bundled "alpinelinux.org/alpine:v3.14.2:x86_64"
+bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
 ```

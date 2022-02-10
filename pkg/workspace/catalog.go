@@ -1,14 +1,21 @@
 package workspace
 
 import (
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ipld/go-ipld-prime"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/warpforge/wfapi"
+)
+
+const (
+	magicModuleFilename = "module.json"
 )
 
 // The Catalog struct represents a single catalog.
@@ -16,22 +23,137 @@ import (
 // functionality to traverse multiple catalogs is provided by Workspace and
 // WorkspaceSet structs.
 type Catalog struct {
-	workspace *Workspace
-	basePath  string
+	workspace  *Workspace
+	path       string
+	moduleList []wfapi.ModuleName
 }
 
 // Open a catalog.
 // This is only intended to be used internally in the workspace package. It
 // should be publically accessed through Workspace.OpenCatalog()
 //
-// Errors: None -- TODO
-func openCatalog(ws *Workspace, basePath string) (Catalog, wfapi.Error) {
-	// TODO validate path?
-	// TODO maybe open lineage/index here?
-	return Catalog{
+// Errors:
+//
+// warpforge-error-io -- when building the module list fails due to I/O error
+func openCatalog(ws *Workspace, path string) (Catalog, wfapi.Error) {
+	// check that the catalog path exists
+	if _, errRaw := fs.Stat(ws.fsys, path); os.IsNotExist(errRaw) {
+		return Catalog{}, wfapi.ErrorCatalogInvalid(path, "catalog does not exist")
+	}
+
+	cat := Catalog{
 		workspace: ws,
-		basePath:  basePath,
-	}, nil
+		path:      path,
+	}
+
+	// build a list of the modules in this catalog
+	err := cat.updateModuleList()
+	if err != nil {
+		return Catalog{}, err
+	}
+
+	return cat, nil
+}
+
+// Update a Catalog's list of modules.
+// This will be called when opening the catalog, and after updating the filesystem.
+func (cat *Catalog) updateModuleList() wfapi.Error {
+	// clear the list
+	cat.moduleList = []wfapi.ModuleName{}
+
+	// recursively assemble module names
+	// modules names are subdirectories of the catalog (e.g., "catalog/example.com/package/module")
+	// we need to recurse through each directory until we hit a "module.json"
+	return recurseModuleDir(cat, cat.path, "")
+}
+
+func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName) wfapi.Error {
+	// list the directory
+	thisDir := filepath.Join(basePath, string(moduleName))
+	files, errRaw := fs.ReadDir(cat.workspace.fsys, thisDir)
+	if errRaw != nil {
+		return wfapi.ErrorIo("could not read catalog directory", &cat.path, errRaw)
+	}
+
+	// check if a "module.json" exists
+	for _, info := range files {
+		if info.Name() == magicModuleFilename {
+			// found the file, add this module name to the catalog
+			cat.moduleList = append(cat.moduleList, moduleName)
+			return nil
+		}
+	}
+
+	// this directory does not contain a module
+	// recurse into subdirectories to find additional modules
+	for _, info := range files {
+		if info.IsDir() {
+			err := recurseModuleDir(cat, basePath, wfapi.ModuleName(filepath.Join(string(moduleName), info.Name())))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// Get a release from a given catalog.
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading of lineage or mirror files fails
+//     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
+//     - warpforge-error-catalog-invalid -- when catalog files or entries are not found
+func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, wfapi.Error) {
+	// try to find a module in this catalog
+	mod, err := cat.GetModule(ref)
+	if err != nil {
+		return nil, err
+	}
+	if mod == nil {
+		// module not found in this catalog
+		return nil, nil
+	}
+
+	// find the specified release
+	releaseCid, releaseFound := mod.Releases.Values[ref.ReleaseName]
+	if !releaseFound {
+		// release was not found in catalog
+		return nil, nil
+	}
+
+	// release was found in catalog, attempt to open release file
+	releasePath := cat.releaseFilename(ref)
+	releaseBytes, errRaw := fs.ReadFile(cat.workspace.fsys, releasePath)
+	if os.IsNotExist(errRaw) {
+		return nil, wfapi.ErrorCatalogInvalid(releasePath,
+			"release file does not exist")
+	} else if errRaw != nil {
+		return nil, wfapi.ErrorIo("failed to read catalog release file", &releasePath, errRaw)
+	}
+
+	// parse the release file
+	release := wfapi.CatalogRelease{}
+	_, errRaw = ipld.Unmarshal(releaseBytes, json.Decode, &release, wfapi.TypeSystem.TypeByName("CatalogRelease"))
+	if errRaw != nil {
+		return nil, wfapi.ErrorCatalogParse(releasePath, err)
+	}
+
+	// ensure this matches the expected value
+	if release.Cid() != releaseCid {
+		return nil, wfapi.ErrorCatalogInvalid(releasePath,
+			fmt.Sprintf("expected CID %q for release, actual CID is %q", releaseCid, release.Cid()))
+	}
+
+	return &release, nil
+}
+
+// Get the filename for a release file.
+// This will be [catalog path]/[module name]/releases/[release name].json
+func (cat *Catalog) releaseFilename(ref wfapi.CatalogRef) string {
+	releasePath := filepath.Join(cat.path, string(ref.ModuleName), "releases", string(ref.ReleaseName))
+	releasePath = strings.Join([]string{releasePath, ".json"}, "")
+	return releasePath
 }
 
 // Get a ware from a given catalog.
@@ -40,26 +162,27 @@ func openCatalog(ws *Workspace, basePath string) (Catalog, wfapi.Error) {
 //
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
+//     - warpforge-error-catalog-invalid -- when catalog files or entries are not found
 func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
-	// try to find a lineage in this path
-	lineage, err := cat.getLineage(ref)
+	release, err := cat.GetRelease(ref)
 	if err != nil {
 		return nil, nil, err
 	}
-	if lineage == nil {
-		// lineage not found in this catalog
+	if release == nil {
+		// matching release was not found, return nil WareID
 		return nil, nil, nil
 	}
 
-	// lineage found, try find the item matching the catalog ref
-	item := getWareFromLineage(lineage, ref)
-	if item == nil {
-		// item not found in this catalog
-		return nil, nil, nil
+	// valid release found found, now try find the item
+	wareId, itemFound := release.Items.Values[ref.ItemName]
+	if !itemFound {
+		return nil, nil, wfapi.ErrorCatalogInvalid(
+			cat.releaseFilename(ref),
+			fmt.Sprintf("release %q does not contain the requested item %q", release.Name, ref.ItemName))
 	}
 
-	// item found, try to get the matching mirror
-	mirror, err := cat.getMirror(ref)
+	// item found, check for a matching mirror
+	mirror, err := cat.GetMirror(ref)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,44 +190,31 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	// TODO: handling of multiple mirrors
 	switch {
 	case mirror == nil:
-		return item, nil, nil
+		return &wareId, nil, nil
 	case mirror.ByWare != nil:
-		if len(mirror.ByWare.Values[*item]) > 0 {
-			return item, &mirror.ByWare.Values[*item][0], nil
+		if len(mirror.ByWare.Values[wareId]) > 0 {
+			return &wareId, &mirror.ByWare.Values[wareId][0], nil
 		} else {
-			return item, nil, nil
+			return &wareId, nil, nil
 		}
 	case mirror.ByModule != nil:
-		return item, &mirror.ByModule.Values[ref.ModuleName].Values[item.Packtype][0], nil
+		return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
 	default:
 		panic("unreachable")
 	}
 }
 
-func getWareFromLineage(l *wfapi.CatalogLineage, ref wfapi.CatalogRef) *wfapi.WareID {
-	for _, release := range l.Releases {
-		if release.Name == ref.ReleaseName {
-			for itemName, item := range release.Items.Values {
-				if itemName == ref.ItemName {
-					return &item
-				}
-			}
-		}
-	}
-	return nil
-}
-
 // Get a catalog mirror for a given catalog reference.
 //
-// Error:
+// Errors:
 //
 //    - warpforge-error-io -- when reading lineage file fails
 //    - warpforge-error-catalog-parse -- when ipld parsing of mirror file fails
-func (cat *Catalog) getMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi.Error) {
+func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi.Error) {
 	mirror := wfapi.CatalogMirror{}
 
 	// open lineage file
-	mirrorPath := filepath.Join(cat.basePath, string(ref.ModuleName), "mirrors.json")
+	mirrorPath := filepath.Join(cat.path, string(ref.ModuleName), "mirrors.json")
 	var mirrorFile fs.File
 	var err error
 	if mirrorFile, err = cat.workspace.fsys.Open(mirrorPath); os.IsNotExist(err) {
@@ -129,35 +239,35 @@ func (cat *Catalog) getMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi
 
 // Get a lineage for a given catalog reference.
 //
-// Error:
+// Errors:
 //
 //    - warpforge-error-io -- when reading lineage file fails
 //    - warpforge-error-catalog-parse -- when ipld unmarshaling fails
-func (cat *Catalog) getLineage(ref wfapi.CatalogRef) (*wfapi.CatalogLineage, wfapi.Error) {
-	lineage := wfapi.CatalogLineage{}
+func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi.Error) {
+	mod := wfapi.CatalogModule{}
 
 	// open lineage file
-	lineagePath := filepath.Join(cat.basePath, string(ref.ModuleName), "lineage.json")
-	var lineageFile fs.File
+	modPath := filepath.Join(cat.path, string(ref.ModuleName), magicModuleFilename)
+	var modFile fs.File
 	var err error
-	if lineageFile, err = cat.workspace.fsys.Open(lineagePath); os.IsNotExist(err) {
+	if modFile, err = cat.workspace.fsys.Open(modPath); os.IsNotExist(err) {
 		// lineage file does not exist for this workspace
 		return nil, nil
 	} else if err != nil {
-		return nil, wfapi.ErrorIo("error opening lineage file", &lineagePath, err)
+		return nil, wfapi.ErrorIo("error opening module file", &modPath, err)
 	}
 
-	// read and unmarshal lineage data
-	lineageBytes, err := ioutil.ReadAll(lineageFile)
+	// read and unmarshal module data
+	modBytes, err := ioutil.ReadAll(modFile)
 	if err != nil {
-		return nil, wfapi.ErrorIo("error reading lineage file", &lineagePath, err)
+		return nil, wfapi.ErrorIo("error reading module file", &modPath, err)
 	}
-	_, err = ipld.Unmarshal(lineageBytes, json.Decode, &lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
+	_, err = ipld.Unmarshal(modBytes, json.Decode, &mod, wfapi.TypeSystem.TypeByName("CatalogModule"))
 	if err != nil {
-		return nil, wfapi.ErrorCatalogParse(lineagePath, err)
+		return nil, wfapi.ErrorCatalogParse(modPath, err)
 	}
 
-	return &lineage, nil
+	return &mod, nil
 }
 
 // Adds a new item to the catalog.
@@ -167,75 +277,116 @@ func (cat *Catalog) getLineage(ref wfapi.CatalogRef) (*wfapi.CatalogLineage, wfa
 //    - warpforge-error-catalog-parse -- when parsing of the lineage file fails
 //    - warpforge-error-io -- when reading or writing the lineage file fails
 //    - warpforge-error-serialization -- when serializing the lineage fails
+//    - warpforge-error-catalog-invalid -- when an error occurs while searching for module or release
 func (cat *Catalog) AddItem(
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID) error {
 
-	lineagePath := filepath.Join(
-		cat.basePath,
-		string(ref.ModuleName),
-		"lineage.json",
+	// determine paths for the module, release, and the corresponding files
+	modulePath := filepath.Join(
+		"/",
+		cat.path,
+		string(ref.ModuleName))
+	releasesPath := filepath.Join(
+		modulePath,
+		"releases",
+	)
+	moduleFilePath := filepath.Join(
+		modulePath,
+		magicModuleFilename,
+	)
+	releaseFilePath := filepath.Join(
+		releasesPath,
+		strings.Join([]string{string(ref.ReleaseName), ".json"}, ""),
 	)
 
-	var lineage *wfapi.CatalogLineage
-	var err wfapi.Error
-	if _, errRaw := os.Stat(lineagePath); os.IsNotExist(errRaw) {
-		lineage = &wfapi.CatalogLineage{
-			Name: string(ref.ModuleName),
+	// attempt to load the release
+	release, err := cat.GetRelease(ref)
+	if err != nil {
+		return err
+	}
+	if release == nil {
+		// release does not exist, create a new one
+		release = &wfapi.CatalogRelease{
+			Name: ref.ReleaseName,
+			Items: struct {
+				Keys   []wfapi.ItemLabel
+				Values map[wfapi.ItemLabel]wfapi.WareID
+			}{},
+			Metadata: struct {
+				Keys   []string
+				Values map[string]string
+			}{},
 		}
-	} else {
-		lineage, err = cat.getLineage(ref)
-		if err != nil {
-			return err
+		release.Items.Values = map[wfapi.ItemLabel]wfapi.WareID{}
+		release.Metadata.Values = map[string]string{}
+	}
+
+	// TODO check if it exists already and don't append or maybe just fail?
+	release.Items.Keys = append(release.Items.Keys, ref.ItemName)
+	release.Items.Values[ref.ItemName] = wareId
+
+	// attempt to load the module
+	module, err := cat.GetModule(ref)
+	if err != nil {
+		return err
+	}
+
+	if module == nil {
+		// module does not exist, create a new one
+		module = &wfapi.CatalogModule{
+			Name: ref.ModuleName,
+			Releases: struct {
+				Keys   []wfapi.ReleaseName
+				Values map[wfapi.ReleaseName]wfapi.CatalogReleaseCID
+			}{},
+			Metadata: struct {
+				Keys   []string
+				Values map[string]string
+			}{},
+		}
+		module.Releases.Values = map[wfapi.ReleaseName]wfapi.CatalogReleaseCID{}
+		module.Metadata.Values = map[string]string{}
+
+		// create the module and releases since they should not already exist
+		errRaw := os.MkdirAll(releasesPath, 0755)
+		if errRaw != nil {
+			return wfapi.ErrorIo("failed to create catalog releases directory", &releasesPath, errRaw)
 		}
 	}
 
-	// add this item to the lineage file
-	// first, search for the release in the existing file
-	releaseIdx := -1
-	for i, release := range lineage.Releases {
-		if release.Name == ref.ReleaseName {
-			// release was found, we will add to it
-			releaseIdx = i
+	// if the release does not already exists, append the key
+	releaseExists := false
+	for _, k := range module.Releases.Keys {
+		if k == ref.ReleaseName {
+			releaseExists = true
 			break
 		}
 	}
-	if releaseIdx == -1 {
-		// release was not found, insert a new release value
-		lineage.Releases = append(lineage.Releases, wfapi.CatalogRelease{
-			Name: ref.ReleaseName,
-		})
-		releaseIdx = len(lineage.Releases) - 1
+	if !releaseExists {
+		module.Releases.Keys = append(module.Releases.Keys, ref.ReleaseName)
+	}
+	// create or update the CID link to the module
+	module.Releases.Values[ref.ReleaseName] = release.Cid()
+
+	// serialize the updated structures
+	moduleSerial, errRaw := ipld.Marshal(json.Encode, module, wfapi.TypeSystem.TypeByName("CatalogModule"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
+	}
+	releaseSerial, errRaw := ipld.Marshal(json.Encode, release, wfapi.TypeSystem.TypeByName("CatalogRelease"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize release", errRaw)
 	}
 
-	// check if this item exists for the release
-	_, found := lineage.Releases[releaseIdx].Items.Values[ref.ItemName]
-	if found {
-		// this item already exists, do nothing
-		// TODO: do we want to check things match when adding?
-	} else {
-		// the item does not exist, add it
-		lineage.Releases[releaseIdx].Items.Keys = append(lineage.Releases[releaseIdx].Items.Keys, ref.ItemName)
-		if lineage.Releases[releaseIdx].Items.Values == nil {
-			lineage.Releases[releaseIdx].Items.Values = make(map[wfapi.ItemLabel]wfapi.WareID)
-		}
-		lineage.Releases[releaseIdx].Items.Values[ref.ItemName] = wareId
-	}
-
-	// write the updated structure
-	lineageSerial, errRaw := ipld.Marshal(json.Encode, lineage, wfapi.TypeSystem.TypeByName("CatalogLineage"))
+	// write the updated structures
+	errRaw = os.WriteFile(moduleFilePath, moduleSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorSerialization("failed to serialize lineage", err)
+		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, errRaw)
 	}
-
-	path := filepath.Dir(filepath.Join("/", lineagePath))
-	errRaw = os.MkdirAll(path, 0755)
+	errRaw = os.WriteFile(releaseFilePath, releaseSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to create directory for catalog entry", &path, err)
-	}
-	errRaw = os.WriteFile(filepath.Join("/", lineagePath), lineageSerial, 0644)
-	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write lineage file", &lineagePath, err)
+		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, err)
 	}
 
 	return nil
@@ -255,7 +406,7 @@ func (cat *Catalog) AddByWareMirror(
 	addr wfapi.WarehouseAddr) error {
 	// load mirrors file, or create it if it doesn't exist
 	mirrorsPath := filepath.Join(
-		cat.basePath,
+		cat.path,
 		string(ref.ModuleName),
 		"mirrors.json",
 	)
@@ -316,4 +467,9 @@ func (cat *Catalog) AddByWareMirror(
 	}
 
 	return nil
+}
+
+// Get the list of modules within this catalog.
+func (cat *Catalog) Modules() []wfapi.ModuleName {
+	return cat.moduleList
 }

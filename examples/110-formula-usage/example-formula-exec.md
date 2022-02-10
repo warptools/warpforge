@@ -25,7 +25,7 @@ This formula echos a value to stdout.
 {
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 		},
 		"action": {
 			"exec": {
@@ -37,7 +37,7 @@ This formula echos a value to stdout.
 	},
 	"context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
 	}
 }
@@ -50,7 +50,7 @@ This formula echos a value to stdout.
 {
 	"guid": "4f1c8e65-9875-4482-bdd5-f1fa78625e88",
 	"time": 1631717098,
-	"formulaID": "bafyrgqc7oxykn4nsfru4snk33vumhszb25zehgnrqkusuk7rx3umaubnv7u3oye7awaeipif4u3wtkpxisk3cofhjc7gzcd3xscvb3z4xh7qy",
+	"formulaID": "bafyrgqhdywzmzh4bocoldc3ncwwbucuzzjkiadib5khpvhgi33qx7k63kg5i53rmszd6t2a7agdue6vuihjwx7whvciiktkwytczeronejynk",
 	"exitcode": 0,
 	"results": {}
 }
@@ -67,7 +67,7 @@ Note the RunRecord now contains a `results` value which includes the output.
 {
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS"
+			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 		},
 		"action": {
 			"exec": {
@@ -84,7 +84,7 @@ Note the RunRecord now contains a `results` value which includes the output.
 	},
 	"context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
 	}
 }
@@ -96,7 +96,7 @@ Note the RunRecord now contains a `results` value which includes the output.
 {
 	"guid": "f63741da-e6e9-4d34-95ab-2342fe000a1c",
 	"time": 1631717580,
-	"formulaID": "bafyrgqeajmqooakjt2ich4hsehl2n7lljavunopvxt5hwkuvdbazc2y6m5ylztr3x6pvf4ydrvjze5zhtebhyca7iffba7yumptvfhmi3ug56",
+	"formulaID": "bafyrgqfmj3qxe4lb5liyr7o6aumzwrscsxpgfccpqoomecicdvzvinqpfb55txxfwxmfed7knonxaki6qwhu7q23kiwzeqtahgcohs63b2ste",
 	"exitcode": 0,
 	"results": {
 		"test": "ware:tar:7wjdwS2Bn5faUcq6t156Je8KY9CoSejC4vMbvTQNeKzdeNLzt4sEtzKQ6H56x6KuD7"
@@ -117,7 +117,7 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 {
 	"formula": {
 		"inputs": {
-			"/": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS",
+			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
 			"/work": "mount:overlay:."
 		},
 		"action": {
@@ -130,7 +130,7 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 	},
 	"context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
 	}
 }
@@ -142,7 +142,7 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 {
 	"guid": "dee7c993-d653-45d2-b299-3b1cdec4e28d",
 	"time": 1633531181,
-	"formulaID": "bafyrgqafgsnzvlt343s7zppulq7o6zuph6xxp3woiocpsz3axd6hj5nuwxaudw357n5hceql2x7umw3zlkauti7aknnavgrxfpfycmhwcsq3o",
+	"formulaID": "bafyrgqaqkncrcgdpkglphvc66btkxp26ldgsiz2rk7xdbqygalzta4z4ugz65f6mlwja5lsazrckbrklqarmjgndcmdlk5p3yov6kgg2bgs2i",
 	"exitcode": 0,
 	"results": {}
 }
@@ -160,7 +160,7 @@ This formula uses an input with filters.
 	"formula": {
 		"inputs": {
 			"/": {
-				"basis": "ware:tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS",
+				"basis": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
 				"filters": {
 					"setid": "ignore"
 				}
@@ -176,7 +176,7 @@ This formula uses an input with filters.
 	},
 	"context": {
 		"warehouses": {
-			"tar:7P8nq1YY361BSEvgsSU3gu4ot1U5ieiFey2XyvMoTM7Mhwg3mo8aV2KyGwwrKRLtxS": "https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-minirootfs-3.14.2-x86_64.tar.gz"
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 		}
 	}
 }
@@ -189,7 +189,7 @@ This formula uses an input with filters.
 {
 	"guid": "2355eefb-2e93-4183-bf3b-e04b0150b86a",
 	"time": 1633531905,
-	"formulaID": "bafyrgqaecatcmjzjpgp6aojsm4nau7pfbnwopybx32hmgy647iybrsdmy55n7kq2rtmyn5qlv3r25xah254t3ixw6ejaikvqkauf65le7lerm",
+	"formulaID": "bafyrgqd7ym6wxhvmdbcqc5kuh7763uqb7tktid5f7azblfibc2ipetpighyk2peurqzdtqff7sfk3j44hzk3vpbthrogg36jsyrswwlznr5k4",
 	"exitcode": 0,
 	"results": {}
 }
