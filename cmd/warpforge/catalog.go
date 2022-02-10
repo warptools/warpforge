@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/urfave/cli/v2"
+	"github.com/warpfork/warpforge/pkg/logging"
+	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -35,6 +37,11 @@ var catalogCmdDef = cli.Command{
 			Name:   "add",
 			Usage:  "Add an item to the catalog.",
 			Action: cmdCatalogAdd,
+		},
+		{
+			Name:   "insertreplay",
+			Usage:  "Add a replay to the catalog.",
+			Action: cmdCatalogInsertReplay,
 		},
 		{
 			Name:   "ls",
@@ -379,6 +386,78 @@ func cmdCatalogUpdate(c *cli.Context) error {
 		} else {
 			fmt.Fprintf(c.App.Writer, "%s: updated\n", cat.Name())
 		}
+	}
+
+	return nil
+}
+
+func cmdCatalogInsertReplay(c *cli.Context) error {
+	if c.Args().Len() != 1 {
+		return fmt.Errorf("invalid input. usage: warpforge catalog insertreplay [release name]")
+	}
+	catalogName := c.String("name")
+	if catalogName == "" {
+		catalogName = "default"
+	}
+
+	// open the workspace set
+	wsSet, err := openWorkspaceSet()
+	if err != nil {
+		return err
+	}
+
+	// create the catalog if it does not exist
+	exists, err := wsSet.Root.HasCatalog(catalogName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err := wsSet.Root.CreateCatalog(catalogName)
+		if err != nil {
+			return err
+		}
+	}
+
+	// get the module, release, and item values (in format `module:release:item`)
+	module, err := moduleFromFile("module.wf")
+	if err != nil {
+		return err
+	}
+
+	releaseName := c.Args().Get(0)
+
+	fmt.Printf("building replay for module = %q, release = %q, executing plot...\n", module.Name, releaseName)
+	plot, err := plotFromFile(PLOT_FILE_NAME)
+	if err != nil {
+		return err
+	}
+	results, err := plotexec.Exec(wsSet, plot, logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose")))
+	if err != nil {
+		return err
+	}
+
+	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	if err != nil {
+		return err
+	}
+
+	for itemName, wareId := range results.Values {
+		ref := wfapi.CatalogRef{
+			ModuleName:  module.Name,
+			ReleaseName: wfapi.ReleaseName(releaseName),
+			ItemName:    wfapi.ItemLabel(itemName),
+		}
+
+		fmt.Println(ref.String(), "->", wareId)
+		err := cat.AddItem(ref, wareId)
+		if err != nil {
+			return err
+		}
+		err = cat.AddReplay(ref, plot)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil

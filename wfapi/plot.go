@@ -3,7 +3,10 @@ package wfapi
 import (
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 )
 
@@ -26,6 +29,8 @@ func init() {
 
 }
 
+type PlotCID string
+
 type Plot struct {
 	Inputs struct {
 		Keys   []LocalLabel
@@ -39,6 +44,25 @@ type Plot struct {
 		Keys   []LocalLabel
 		Values map[LocalLabel]PlotOutput
 	}
+}
+
+func (plot *Plot) Cid() PlotCID {
+	// convert parsed release to node
+	nRelease := bindnode.Wrap(plot, TypeSystem.TypeByName("Plot"))
+
+	// compute CID of parsed release data
+	lsys := cidlink.DefaultLinkSystem()
+	lnk, errRaw := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+		Version:  1,    // Usually '1'.
+		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+	}}, nRelease.(schema.TypedNode).Representation())
+	if errRaw != nil {
+		// panic! this should never fail unless IPLD is broken
+		panic(fmt.Sprintf("Fatal IPLD Error: lsys.ComputeLink failed for CatalogRelease: %s", errRaw))
+	}
+	return PlotCID(lnk.String())
 }
 
 // StepName is for assigning string names to Steps in a Plot.

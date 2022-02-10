@@ -126,8 +126,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, wfa
 	releasePath := cat.releaseFilename(ref)
 	releaseBytes, errRaw := fs.ReadFile(cat.workspace.fsys, releasePath)
 	if os.IsNotExist(errRaw) {
-		return nil, wfapi.ErrorCatalogInvalid(releasePath,
-			"release file does not exist")
+		return nil, nil
 	} else if errRaw != nil {
 		return nil, wfapi.ErrorIo("failed to read catalog release file", &releasePath, errRaw)
 	}
@@ -322,7 +321,13 @@ func (cat *Catalog) AddItem(
 		release.Metadata.Values = map[string]string{}
 	}
 
-	// TODO check if it exists already and don't append or maybe just fail?
+	// ensure the item does not already exist
+	_, hasItem := release.Items.Values[ref.ItemName]
+	if hasItem {
+		return wfapi.ErrorCatalogInvalid(releaseFilePath,
+			fmt.Sprintf("release %q already has item %q", ref.ReleaseName, ref.ItemName))
+	}
+
 	release.Items.Keys = append(release.Items.Keys, ref.ItemName)
 	release.Items.Values[ref.ItemName] = wareId
 
@@ -351,7 +356,7 @@ func (cat *Catalog) AddItem(
 		// create the module and releases since they should not already exist
 		errRaw := os.MkdirAll(releasesPath, 0755)
 		if errRaw != nil {
-			return wfapi.ErrorIo("failed to create catalog releases directory", &releasesPath, errRaw)
+			return wfapi.ErrorIo("failed to create releases directory", &releasesPath, errRaw)
 		}
 	}
 
@@ -386,7 +391,7 @@ func (cat *Catalog) AddItem(
 	}
 	errRaw = os.WriteFile(releaseFilePath, releaseSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, err)
+		return wfapi.ErrorIo("failed to write release file", &moduleFilePath, err)
 	}
 
 	return nil
@@ -472,4 +477,141 @@ func (cat *Catalog) AddByWareMirror(
 // Get the list of modules within this catalog.
 func (cat *Catalog) Modules() []wfapi.ModuleName {
 	return cat.moduleList
+}
+
+func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
+	release, err := cat.GetRelease(ref)
+	if err != nil {
+		return nil, err
+	}
+	if release == nil {
+		// release not found in catalog
+		return nil, nil
+	}
+
+	replayCid, replayExists := release.Metadata.Values["replay"]
+	if !replayExists {
+		// release exists, but replay does not
+		return nil, nil
+	}
+
+	replayPath := filepath.Join(
+		cat.path,
+		string(ref.ModuleName),
+		"replays",
+		string(ref.ReleaseName))
+	replayPath = strings.Join([]string{replayPath, ".json"}, "")
+
+	replayBytes, errRaw := fs.ReadFile(cat.workspace.fsys, replayPath)
+	if os.IsNotExist(errRaw) {
+		return nil, wfapi.ErrorCatalogInvalid(replayPath, "referenced replay file does not exist")
+	} else if errRaw != nil {
+		return nil, wfapi.ErrorIo("could not stat replay file", &replayPath, errRaw)
+	}
+
+	replay := wfapi.Plot{}
+	_, errRaw = ipld.Unmarshal(replayBytes, json.Decode, &replay, wfapi.TypeSystem.TypeByName("Plot"))
+	if errRaw != nil {
+		return nil, wfapi.ErrorCatalogParse(replayPath, err)
+	}
+
+	// ensure the CID matches the expected value
+	if replay.Cid() != wfapi.PlotCID(replayCid) {
+		return nil, wfapi.ErrorCatalogInvalid(replayPath,
+			fmt.Sprintf("expected CID %q for plot, actual CID is %q", replayCid, replay.Cid()))
+	}
+
+	return &replay, nil
+}
+
+// TODO: refactor this ugliness!!!
+func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error {
+	replaysPath := filepath.Join(
+		"/",
+		cat.path,
+		string(ref.ModuleName),
+		"replays")
+
+	errRaw := os.MkdirAll(replaysPath, 0755)
+	if errRaw != nil {
+		return wfapi.ErrorIo("failed to create replays directory", &replaysPath, errRaw)
+	}
+
+	releaseFilename := filepath.Join("/", cat.releaseFilename(ref))
+	replayFilename := filepath.Join(replaysPath, string(ref.ReleaseName))
+	replayFilename = strings.Join([]string{replayFilename, ".json"}, "")
+
+	replaySerial, errRaw := ipld.Marshal(json.Encode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize replay", errRaw)
+	}
+
+	// write the updated structures
+	errRaw = os.WriteFile(replayFilename, replaySerial, 0644)
+	if errRaw != nil {
+		return wfapi.ErrorIo("failed to write replay file", &replayFilename, errRaw)
+	}
+
+	release, err := cat.GetRelease(ref)
+	if err != nil {
+		return err
+	}
+	if release == nil {
+		return wfapi.ErrorCatalogInvalid(releaseFilename, "release does not exist")
+	}
+
+	_, hasReplay := release.Metadata.Values["replay"]
+	if hasReplay {
+		return wfapi.ErrorCatalogInvalid(releaseFilename, "release already has replay")
+	}
+
+	release.Metadata.Keys = append(release.Metadata.Keys, "replay")
+	release.Metadata.Values["replay"] = string(plot.Cid())
+
+	releaseSerial, errRaw := ipld.Marshal(json.Encode, release, wfapi.TypeSystem.TypeByName("CatalogRelease"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize release", errRaw)
+	}
+	errRaw = os.WriteFile(releaseFilename, releaseSerial, 0644)
+	if errRaw != nil {
+		return wfapi.ErrorIo("failed to write release file", &releaseFilename, errRaw)
+	}
+
+	modulePath := filepath.Join(
+		"/",
+		cat.path,
+		string(ref.ModuleName))
+	moduleFilePath := filepath.Join(
+		modulePath,
+		magicModuleFilename,
+	)
+
+	module, err := cat.GetModule(ref)
+	if err != nil {
+		return err
+	}
+	if release == nil {
+		return wfapi.ErrorCatalogInvalid(moduleFilePath, "module does not exist")
+	}
+
+	_, hasRelease := module.Releases.Values[ref.ReleaseName]
+	if !hasRelease {
+		return wfapi.ErrorCatalogInvalid(moduleFilePath,
+			fmt.Sprintf("module does not have release %q", ref.ReleaseName))
+	}
+	module.Releases.Values[ref.ReleaseName] = release.Cid()
+
+	// serialize the updated structures
+	moduleSerial, errRaw := ipld.Marshal(json.Encode, module, wfapi.TypeSystem.TypeByName("CatalogModule"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
+	}
+
+	// write the updated structures
+	errRaw = os.WriteFile(moduleFilePath, moduleSerial, 0644)
+	if errRaw != nil {
+		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, errRaw)
+	}
+
+	return nil
 }

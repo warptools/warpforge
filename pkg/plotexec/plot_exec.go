@@ -170,6 +170,33 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 			color.WhiteString(wareStr),
 		)
 
+		// resolve the replay
+		// TODO this is dumb hack
+		// TODO need to check cache... don't run if we have the ware
+		if wareId != nil && wareAddr == nil {
+			replay, err := wsSet.GetCatalogReplay(*basis.CatalogRef)
+			if err != nil {
+				return wfapi.FormulaInputSimple{}, nil, err
+			}
+			if replay != nil {
+				logger.Info(LOG_TAG, "resolving replay...")
+				result, err := Exec(wsSet, *replay, logger)
+				if err != nil {
+					return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
+				}
+				replayWareId, hasItem := result.Values[wfapi.LocalLabel(basis.CatalogRef.ItemName)]
+				if !hasItem {
+					return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
+						fmt.Sprintf("replay doesn't have item %q", wfapi.LocalLabel(basis.CatalogRef.ItemName)))
+				}
+				if replayWareId != *wareId {
+					return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
+						fmt.Sprintf("replay failed to produce correct wareId. expected %q, replay WareID is %q",
+							wareId, replayWareId))
+				}
+			}
+		}
+
 		return wfapi.FormulaInputSimple{
 			WareID: wareId,
 		}, wareAddr, nil

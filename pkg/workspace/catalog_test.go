@@ -14,13 +14,15 @@ func TestCatalogLookup(t *testing.T) {
 	"name": "example.com/module",
 	"metadata": {},
 	"releases": {
-		"v1.0": "bafyrgqhx6pxhqfxekr4l6bjkjongiaa4i2g5pdsgr6qik6r7ruekuxj22ppcdqsyfiod3owiwmoagujrdy3shrutt6soipoto5uzhd2ffivpm"
+		"v1.0": "bafyrgqaziwrghuevyr4bfoirkk7i4zzqrtuzy6w5yyxmhu56n6oovrnrflltwpfj6oer7lusp7tgasskqtto5o6hn6lairgv4ucyvayg7htxi"
 	} 
 }
 `
 		releaseData := `{
 	"name": "v1.0",
-	"metadata": {},
+	"metadata": {
+		"replay": "bafyrgqggewrtcuo56oznqri5zykl35izosgco24pezynmbnlapwbkfg75uq45j4dlw5k5bjxnblt3lmeaq2co5khffyiabhgfv74fez4xnwbo"
+	},
 	"items": {
 		"x86_64": "tar:abcd"
 	} 
@@ -31,6 +33,40 @@ func TestCatalogLookup(t *testing.T) {
 		"tar:abcd": [
 			"https://example.com/module/module-v1.0-x86_64.tgz"
 		]
+	}
+}
+`
+		replayData := `{
+	"inputs": {
+			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+	},
+	"steps": {
+			"hello-world": {
+					"protoformula": {
+							"inputs": {
+									"/": "pipe::rootfs"
+							},
+							"action": {
+									"script": {
+											"interpreter": "/bin/sh",
+											"contents": [
+													"mkdir /output",
+													"echo 'hello world' | tee /output/file"
+											],
+											"network": false
+									}
+							},
+							"outputs": {
+									"out": {
+											"from": "/output",
+											"packtype": "tar"
+									}
+							}
+					}
+			}
+	},
+	"outputs": {
+			"output": "pipe:hello-world:out"
 	}
 }
 `
@@ -112,5 +148,32 @@ func TestCatalogLookup(t *testing.T) {
 			qt.Assert(t, wareId.Packtype, qt.Equals, wfapi.Packtype("tar"))
 			qt.Assert(t, *wareAddr, qt.Equals, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
 		})
+		t.Run("catalog-replay", func(t *testing.T) {
+			fsys := fstest.MapFS{
+				"home/user/.warpforge/catalog/example.com/module/module.json": &fstest.MapFile{
+					Mode: 0644,
+					Data: []byte(moduleData),
+				},
+				"home/user/.warpforge/catalog/example.com/module/releases/v1.0.json": &fstest.MapFile{
+					Mode: 0644,
+					Data: []byte(releaseData),
+				},
+				"home/user/.warpforge/catalog/example.com/module/replays/v1.0.json": &fstest.MapFile{
+					Mode: 0644,
+					Data: []byte(replayData),
+				},
+				"home/user/.warpforge/catalog/example.com/module/mirrors.json": &fstest.MapFile{
+					Mode: 0644,
+					Data: []byte(mirrorData),
+				},
+			}
+			var err error
+			ws, _, err := FindWorkspace(fsys, "", "home/user/")
+			cat, err := ws.OpenCatalog(nil)
+			qt.Assert(t, err, qt.IsNil)
+			_, err = cat.GetReplay(ref)
+			qt.Assert(t, err, qt.IsNil)
+		})
+
 	})
 }

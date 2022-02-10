@@ -284,3 +284,50 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 
 	return nil
 }
+
+// Get a catalog replay from a workspace, doing lookup by CatalogRef.
+// This will first check all catalogs within the "catalogs" subdirectory, if it exists
+// then, it will check the "catalog" subdirectory, if it exists
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading of lineage or mirror files fails
+//     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
+//     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
+func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
+	// list the catalogs within the "catalogs" subdirectory
+	cats, err := ws.ListCatalogs()
+	if err != nil {
+		return nil, err
+	}
+
+	// if it exists, add the "catalog" subdirectory to the end of the list
+	// this is done by adding a catalog with nil name, which refers to the unnamed catalog
+	// in the "catalog" subdirectory
+	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
+	_, errRaw := fs.Stat(ws.fsys, catalogPath)
+	if errRaw == nil {
+		// "catalog" subdirectory exists, append nil
+		cats = append(cats, nil)
+	}
+
+	for _, c := range cats {
+		cat, err := ws.OpenCatalog(c)
+		if err != nil {
+			return nil, err
+		}
+		replay, err := cat.GetReplay(ref)
+		if err != nil {
+			return nil, err
+		}
+		if replay == nil {
+			// not found in this catalog, keep trying
+			continue
+		}
+		// found, return the replay
+		return replay, nil
+	}
+
+	// nothing found
+	return nil, nil
+}

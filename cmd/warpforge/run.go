@@ -26,18 +26,8 @@ var runCmdDef = cli.Command{
 func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 	result := wfapi.PlotResults{}
 
-	// read module file
-	moduleBytes, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return result, err
-	}
-
-	// unmarshal Module
-	module := wfapi.Module{}
-	_, err = ipld.Unmarshal(moduleBytes, json.Decode, &module, wfapi.TypeSystem.TypeByName("Module"))
-	if err != nil {
-		return result, err
-	}
+	// parse the module, even though it is not currently used
+	_, err := moduleFromFile(fileName)
 
 	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), PLOT_FILE_NAME))
 	if err != nil {
