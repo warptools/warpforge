@@ -172,27 +172,32 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 
 		// resolve the replay
 		// TODO this is dumb hack
-		// TODO need to check cache... don't run if we have the ware
-		if wareId != nil && wareAddr == nil {
-			replay, err := wsSet.GetCatalogReplay(*basis.CatalogRef)
-			if err != nil {
-				return wfapi.FormulaInputSimple{}, nil, err
-			}
-			if replay != nil {
-				logger.Info(LOG_TAG, "resolving replay...")
-				result, err := Exec(wsSet, *replay, logger)
+		if wareAddr == nil {
+			// check if the ware is already in the warehouse
+			_, wsPath := wsSet.Root.Path()
+			cachePath := filepath.Join("/", wsPath, ".warpforge", "warehouse", wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
+			if _, err := os.Stat(filepath.Join("/", cachePath)); os.IsNotExist(err) {
+				// ware not found, run the replay to generate it
+				replay, err := wsSet.GetCatalogReplay(*basis.CatalogRef)
 				if err != nil {
-					return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
+					return wfapi.FormulaInputSimple{}, nil, err
 				}
-				replayWareId, hasItem := result.Values[wfapi.LocalLabel(basis.CatalogRef.ItemName)]
-				if !hasItem {
-					return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
-						fmt.Sprintf("replay doesn't have item %q", wfapi.LocalLabel(basis.CatalogRef.ItemName)))
-				}
-				if replayWareId != *wareId {
-					return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
-						fmt.Sprintf("replay failed to produce correct wareId. expected %q, replay WareID is %q",
-							wareId, replayWareId))
+				if replay != nil {
+					logger.Info(LOG_TAG, "resolving replay...")
+					result, err := Exec(wsSet, *replay, logger)
+					if err != nil {
+						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
+					}
+					replayWareId, hasItem := result.Values[wfapi.LocalLabel(basis.CatalogRef.ItemName)]
+					if !hasItem {
+						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
+							fmt.Sprintf("replay doesn't have item %q", wfapi.LocalLabel(basis.CatalogRef.ItemName)))
+					}
+					if replayWareId != *wareId {
+						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
+							fmt.Sprintf("replay failed to produce correct WareID for item %q. expected %q, replay WareID is %q",
+								basis.CatalogRef.ItemName, wareId, replayWareId))
+					}
 				}
 			}
 		}
