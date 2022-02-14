@@ -58,6 +58,7 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
+//    - warpforge-error-plot-step-failed -- when a replay fails
 func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
@@ -93,6 +94,7 @@ func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
+//    - warpforge-error-plot-step-failed -- when a replay fails
 func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	pipeCtx pipeMap,
@@ -171,19 +173,24 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 		)
 
 		// resolve the replay
-		// TODO this is dumb hack
+		// TODO: unclear if this should happen here or elsewhere
 		if wareAddr == nil {
 			// check if the ware is already in the warehouse
 			_, wsPath := wsSet.Root.Path()
-			cachePath := filepath.Join("/", wsPath, ".warpforge", "warehouse", wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
-			if _, err := os.Stat(filepath.Join("/", cachePath)); os.IsNotExist(err) {
+			warehousePath := filepath.Join("/",
+				wsPath,
+				".warpforge",
+				"warehouse",
+				wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
+			if _, err := os.Stat(filepath.Join("/", warehousePath)); os.IsNotExist(err) {
 				// ware not found, run the replay to generate it
 				replay, err := wsSet.GetCatalogReplay(*basis.CatalogRef)
 				if err != nil {
 					return wfapi.FormulaInputSimple{}, nil, err
 				}
 				if replay != nil {
-					logger.Info(LOG_TAG, "resolving replay...")
+					logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
+						basis.CatalogRef.ModuleName, basis.CatalogRef.ReleaseName)
 					result, err := Exec(wsSet, *replay, logger)
 					if err != nil {
 						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
@@ -285,6 +292,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-missing-catalog-entry -- when a referenced catalog entry cannot be found
 //    - warpforge-error-plot-invalid -- when the plot contains invalid data
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
+//    - warpforge-error-plot-step-failed -- when a replay fails
 func execProtoformula(wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	ctx wfapi.FormulaContext,

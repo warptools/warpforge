@@ -479,6 +479,13 @@ func (cat *Catalog) Modules() []wfapi.ModuleName {
 	return cat.moduleList
 }
 
+// Get a replay plot from a catalog.
+//
+// Errors:
+//
+//    - warpforge-error-catalog-invalid -- when the contents of the catalog is invalid
+//    - warpforge-error-catalog-parse -- when parsing of catalog data fails
+//    - warpforge-error-io -- when an io error occurs while opening the catalog
 func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 	release, err := cat.GetRelease(ref)
 	if err != nil {
@@ -524,7 +531,14 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 	return &replay, nil
 }
 
-// TODO: refactor this ugliness!!!
+// Add a replay plot to a catalog.
+//
+// Errors:
+//
+//    - warpforge-error-catalog-invalid -- when the contents of the catalog is invalid
+//    - warpforge-error-catalog-parse -- when parsing of catalog data fails
+//    - warpforge-error-io -- when an io error occurs while opening the catalog
+//    - warpforge-error-serialization -- when the updated structures fail to serialize
 func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error {
 	replaysPath := filepath.Join(
 		"/",
