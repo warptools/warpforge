@@ -586,48 +586,63 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 	logger.Debug(LOG_TAG, "run path: %s", runPath)
 
 	// get our configuration for the exec step
-	// this config will collect the various input mounts as each is set up
+	// this config will collect the various inputs (mounts and vars) as each is set up
 	execConfig, err := getBaseConfig(wsPath, runPath, binPath)
 	if err != nil {
 		return rr, err
 	}
 
 	// loop over formula inputs
-	for dest, src := range formula.Inputs.Values {
-		var input *wfapi.FormulaInputSimple
+	for port, input := range formula.Inputs.Values {
+		// get the FormulaInputSimple and FilterMap for this input
+		inputSimple := input.Basis()
 		var filters wfapi.FilterMap
-		if src.FormulaInputSimple != nil {
-			input = src.FormulaInputSimple
-		} else if src.FormulaInputComplex != nil {
-			input = &src.FormulaInputComplex.Basis
-			filters = src.FormulaInputComplex.Filters
-		} else {
-			return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("invalid input for %s", *dest.SandboxPath))
+		if input.FormulaInputComplex != nil {
+			filters = input.FormulaInputComplex.Filters
 		}
 
-		var mnt specs.Mount
-		// create a temporary config for setting up each mount
-		config, err := getBaseConfig(wsPath, runPath, binPath)
-		if err != nil {
-			return rr, err
-		}
-		if input.Mount != nil {
-			// determine the host path
+		if port.SandboxVar != nil {
+			// construct the string for this env var
+			varStr := fmt.Sprintf("%s=%s", *port.SandboxVar, *inputSimple.Literal)
+
+			// insert the variable to the container spec, de-duplicating any existing variables
+			// note that the runc default config has PATH and TERM defined, so this allows
+			// for overriding those defaults
+			oldVars := execConfig.spec.Process.Env
+			execConfig.spec.Process.Env = []string{}
+			for _, v := range oldVars {
+				if strings.Split(v, "=")[0] != string(*port.SandboxVar) {
+					execConfig.spec.Process.Env = append(execConfig.spec.Process.Env, v)
+				}
+			}
+			execConfig.spec.Process.Env = append(execConfig.spec.Process.Env, varStr)
+		} else if port.SandboxPath != nil {
+			var mnt specs.Mount
+			// create a temporary config for setting up the mount
+			config, err := getBaseConfig(wsPath, runPath, binPath)
+			if err != nil {
+				return rr, err
+			}
+
+			// determine the host path for mount types
 			var hostPath string
-			if input.Mount.HostPath[0] == '/' {
-				// leading slash, use absolute path
-				hostPath = input.Mount.HostPath
-			} else {
-				// otherwise, use relative path
-				hostPath = filepath.Join(pwd, input.Mount.HostPath)
+			if inputSimple.Mount != nil {
+				if inputSimple.Mount.HostPath[0] == '/' {
+					// leading slash, use absolute path
+					hostPath = inputSimple.Mount.HostPath
+				} else {
+					// otherwise, use relative path
+					hostPath = filepath.Join(pwd, inputSimple.Mount.HostPath)
+				}
 			}
 
 			// add leading slash to destPath since it is removed during parsing
-			destPath := filepath.Join("/", string(*dest.SandboxPath))
+			destPath := filepath.Join("/", string(*port.SandboxPath))
 
-			// create the mount
-			switch input.Mount.Mode {
-			case "overlay":
+			// create the mount based on type
+			switch {
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "overlay":
+				// overlay mount
 				logger.Info(LOG_TAG,
 					"overlay mount:\t%s = %s\t%s = %s",
 					color.HiBlueString("hostPath"),
@@ -638,7 +653,8 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 				if err != nil {
 					return rr, err
 				}
-			case "bind":
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "bind":
+				// bind mount
 				logger.Info(LOG_TAG,
 					"bind mount:\t%s = %s\t%s = %s",
 					color.HiBlueString("hostPath"),
@@ -649,29 +665,30 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 				if err != nil {
 					return rr, err
 				}
+			case inputSimple.WareID != nil:
+				// ware mount
+				destPath = filepath.Join("/", string(*port.SandboxPath))
+				logger.Info(LOG_TAG,
+					"ware mount:\t%s = %s\t%s = %s",
+					color.HiBlueString("wareId"),
+					color.WhiteString(inputSimple.WareID.String()),
+					color.HiBlueString("destPath"),
+					color.WhiteString(destPath))
+				mnt, err = makeWareMount(config, *inputSimple.WareID, destPath, context, filters, logger)
+				if err != nil {
+					return rr, err
+				}
 			default:
-				return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("unsupported mount mode %q", input.Mount.Mode))
+				return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("unsupported mount mode %q", inputSimple.Mount.Mode))
 			}
-		} else if input.WareID != nil {
-			destPath := filepath.Join("/", string(*dest.SandboxPath))
-			logger.Info(LOG_TAG,
-				"ware mount:\t%s = %s\t%s = %s",
-				color.HiBlueString("wareId"),
-				color.WhiteString(input.WareID.String()),
-				color.HiBlueString("destPath"),
-				color.WhiteString(destPath))
-			mnt, err = makeWareMount(config, *input.WareID, destPath, context, filters, logger)
-			if err != nil {
-				return rr, err
-			}
-		}
 
-		// root mount must come first
-		// leading slash is removed during parsing, so `"/"` will result in `""`
-		if *dest.SandboxPath == wfapi.SandboxPath("") {
-			execConfig.spec.Mounts = append([]specs.Mount{mnt}, execConfig.spec.Mounts...)
-		} else {
-			execConfig.spec.Mounts = append(execConfig.spec.Mounts, mnt)
+			// root mount must come first
+			// leading slash is removed during parsing, so `"/"` will result in `""`
+			if *port.SandboxPath == wfapi.SandboxPath("") {
+				execConfig.spec.Mounts = append([]specs.Mount{mnt}, execConfig.spec.Mounts...)
+			} else {
+				execConfig.spec.Mounts = append(execConfig.spec.Mounts, mnt)
+			}
 		}
 	}
 

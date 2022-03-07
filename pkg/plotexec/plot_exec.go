@@ -272,6 +272,11 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 		}
 		return input, nil, nil
 
+	case basis.Literal != nil:
+		// pass through the literal value
+		return wfapi.FormulaInputSimple{
+			Literal: basis.Literal,
+		}, nil, nil
 	}
 	return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid("invalid type in plot input")
 }
