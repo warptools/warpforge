@@ -2,7 +2,7 @@ package wfapi
 
 import (
 	_ "github.com/ipld/go-ipld-prime/codec/json" // side-effecting import; registers a codec.
-	"github.com/ipld/go-ipld-prime/linking/cid"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/schema"
 )
 

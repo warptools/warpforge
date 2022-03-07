@@ -21,6 +21,13 @@ var runCmdDef = cli.Command{
 	Name:   "run",
 	Usage:  "Run a module or formula",
 	Action: cmdRun,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "recursive",
+			Aliases: []string{"r"},
+			Usage:   "Recursively execute replays required to assemble inputs to this module.",
+		},
+	},
 }
 
 func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
@@ -51,7 +58,10 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
 
-	result, err = plotexec.Exec(wss, plot, logger)
+	config := wfapi.PlotExecConfig{
+		Recursive: c.Bool("recursive"),
+	}
+	result, err = plotexec.Exec(wss, plot, config, logger)
 	cdErr := os.Chdir(pwd)
 	if cdErr != nil {
 		return result, cdErr

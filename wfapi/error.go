@@ -256,12 +256,22 @@ func ErrorPlotInvalid(reason string) Error {
 // Errors:
 //
 //    - warpforge-error-missing-catalog-entry --
-func ErrorMissingCatalogEntry(ref CatalogRef) Error {
+func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) Error {
+	var msg string
+	var available string
+	if replayAvailable {
+		msg = fmt.Sprintf("catalog entry %q exists, but content is missing. Re-run recusively to resolve entry.", ref.String())
+		available = "true"
+	} else {
+		msg = fmt.Sprintf("missing catalog entry %q", ref.String())
+		available = "false"
+	}
 	return &ErrorVal{
 		CodeString: "warpforge-error-missing-catalog-entry",
-		Message:    fmt.Sprintf("missing catalog entry %q", ref.String()),
+		Message:    msg,
 		Details: [][2]string{
 			{"catalogRef", ref.String()},
+			{"replayAvailable", available},
 		},
 	}
 }

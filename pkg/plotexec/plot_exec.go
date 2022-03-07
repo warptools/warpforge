@@ -61,9 +61,10 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-plot-step-failed -- when a replay fails
 func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
+	config wfapi.PlotExecConfig,
 	pipeCtx pipeMap,
 	logger logging.Logger) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
-	basis, addr, err := plotInputToFormulaInputSimple(wsSet, plotInput, pipeCtx, logger)
+	basis, addr, err := plotInputToFormulaInputSimple(wsSet, plotInput, config, pipeCtx, logger)
 	if err != nil {
 		return wfapi.FormulaInput{}, nil, err
 	}
@@ -97,6 +98,7 @@ func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-plot-step-failed -- when a replay fails
 func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
+	config wfapi.PlotExecConfig,
 	pipeCtx pipeMap,
 	logger logging.Logger) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
 	var basis wfapi.PlotInputSimple
@@ -158,7 +160,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 			// failed to find a match in the catalog
 			return wfapi.FormulaInputSimple{},
 				nil,
-				wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef)
+				wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef, false)
 		}
 
 		wareStr := "none"
@@ -189,9 +191,13 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 					return wfapi.FormulaInputSimple{}, nil, err
 				}
 				if replay != nil {
+					if !config.Recursive {
+						// recursion is not allowed, return error
+						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef, true)
+					}
 					logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
 						basis.CatalogRef.ModuleName, basis.CatalogRef.ReleaseName)
-					result, err := Exec(wsSet, *replay, logger)
+					result, err := Exec(wsSet, *replay, config, logger)
 					if err != nil {
 						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
 					}
@@ -301,6 +307,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 func execProtoformula(wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	ctx wfapi.FormulaContext,
+	config wfapi.PlotExecConfig,
 	pipeCtx pipeMap,
 	logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
 	// create an empty Formula and FormulaContext
@@ -313,7 +320,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 	// convert Protoformula inputs (of type PlotInput) to FormulaInputs
 	for sbPort, plotInput := range pf.Inputs.Values {
 		formula.Inputs.Keys = append(formula.Inputs.Keys, sbPort)
-		input, wareAddr, err := plotInputToFormulaInput(wsSet, plotInput, pipeCtx, logger)
+		input, wareAddr, err := plotInputToFormulaInput(wsSet, plotInput, config, pipeCtx, logger)
 		if err != nil {
 			return wfapi.RunRecord{}, err
 		}
@@ -353,7 +360,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) (wfapi.PlotResults, error) {
+func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig, logger logging.Logger) (wfapi.PlotResults, error) {
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
 
@@ -366,7 +373,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 	inputContext := wfapi.FormulaContext{}
 	inputContext.Warehouses.Values = make(map[wfapi.WareID]wfapi.WarehouseAddr)
 	for name, input := range plot.Inputs.Values {
-		input, wareAddr, err := plotInputToFormulaInput(wsSet, input, pipeCtx, logger)
+		input, wareAddr, err := plotInputToFormulaInput(wsSet, input, config, pipeCtx, logger)
 		if err != nil {
 			return results, err
 		}
@@ -394,7 +401,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 				color.HiCyanString(string(name)),
 				color.WhiteString("evaluating protoformula"),
 			)
-			rr, err := execProtoformula(wsSet, *step.Protoformula, inputContext, pipeCtx, logger)
+			rr, err := execProtoformula(wsSet, *step.Protoformula, inputContext, config, pipeCtx, logger)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
@@ -417,7 +424,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, logger logging.Logger) 
 				color.WhiteString("evaluating subplot"),
 			)
 
-			stepResults, err := Exec(wsSet, *step.Plot, logger)
+			stepResults, err := Exec(wsSet, *step.Plot, config, logger)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}

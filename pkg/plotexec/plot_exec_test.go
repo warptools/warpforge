@@ -68,7 +68,10 @@ func TestFormulaExecFixtures(t *testing.T) {
 					}
 
 					wss := getTestWorkspaceStack(t)
-					results, err := Exec(wss, plot, logging.DefaultLogger())
+					config := wfapi.PlotExecConfig{
+						Recursive: true,
+					}
+					results, err := Exec(wss, plot, config, logging.DefaultLogger())
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file

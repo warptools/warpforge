@@ -254,3 +254,16 @@ type PlotResults struct {
 	Keys   []LocalLabel
 	Values map[LocalLabel]WareID
 }
+
+func init() {
+	TypeSystem.Accumulate(schema.SpawnStruct("PlotExecConfig",
+		[]schema.StructField{
+			schema.SpawnStructField("recursive", "BoolRecursive", false, false),
+		},
+		schema.SpawnStructRepresentationMap(nil)))
+	TypeSystem.Accumulate(schema.SpawnBool("BoolRecursive"))
+}
+
+type PlotExecConfig struct {
+	Recursive bool
+}

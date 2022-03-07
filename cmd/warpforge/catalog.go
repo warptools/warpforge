@@ -431,7 +431,11 @@ func cmdCatalogInsertReplay(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	results, err := plotexec.Exec(wsSet, plot, logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose")))
+
+	config := wfapi.PlotExecConfig{
+		Recursive: false,
+	}
+	results, err := plotexec.Exec(wsSet, plot, config, logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose")))
 	if err != nil {
 		return err
 	}
