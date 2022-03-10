@@ -34,6 +34,8 @@ const LOG_TAG_OUTPUT = "│ │ │  output "
 const LOG_TAG_OUTPUT_END = "│ │ └─ output "
 const LOG_TAG_END = "│ └─ formula"
 
+var interactive bool = true
+
 type RioResult struct {
 	WareId string `json:"wareID"`
 }
@@ -171,8 +173,45 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
 
-	// required for executing on systems without a tty (e.g., github actions)
-	rc.spec.Process.Terminal = false
+	if interactive {
+		rc.spec.Linux.UIDMappings = append(rc.spec.Linux.UIDMappings, specs.LinuxIDMapping{
+			ContainerID: 1,
+			HostID:      100000,
+			Size:        65536,
+		})
+		rc.spec.Linux.GIDMappings = append(rc.spec.Linux.GIDMappings, specs.LinuxIDMapping{
+			ContainerID: 1,
+			HostID:      100000,
+			Size:        65536,
+		})
+		caps := []string{
+			//"CAP_AUDIT_WRITE",
+			"CAP_CHOWN",
+			"CAP_DAC_OVERRIDE",
+			"CAP_FOWNER",
+			//"CAP_FSETID",
+			//"CAP_KILL",
+			//"CAP_MKNOD",
+			//"CAP_NET_BIND_SERVICE",
+			"CAP_NET_RAW",
+			//"CAP_SETFCAP",
+			"CAP_SETGID",
+			//"CAP_SETPCAP",
+			"CAP_SETUID",
+			//"CAP_SYS_ADMIN",
+			//"CAP_SYS_CHROOT",
+		}
+		rc.spec.Process.Capabilities.Ambient = append(rc.spec.Process.Capabilities.Ambient, caps...)
+		rc.spec.Process.Capabilities.Bounding = append(rc.spec.Process.Capabilities.Bounding, caps...)
+		rc.spec.Process.Capabilities.Effective = append(rc.spec.Process.Capabilities.Effective, caps...)
+		rc.spec.Process.Capabilities.Inheritable = append(rc.spec.Process.Capabilities.Inheritable, caps...)
+		rc.spec.Process.Capabilities.Permitted = append(rc.spec.Process.Capabilities.Permitted, caps...)
+
+		rc.spec.Process.Terminal = true
+	} else {
+		// required for executing on systems without a tty (e.g., github actions)
+		rc.spec.Process.Terminal = false
+	}
 
 	// the rootless spec will omit the "network" namespace by default, and the
 	// rootful config will have an empty namespace.
@@ -410,6 +449,10 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 		"-b", bundlePath, // bundle path
 		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
+
+	if interactive {
+		cmd.Stdin = os.Stdin
+	}
 
 	// if a logWriter was provided, write output to it
 	// otherwise, capture stderr and stdout to buffers
@@ -806,9 +849,17 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 		return rr, wfapi.ErrorFormulaInvalid("unsupported action, or no action defined")
 	}
 
+	// determine output formatting. if interactive, do not apply any special formatting
+	var runcWriter io.Writer
+	if interactive {
+		runcWriter = logger.RawWriter()
+	} else {
+		runcWriter = logger.InfoWriter(LOG_TAG_OUTPUT)
+	}
+
 	// run the action
 	logger.Info(LOG_TAG_OUTPUT_START, "")
-	_, err = invokeRunc(execConfig, logger.InfoWriter(LOG_TAG_OUTPUT))
+	_, err = invokeRunc(execConfig, runcWriter)
 	logger.Info(LOG_TAG_OUTPUT_END, "")
 	if err != nil {
 		return rr, err

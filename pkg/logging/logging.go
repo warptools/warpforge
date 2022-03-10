@@ -61,12 +61,22 @@ func print(w io.Writer, tagColor *color.Color, tag, f string, args ...interface{
 type Writer struct {
 	pipe io.Writer
 	tag  string
+	raw  bool
 }
 
 func (l *Logger) InfoWriter(tag string) *Writer {
 	return &Writer{
 		pipe: l.err,
 		tag:  tag,
+		raw:  false,
+	}
+}
+
+func (l *Logger) RawWriter() *Writer {
+	return &Writer{
+		pipe: l.out,
+		tag:  "",
+		raw:  true,
 	}
 }
 
@@ -74,10 +84,14 @@ func (l *Logger) InfoWriter(tag string) *Writer {
 //
 // Errors: none -- return value used keep io.Writer interface
 func (w *Writer) Write(data []byte) (n int, err error) {
-	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
-		fmt.Fprintf(w.pipe, "%s  %s\n",
-			color.HiGreenString(w.tag),
-			line)
+	if w.raw {
+		fmt.Fprintf(w.pipe, "%s", data)
+	} else {
+		for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+			fmt.Fprintf(w.pipe, "%s  %s\n",
+				color.HiGreenString(w.tag),
+				line)
+		}
 	}
 	return len(data), nil
 }
