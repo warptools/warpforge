@@ -224,7 +224,7 @@ func makeWareMount(config runConfig,
 				// this is a local file or directory, we will need to mount it to the container for unpacking
 				// we will mount it at CONTAINER_BASE_PATH/tmp
 				src = filepath.Join(CONTAINER_BASE_PATH, "tmp")
-				mnt, err := makeBindPathMount(config, hostPath, src)
+				mnt, err := makeBindPathMount(config, hostPath, src, true)
 				if err != nil {
 					return mnt, err
 				}
@@ -370,12 +370,16 @@ func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mou
 // Creates an overlay mount for a path on the host filesystem
 //
 // Errors: none -- this function only adds an entry to the runc config and cannot fail
-func makeBindPathMount(config runConfig, path string, dest string) (specs.Mount, wfapi.Error) {
+func makeBindPathMount(config runConfig, path string, dest string, readOnly bool) (specs.Mount, wfapi.Error) {
+	options := []string{"rbind"}
+	if readOnly {
+		options = append(options, "ro")
+	}
 	return specs.Mount{
 		Source:      path,
 		Destination: dest,
 		Type:        "none",
-		Options:     []string{"rbind", "ro"},
+		Options:     options,
 	}, nil
 }
 
@@ -653,18 +657,31 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 				if err != nil {
 					return rr, err
 				}
-			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "bind":
-				// bind mount
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "ro":
+				// read only bind mount
 				logger.Info(LOG_TAG,
-					"bind mount:\t%s = %s\t%s = %s",
+					"bind mount (ro):\t%s = %s\t%s = %s",
 					color.HiBlueString("hostPath"),
 					color.WhiteString(hostPath),
 					color.HiBlueString("destPath"),
 					color.WhiteString(destPath))
-				mnt, err = makeBindPathMount(config, hostPath, destPath)
+				mnt, err = makeBindPathMount(config, hostPath, destPath, true)
 				if err != nil {
 					return rr, err
 				}
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "rw":
+				// bind mount
+				logger.Info(LOG_TAG,
+					"bind mount (rw):\t%s = %s\t%s = %s",
+					color.HiBlueString("hostPath"),
+					color.WhiteString(hostPath),
+					color.HiBlueString("destPath"),
+					color.WhiteString(destPath))
+				mnt, err = makeBindPathMount(config, hostPath, destPath, false)
+				if err != nil {
+					return rr, err
+				}
+
 			case inputSimple.WareID != nil:
 				// ware mount
 				destPath = filepath.Join("/", string(*port.SandboxPath))
@@ -774,7 +791,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 		}
 
 		// create a mount for the script file
-		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath())
+		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath(), true)
 		if err != nil {
 			return rr, err
 		}
