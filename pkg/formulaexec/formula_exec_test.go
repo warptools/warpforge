@@ -39,7 +39,7 @@ func evaluateDoc(t *testing.T, doc *testmark.Document) {
 					frmAndCtx := wfapi.FormulaAndContext{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
-					rr, err := Exec(nil, frmAndCtx, logging.DefaultLogger())
+					rr, err := Exec(nil, frmAndCtx, false, logging.DefaultLogger())
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))

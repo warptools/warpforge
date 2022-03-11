@@ -131,7 +131,7 @@ func cmdRun(c *cli.Context) error {
 				ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
 
 				// run formula
-				rr, err := formulaexec.Exec(ws, frmAndCtx, logger)
+				rr, err := formulaexec.Exec(ws, frmAndCtx, false, logger)
 				if err != nil {
 					return err
 				}

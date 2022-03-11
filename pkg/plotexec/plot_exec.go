@@ -345,6 +345,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 			Formula: formula,
 			Context: &ctx,
 		},
+		config.Interactive,
 		logger)
 	return rr, err
 }

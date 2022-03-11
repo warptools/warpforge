@@ -34,8 +34,6 @@ const LOG_TAG_OUTPUT = "│ │ │  output "
 const LOG_TAG_OUTPUT_END = "│ │ └─ output "
 const LOG_TAG_END = "│ └─ formula"
 
-var interactive bool = true
-
 type RioResult struct {
 	WareId string `json:"wareID"`
 }
@@ -44,10 +42,11 @@ type RioOutput struct {
 }
 
 type runConfig struct {
-	spec    specs.Spec
-	runPath string // path used to store temporary files used for formula run
-	wsPath  string // path to of the workspace to run in
-	binPath string // path containing required binaries to run (rio, runc)
+	spec        specs.Spec
+	runPath     string // path used to store temporary files used for formula run
+	wsPath      string // path to of the workspace to run in
+	binPath     string // path containing required binaries to run (rio, runc)
+	interactive bool
 }
 
 // base directory for warpforge related files within the container
@@ -103,11 +102,12 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 //
 //    - warpforge-error-io -- when file reads, writes, and dir creation fails
 //    - warpforge-error-executor-failed -- when generation of the base spec by runc fails
-func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
+func getBaseConfig(wsPath, runPath, binPath string, interactive bool) (runConfig, wfapi.Error) {
 	rc := runConfig{
-		runPath: runPath,
-		wsPath:  wsPath,
-		binPath: binPath,
+		runPath:     runPath,
+		wsPath:      wsPath,
+		binPath:     binPath,
+		interactive: interactive,
 	}
 
 	// generate a runc rootless config, then read the resulting config
@@ -450,7 +450,7 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
 
-	if interactive {
+	if config.interactive {
 		cmd.Stdin = os.Stdin
 	}
 
@@ -549,7 +549,7 @@ func GetBinPath() (string, wfapi.Error) {
 // - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
 // - warpforge-error-workspace -- when an invalid workspace is provided
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
-func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactive bool, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
 	formula := fc.Formula
 	context := fc.Context
 	rr := wfapi.RunRecord{}
@@ -634,7 +634,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 
 	// get our configuration for the exec step
 	// this config will collect the various inputs (mounts and vars) as each is set up
-	execConfig, err := getBaseConfig(wsPath, runPath, binPath)
+	execConfig, err := getBaseConfig(wsPath, runPath, binPath, interactive)
 	if err != nil {
 		return rr, err
 	}
@@ -666,7 +666,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 		} else if port.SandboxPath != nil {
 			var mnt specs.Mount
 			// create a temporary config for setting up the mount
-			config, err := getBaseConfig(wsPath, runPath, binPath)
+			config, err := getBaseConfig(wsPath, runPath, binPath, false)
 			if err != nil {
 				return rr, err
 			}
@@ -851,7 +851,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 
 	// determine output formatting. if interactive, do not apply any special formatting
 	var runcWriter io.Writer
-	if interactive {
+	if execConfig.interactive {
 		runcWriter = logger.RawWriter()
 	} else {
 		runcWriter = logger.InfoWriter(LOG_TAG_OUTPUT)
@@ -923,8 +923,8 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger log
 //     - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
 //     - warpforge-error-workspace -- when an invalid workspace is provided
 //     - warpforge-error-formula-invalid -- when an invalid formula is provided
-func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
-	rr, err := execFormula(ws, fc, logger)
+func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactive bool, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+	rr, err := execFormula(ws, fc, interactive, logger)
 	if err != nil {
 		switch err.(*wfapi.ErrorVal).Code() {
 		case "warpforge-error-io":

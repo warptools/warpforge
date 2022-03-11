@@ -259,11 +259,14 @@ func init() {
 	TypeSystem.Accumulate(schema.SpawnStruct("PlotExecConfig",
 		[]schema.StructField{
 			schema.SpawnStructField("recursive", "BoolRecursive", false, false),
+			schema.SpawnStructField("interactive", "BoolInteractive", false, false),
 		},
 		schema.SpawnStructRepresentationMap(nil)))
 	TypeSystem.Accumulate(schema.SpawnBool("BoolRecursive"))
+	TypeSystem.Accumulate(schema.SpawnBool("BoolInteractive"))
 }
 
 type PlotExecConfig struct {
-	Recursive bool
+	Recursive   bool
+	Interactive bool
 }

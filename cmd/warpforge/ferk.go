@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
@@ -23,11 +23,12 @@ var ferkPlot = `
                 "rootfs": "catalog:warpsys.org/bootstrap-rootfs:bullseye-1646092800:amd64"
         },
         "steps": {
-                "build": {
+                "ferk": {
                         "protoformula": {
                                 "inputs": {
                                         "/": "pipe::rootfs",
                                         "/pwd": "mount:overlay:.",
+                                        "/persist": "mount:rw:wf-persist",
                                 },
                                 "action": {
                                         "exec": {
@@ -44,8 +45,6 @@ var ferkPlot = `
 `
 
 func cmdFerk(c *cli.Context) error {
-	result := wfapi.PlotResults{}
-
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
 
 	wss, err := openWorkspaceSet()
@@ -59,14 +58,16 @@ func cmdFerk(c *cli.Context) error {
 		return err
 	}
 
+	os.MkdirAll("wf-persist", 0755)
+
 	config := wfapi.PlotExecConfig{
-		Recursive: c.Bool("recursive"),
+		Recursive:   c.Bool("recursive"),
+		Interactive: true,
 	}
-	result, err = plotexec.Exec(wss, plot, config, logger)
+	_, err = plotexec.Exec(wss, plot, config, logger)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(result)
 	return nil
 }
