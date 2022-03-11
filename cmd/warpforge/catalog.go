@@ -15,7 +15,7 @@ import (
 	"github.com/warpfork/warpforge/wfapi"
 )
 
-const defaultCatalogUrl = "https://github.com/warpfork/wfcatalog"
+const warpsysCatalogUrl = "https://github.com/warpsys/catalog.git"
 
 var catalogCmdDef = cli.Command{
 	Name:  "catalog",
@@ -311,15 +311,15 @@ func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 	// install our default remote catalog as "default-remote" by cloning from git
 	// this will noop if the catalog already exists
 
-	defaultCatalogPath := filepath.Join(path, "default-remote")
-	if _, err := os.Stat(defaultCatalogPath); !os.IsNotExist(err) {
+	warpsysCatalogPath := filepath.Join(path, "warpsys")
+	if _, err := os.Stat(warpsysCatalogPath); !os.IsNotExist(err) {
 		// a dir exists for this catalog, do nothing
 		return nil
 	}
 
-	fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", defaultCatalogPath)
-	_, err := git.PlainClone(defaultCatalogPath, false, &git.CloneOptions{
-		URL: defaultCatalogUrl,
+	fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", warpsysCatalogPath)
+	_, err := git.PlainClone(warpsysCatalogPath, false, &git.CloneOptions{
+		URL: warpsysCatalogUrl,
 	})
 
 	fmt.Fprintf(c.App.Writer, " done.\n")
