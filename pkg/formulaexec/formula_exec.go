@@ -174,39 +174,7 @@ func getBaseConfig(wsPath, runPath, binPath string, interactive bool) (runConfig
 	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
 
 	if interactive {
-		rc.spec.Linux.UIDMappings = append(rc.spec.Linux.UIDMappings, specs.LinuxIDMapping{
-			ContainerID: 1,
-			HostID:      100000,
-			Size:        65536,
-		})
-		rc.spec.Linux.GIDMappings = append(rc.spec.Linux.GIDMappings, specs.LinuxIDMapping{
-			ContainerID: 1,
-			HostID:      100000,
-			Size:        65536,
-		})
-		caps := []string{
-			//"CAP_AUDIT_WRITE",
-			"CAP_CHOWN",
-			"CAP_DAC_OVERRIDE",
-			"CAP_FOWNER",
-			//"CAP_FSETID",
-			//"CAP_KILL",
-			//"CAP_MKNOD",
-			//"CAP_NET_BIND_SERVICE",
-			"CAP_NET_RAW",
-			//"CAP_SETFCAP",
-			"CAP_SETGID",
-			//"CAP_SETPCAP",
-			"CAP_SETUID",
-			//"CAP_SYS_ADMIN",
-			//"CAP_SYS_CHROOT",
-		}
-		rc.spec.Process.Capabilities.Ambient = append(rc.spec.Process.Capabilities.Ambient, caps...)
-		rc.spec.Process.Capabilities.Bounding = append(rc.spec.Process.Capabilities.Bounding, caps...)
-		rc.spec.Process.Capabilities.Effective = append(rc.spec.Process.Capabilities.Effective, caps...)
-		rc.spec.Process.Capabilities.Inheritable = append(rc.spec.Process.Capabilities.Inheritable, caps...)
-		rc.spec.Process.Capabilities.Permitted = append(rc.spec.Process.Capabilities.Permitted, caps...)
-
+		// enable a normal interactive terminal
 		rc.spec.Process.Terminal = true
 	} else {
 		// required for executing on systems without a tty (e.g., github actions)
