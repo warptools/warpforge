@@ -13,6 +13,6 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/rogpeppe/go-internal v1.7.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/warpfork/go-testmark v0.8.0
+	github.com/warpfork/go-testmark v0.10.0
 	go.starlark.net v0.0.0-20210901212718-87f333178d59
 )
