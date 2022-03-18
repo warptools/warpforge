@@ -493,10 +493,14 @@ bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
 The `ferk` command rapidly spawns a container in interactive mode. If the directory 
 `/out` is created, its contents will be packed into a ware on exit.
 
+Run `ferk` using Alpine Linux as the rootfs and invoke `/bin/echo`.
+
 [testmark]:# (catalog/then-add/then-ferk/sequence)
 ```
 warpforge --json ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/echo --no-interactive
 ```
+
+Check that `ferk` ran successfully, no outputs are expected.
 
 [testmark]:# (catalog/then-add/then-ferk/stdout)
 ```
