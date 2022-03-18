@@ -42,11 +42,10 @@ type RioOutput struct {
 }
 
 type runConfig struct {
-	spec        specs.Spec
-	runPath     string // path used to store temporary files used for formula run
-	wsPath      string // path to of the workspace to run in
-	binPath     string // path containing required binaries to run (rio, runc)
-	interactive bool
+	spec    specs.Spec
+	runPath string // path used to store temporary files used for formula run
+	wsPath  string // path to of the workspace to run in
+	binPath string // path containing required binaries to run (rio, runc)
 }
 
 // base directory for warpforge related files within the container
@@ -102,12 +101,11 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 //
 //    - warpforge-error-io -- when file reads, writes, and dir creation fails
 //    - warpforge-error-executor-failed -- when generation of the base spec by runc fails
-func getBaseConfig(wsPath, runPath, binPath string, interactive bool) (runConfig, wfapi.Error) {
+func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 	rc := runConfig{
-		runPath:     runPath,
-		wsPath:      wsPath,
-		binPath:     binPath,
-		interactive: interactive,
+		runPath: runPath,
+		wsPath:  wsPath,
+		binPath: binPath,
 	}
 
 	// generate a runc rootless config, then read the resulting config
@@ -174,13 +172,16 @@ func getBaseConfig(wsPath, runPath, binPath string, interactive bool) (runConfig
 	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
 
 	// check if /dev/tty exists
-	fi, _ := os.Stdin.Stat()
-	isTty := (fi.Mode() & os.ModeCharDevice) != 0
-	if interactive && isTty {
+	_, err = os.Open("/dev/tty")
+	if err == nil {
 		// enable a normal interactive terminal
+		fmt.Println("ENABLING TTY")
+		fmt.Println(err)
 		rc.spec.Process.Terminal = true
 	} else {
 		// required for executing on systems without a tty (e.g., github actions)
+		fmt.Println("DISABLING TTY")
+		fmt.Println(err)
 		rc.spec.Process.Terminal = false
 	}
 
@@ -421,7 +422,7 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
 
-	if config.interactive {
+	if config.spec.Process.Terminal {
 		cmd.Stdin = os.Stdin
 	}
 
@@ -605,7 +606,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 
 	// get our configuration for the exec step
 	// this config will collect the various inputs (mounts and vars) as each is set up
-	execConfig, err := getBaseConfig(wsPath, runPath, binPath, interactive)
+	execConfig, err := getBaseConfig(wsPath, runPath, binPath)
 	if err != nil {
 		return rr, err
 	}
@@ -637,7 +638,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 		} else if port.SandboxPath != nil {
 			var mnt specs.Mount
 			// create a temporary config for setting up the mount
-			config, err := getBaseConfig(wsPath, runPath, binPath, false)
+			config, err := getBaseConfig(wsPath, runPath, binPath)
 			if err != nil {
 				return rr, err
 			}
@@ -822,7 +823,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 
 	// determine output formatting. if interactive, do not apply any special formatting
 	var runcWriter io.Writer
-	if execConfig.interactive {
+	if interactive {
 		runcWriter = logger.RawWriter()
 	} else {
 		runcWriter = logger.InfoWriter(LOG_TAG_OUTPUT)
