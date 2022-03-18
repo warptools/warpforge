@@ -27,6 +27,9 @@ var ferkCmdDef = cli.Command{
 		&cli.BoolFlag{
 			Name: "persist",
 		},
+		&cli.BoolFlag{
+			Name: "no-interactive",
+		},
 	},
 }
 
@@ -67,36 +70,6 @@ const ferkPlotTemplate = `
 		}
 }
 `
-
-/*
-const ferkPlotTemplate = `
-{
-        "inputs": {
-                "rootfs": "literal:none"
-        },
-        "steps": {
-                "ferk": {
-                        "protoformula": {
-                                "inputs": {
-                                        "/pwd": "mount:overlay:.",
-                                        "/persist": "mount:rw:wf-persist",
-										"/pkg/busybox": "catalog:busybox.net/busybox:v1.35.0:amd64"
-										"$PATH": "literal:/pkg/busybox/bin:/pkg/busybox/sbin:/pkg/busybox/usr/bin:/pkg/busybox/usr/sbin"
-                                },
-                                "action": {
-                                        "exec": {
-                                                "command": ["/pkg/busybox/bin/sh"],
-												"network": true
-                                        }
-                                },
-                                "outputs": {}
-                        }
-                }
-        },
-        "outputs": {}
-}
-`
-*/
 
 func cmdFerk(c *cli.Context) error {
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
@@ -157,9 +130,8 @@ func cmdFerk(c *cli.Context) error {
 		}
 	}
 
-	// run the plot in interactive mode
 	config := wfapi.PlotExecConfig{
-		Interactive: true,
+		Interactive: !c.Bool("no-interactive"),
 	}
 	_, err = plotexec.Exec(wss, plot, config, logger)
 	if err != nil {
