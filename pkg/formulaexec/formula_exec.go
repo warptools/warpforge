@@ -175,13 +175,9 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 	_, err = os.Open("/dev/tty")
 	if err == nil {
 		// enable a normal interactive terminal
-		fmt.Println("ENABLING TTY")
-		fmt.Println(err)
 		rc.spec.Process.Terminal = true
 	} else {
-		// required for executing on systems without a tty (e.g., github actions)
-		fmt.Println("DISABLING TTY")
-		fmt.Println(err)
+		// disable terminal when executing on systems without a tty (e.g., github actions)
 		rc.spec.Process.Terminal = false
 	}
 
