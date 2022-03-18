@@ -515,3 +515,7 @@ exit
 / # echo hello > /out/test
 / # exit
 ```
+
+[testmark]:# (ferk/stderr)
+```
+```
