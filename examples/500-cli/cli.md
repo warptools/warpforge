@@ -495,10 +495,12 @@ The `ferk` command rapidly spawns a container in interactive mode. If the direct
 
 [testmark]:# (catalog/then-add/then-ferk/sequence)
 ```
-warpforge ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/hostname --no-interactive
+warpforge --json ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/echo --no-interactive
 ```
 
 [testmark]:# (catalog/then-add/then-ferk/stdout)
 ```
-runc
+{
+	"out": "tar:-"
+} 
 ```

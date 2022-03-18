@@ -173,7 +173,10 @@ func getBaseConfig(wsPath, runPath, binPath string, interactive bool) (runConfig
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
 
-	if interactive {
+	// check if /dev/tty exists
+	fi, _ := os.Stdin.Stat()
+	isTty := (fi.Mode() & os.ModeCharDevice) != 0
+	if interactive && isTty {
 		// enable a normal interactive terminal
 		rc.spec.Process.Terminal = true
 	} else {

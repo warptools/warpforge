@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
@@ -133,10 +134,12 @@ func cmdFerk(c *cli.Context) error {
 	config := wfapi.PlotExecConfig{
 		Interactive: !c.Bool("no-interactive"),
 	}
-	_, err = plotexec.Exec(wss, plot, config, logger)
+	result, err := plotexec.Exec(wss, plot, config, logger)
 	if err != nil {
 		return err
 	}
+
+	c.App.Metadata["result"] = bindnode.Wrap(&result, wfapi.TypeSystem.TypeByName("PlotResults"))
 
 	return nil
 }
