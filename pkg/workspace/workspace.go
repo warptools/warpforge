@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -124,6 +125,24 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
 		wareId.Hash[0:3],
 		wareId.Hash[3:6],
 		wareId.Hash), nil
+}
+
+// Returns the base path which contains memos (i.e., `.../.warpforge/memos`)
+func (ws *Workspace) MemoBasePath() string {
+	return filepath.Join(
+		"/",
+		ws.rootPath,
+		".warpforge",
+		"memos",
+	)
+}
+
+// Returns the memo path for with a given formula ID within a workspace
+func (ws *Workspace) MemoPath(fid string) string {
+	return filepath.Join(
+		ws.MemoBasePath(),
+		strings.Join([]string{fid, "json"}, "."),
+	)
 }
 
 // Returns the base path which contains named catalogs (i.e., `.../.warpforge/catalogs`)

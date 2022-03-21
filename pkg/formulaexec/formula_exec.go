@@ -507,6 +507,30 @@ func GetBinPath() (string, wfapi.Error) {
 	}
 }
 
+func printRunRecord(rr wfapi.RunRecord, logger logging.Logger, memoized bool) {
+	headline := "RunRecord"
+	if memoized {
+		headline = "RunRecord (memoized)"
+		logger.Info(LOG_TAG, "skipping execution, formula memoized")
+	}
+	logger.Info(LOG_TAG, "%s:\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s:",
+		headline,
+		color.HiBlueString("GUID"),
+		color.WhiteString(rr.Guid),
+		color.HiBlueString("FormulaID"),
+		color.WhiteString(rr.FormulaID),
+		color.HiBlueString("Exitcode"),
+		color.WhiteString(fmt.Sprintf("%d", rr.Exitcode)),
+		color.HiBlueString("Time"),
+		color.WhiteString(fmt.Sprintf("%d", rr.Time)),
+		color.HiBlueString("Results"),
+	)
+
+	for k, v := range rr.Results.Values {
+		logger.Info(LOG_TAG, "\t\t%s: %s", k, v.WareID)
+	}
+}
+
 // Internal function for executing a formula
 //
 // Errors:
@@ -546,6 +570,19 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 	rr.FormulaID = lnk.String()
 
 	logger.Info(LOG_TAG_START, "")
+
+	// check if a memoized RunRecord already exists
+	memo, err := loadMemo(ws, lnk.String())
+	if err != nil {
+		return rr, err
+	}
+	if memo != nil {
+		printRunRecord(*memo, logger, true)
+		logger.Info(LOG_TAG_END, "")
+		return *memo, nil
+
+	}
+
 	formulaSerial, errRaw := ipld.Marshal(ipldjson.Encode, &formula, wfapi.TypeSystem.TypeByName("Formula"))
 	if errRaw != nil {
 		return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("failed to re-serialize formula: %s", errRaw))
@@ -558,7 +595,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 		return rr, wfapi.ErrorIo("failed to get working dir", nil, errRaw)
 	}
 
-	// get the home workspace location
+	// get the root workspace location
 	var wsPath string
 	path, override := os.LookupEnv("WARPFORGE_HOME")
 	if override {
@@ -566,11 +603,11 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 	} else if ws != nil {
 		_, wsPath = ws.Path()
 	} else {
-		return rr, wfapi.ErrorWorkspace("", fmt.Errorf("no home workspace path was provided for formula exec"))
+		return rr, wfapi.ErrorWorkspace("", fmt.Errorf("no root workspace path was provided for formula exec"))
 	}
 	wsPath = filepath.Join("/", wsPath, ".warpforge")
 
-	// ensure a warehouse dir exists within the home workspace
+	// ensure a warehouse dir exists within the root workspace
 	warehousePath := filepath.Join(wsPath, "warehouse")
 	errRaw = os.MkdirAll(warehousePath, 0755)
 	if errRaw != nil {
@@ -596,7 +633,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 		defer os.RemoveAll(runPath)
 	}
 
-	logger.Debug(LOG_TAG, "home workspace path: %s", wsPath)
+	logger.Debug(LOG_TAG, "root workspace path: %s", wsPath)
 	logger.Debug(LOG_TAG, "bin path: %s", binPath)
 	logger.Debug(LOG_TAG, "run path: %s", runPath)
 
@@ -860,23 +897,13 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 		}
 	}
 
-	logger.Info(LOG_TAG, "RunRecord:\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s:",
-		color.HiBlueString("GUID"),
-		color.WhiteString(rr.Guid),
-		color.HiBlueString("FormulaID"),
-		color.WhiteString(rr.FormulaID),
-		color.HiBlueString("Exitcode"),
-		color.WhiteString(fmt.Sprintf("%d", rr.Exitcode)),
-		color.HiBlueString("Time"),
-		color.WhiteString(fmt.Sprintf("%d", rr.Time)),
-		color.HiBlueString("Results"),
-	)
-
-	for k, v := range rr.Results.Values {
-		logger.Info(LOG_TAG, "\t\t%s: %s", k, v.WareID)
-	}
-
+	printRunRecord(rr, logger, false)
 	logger.Info(LOG_TAG_END, "")
+
+	err = memoizeRun(ws, rr)
+	if err != nil {
+		return rr, err
+	}
 
 	return rr, nil
 }
