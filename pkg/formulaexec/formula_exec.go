@@ -541,7 +541,8 @@ func printRunRecord(rr wfapi.RunRecord, logger logging.Logger, memoized bool) {
 // - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
 // - warpforge-error-workspace -- when an invalid workspace is provided
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
-func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactive bool, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+// - warpforge-error-serialization -- when serialization or deserialization of a memo fails
+func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
 	formula := fc.Formula
 	context := fc.Context
 	rr := wfapi.RunRecord{}
@@ -572,15 +573,17 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 	logger.Info(LOG_TAG_START, "")
 
 	// check if a memoized RunRecord already exists
-	memo, err := loadMemo(ws, lnk.String())
-	if err != nil {
-		return rr, err
-	}
-	if memo != nil {
-		printRunRecord(*memo, logger, true)
-		logger.Info(LOG_TAG_END, "")
-		return *memo, nil
+	if !formulaConfig.DisableMemoization {
+		memo, err := loadMemo(ws, lnk.String())
+		if err != nil {
+			return rr, err
+		}
+		if memo != nil {
+			printRunRecord(*memo, logger, true)
+			logger.Info(LOG_TAG_END, "")
+			return *memo, nil
 
+		}
 	}
 
 	formulaSerial, errRaw := ipld.Marshal(ipldjson.Encode, &formula, wfapi.TypeSystem.TypeByName("Formula"))
@@ -856,7 +859,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 
 	// determine output formatting. if interactive, do not apply any special formatting
 	var runcWriter io.Writer
-	if interactive {
+	if formulaConfig.Interactive {
 		runcWriter = logger.RawWriter()
 	} else {
 		runcWriter = logger.InfoWriter(LOG_TAG_OUTPUT)
@@ -900,9 +903,12 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 	printRunRecord(rr, logger, false)
 	logger.Info(LOG_TAG_END, "")
 
-	err = memoizeRun(ws, rr)
-	if err != nil {
-		return rr, err
+	// memoize this run, if we have a valid workspace
+	if ws != nil {
+		err = memoizeRun(ws, rr)
+		if err != nil {
+			return rr, err
+		}
 	}
 
 	return rr, nil
@@ -918,8 +924,9 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactiv
 //     - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
 //     - warpforge-error-workspace -- when an invalid workspace is provided
 //     - warpforge-error-formula-invalid -- when an invalid formula is provided
-func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, interactive bool, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
-	rr, err := execFormula(ws, fc, interactive, logger)
+//     - warpforge-error-serialization -- when serialization or deserialization of a memo fails
+func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+	rr, err := execFormula(ws, fc, formulaConfig, logger)
 	if err != nil {
 		switch err.(*wfapi.ErrorVal).Code() {
 		case "warpforge-error-io":

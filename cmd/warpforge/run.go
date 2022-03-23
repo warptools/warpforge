@@ -27,6 +27,11 @@ var runCmdDef = cli.Command{
 			Aliases: []string{"r"},
 			Usage:   "Recursively execute replays required to assemble inputs to this module.",
 		},
+		&cli.BoolFlag{
+			Name:    "force",
+			Aliases: []string{"f"},
+			Usage:   "Force execution, even if memoized formulas exist.",
+		},
 	},
 }
 
@@ -60,6 +65,9 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 
 	config := wfapi.PlotExecConfig{
 		Recursive: c.Bool("recursive"),
+		FormulaExecConfig: wfapi.FormulaExecConfig{
+			DisableMemoization: c.Bool("force"),
+		},
 	}
 	result, err = plotexec.Exec(wss, plot, config, logger)
 	cdErr := os.Chdir(pwd)
@@ -131,7 +139,8 @@ func cmdRun(c *cli.Context) error {
 				ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
 
 				// run formula
-				rr, err := formulaexec.Exec(ws, frmAndCtx, false, logger)
+				config := wfapi.FormulaExecConfig{}
+				rr, err := formulaexec.Exec(ws, frmAndCtx, config, logger)
 				if err != nil {
 					return err
 				}

@@ -36,6 +36,11 @@ func memoizeRun(ws *workspace.Workspace, rr wfapi.RunRecord) wfapi.Error {
 }
 
 func loadMemo(ws *workspace.Workspace, fid string) (*wfapi.RunRecord, wfapi.Error) {
+	// if no workspace is provided, there can be no memos
+	if ws == nil {
+		return nil, nil
+	}
+
 	memoPath := ws.MemoPath(fid)
 	if _, err := os.Stat(memoPath); os.IsNotExist(err) {
 		// couldn't find a memo file, return nil to indicate there is no memo

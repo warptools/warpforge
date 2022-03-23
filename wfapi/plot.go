@@ -267,6 +267,7 @@ func init() {
 }
 
 type PlotExecConfig struct {
-	Recursive   bool
-	Interactive bool
+	Recursive         bool
+	Interactive       bool
+	FormulaExecConfig FormulaExecConfig
 }

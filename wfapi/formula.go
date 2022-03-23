@@ -235,3 +235,8 @@ type RunRecord struct {
 		Values map[OutputName]FormulaInputSimple
 	}
 }
+
+type FormulaExecConfig struct {
+	Interactive        bool
+	DisableMemoization bool
+}

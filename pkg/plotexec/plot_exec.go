@@ -304,6 +304,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-plot-invalid -- when the plot contains invalid data
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
+//    - warpforge-error-serialization -- when serialization or deserialization of a memo fails
 func execProtoformula(wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	ctx wfapi.FormulaContext,
@@ -345,7 +346,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 			Formula: formula,
 			Context: &ctx,
 		},
-		config.Interactive,
+		config.FormulaExecConfig,
 		logger)
 	return rr, err
 }
