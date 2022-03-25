@@ -176,7 +176,7 @@ When given a formula file, it knows what to do:
 
 [testmark]:# (runformula/sequence)
 ```
-warpforge --json run formula.json
+warpforge --json --quiet run formula.json
 ```
 
 We'll run this in a filesystem that contains a `formula.json`
