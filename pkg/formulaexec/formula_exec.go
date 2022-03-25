@@ -507,30 +507,6 @@ func GetBinPath() (string, wfapi.Error) {
 	}
 }
 
-func printRunRecord(rr wfapi.RunRecord, logger logging.Logger, memoized bool) {
-	headline := "RunRecord"
-	if memoized {
-		headline = "RunRecord (memoized)"
-		logger.Info(LOG_TAG, "skipping execution, formula memoized")
-	}
-	logger.Info(LOG_TAG, "%s:\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s = %s\n\t%s:",
-		headline,
-		color.HiBlueString("GUID"),
-		color.WhiteString(rr.Guid),
-		color.HiBlueString("FormulaID"),
-		color.WhiteString(rr.FormulaID),
-		color.HiBlueString("Exitcode"),
-		color.WhiteString(fmt.Sprintf("%d", rr.Exitcode)),
-		color.HiBlueString("Time"),
-		color.WhiteString(fmt.Sprintf("%d", rr.Time)),
-		color.HiBlueString("Results"),
-	)
-
-	for k, v := range rr.Results.Values {
-		logger.Info(LOG_TAG, "\t\t%s: %s", k, v.WareID)
-	}
-}
-
 // Internal function for executing a formula
 //
 // Errors:
@@ -579,7 +555,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 			return rr, err
 		}
 		if memo != nil {
-			printRunRecord(*memo, logger, true)
+			logger.PrintRunRecord(LOG_TAG, *memo, true)
 			logger.Info(LOG_TAG_END, "")
 			return *memo, nil
 
@@ -900,7 +876,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		}
 	}
 
-	printRunRecord(rr, logger, false)
+	logger.PrintRunRecord(LOG_TAG, rr, false)
 	logger.Info(LOG_TAG_END, "")
 
 	// memoize this run, if we have a valid workspace

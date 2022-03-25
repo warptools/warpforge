@@ -32,6 +32,9 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 			Aliases: []string{"v"},
 		},
 		&cli.BoolFlag{
+			Name: "quiet",
+		},
+		&cli.BoolFlag{
 			Name: "json",
 		},
 	}

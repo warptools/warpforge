@@ -11,6 +11,7 @@ require (
 	github.com/ipld/go-datalark v0.0.0-20210919061815-cfad52904ed8
 	github.com/ipld/go-ipld-prime v0.12.2
 	github.com/opencontainers/runtime-spec v1.0.2
+	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e
 	github.com/rogpeppe/go-internal v1.7.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/warpfork/go-testmark v0.10.0

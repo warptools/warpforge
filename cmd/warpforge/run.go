@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/logging"
@@ -61,7 +60,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 		return result, err
 	}
 
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
 
 	config := wfapi.PlotExecConfig{
 		Recursive: c.Bool("recursive"),
@@ -82,7 +81,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 }
 
 func cmdRun(c *cli.Context) error {
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
 
 	if !c.Args().Present() {
 		// execute the module in the current directory
@@ -90,11 +89,10 @@ func cmdRun(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not get current directory")
 		}
-		result, err := execModule(c, filepath.Join(pwd, MODULE_FILE_NAME))
+		_, err = execModule(c, filepath.Join(pwd, MODULE_FILE_NAME))
 		if err != nil {
 			return err
 		}
-		c.App.Metadata["result"] = bindnode.Wrap(&result, wfapi.TypeSystem.TypeByName("PlotResults"))
 	} else if filepath.Base(c.Args().First()) == "..." {
 		// recursively execute module.json files
 		return filepath.Walk(filepath.Dir(c.Args().First()),
@@ -140,17 +138,15 @@ func cmdRun(c *cli.Context) error {
 
 				// run formula
 				config := wfapi.FormulaExecConfig{}
-				rr, err := formulaexec.Exec(ws, frmAndCtx, config, logger)
+				_, err = formulaexec.Exec(ws, frmAndCtx, config, logger)
 				if err != nil {
 					return err
 				}
-				c.App.Metadata["result"] = bindnode.Wrap(&rr, wfapi.TypeSystem.TypeByName("RunRecord"))
 			case "module":
-				result, err := execModule(c, fileName)
+				_, err := execModule(c, fileName)
 				if err != nil {
 					return err
 				}
-				c.App.Metadata["result"] = bindnode.Wrap(&result, wfapi.TypeSystem.TypeByName("PlotResults"))
 			default:
 				return fmt.Errorf("unsupported file %s", fileName)
 			}

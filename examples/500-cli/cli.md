@@ -214,13 +214,7 @@ The result of this will be a `RunRecord` object printed to stdout:
 
 [testmark]:# (runformula/stdout)
 ```
-{
-	"guid": "389c442f-5343-497e-b74d-d31fd487af53",
-	"time": "22222222222",
-	"formulaID": "bafyrgqhdywzmzh4bocoldc3ncwwbucuzzjkiadib5khpvhgi33qx7k63kg5i53rmszd6t2a7agdue6vuihjwx7whvciiktkwytczeronejynk",
-	"exitcode": 0,
-	"results": {}
-}
+{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "bafyrgqhdywzmzh4bocoldc3ncwwbucuzzjkiadib5khpvhgi33qx7k63kg5i53rmszd6t2a7agdue6vuihjwx7whvciiktkwytczeronejynk", "exitcode": 0, "results": {} } }
 ```
 
 (Note that we've normalized some of the values in this object for testing purposes.
@@ -233,7 +227,7 @@ it's still just the `warpforge run` command, which will figure out what to do wi
 
 [testmark]:# (runmodule/sequence)
 ```
-warpforge --json run module.wf
+warpforge --json --quiet run module.wf
 ```
 
 A module is declared with two files.  One is the `module.wf` file:
@@ -390,9 +384,11 @@ there's only one record in this map.
 
 [testmark]:# (runmodule/stdout)
 ```
-{
-	"test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9"
-}
+{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "bafyrgqdpfphotd5c2tisgexwuq7urbp4yypdnd7ywjpftpy4lmjf6lxi3lovjiaxb3mspvfdcjs7ndr6unnrae7in5ms5cg3kclzuyxz7afw4", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
+{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "bafyrgqbkeulqc4ezs5hbon5kwlhvuqi4gmufsllpkrhf3je6iku7eghqphbw4u56gbpsu4jgye22qyxte3hd7n35xwxcryll4c7souggu3gwo", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
+{ "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
+{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "bafyrgqeealcjyzhibpgqohblaszjqxndr77esqkbb5jovavjk72uujarhkmgkkiai52tirww3db257fkkxmoxdlhzvzlfhzlsb25mwqmisui6", "exitcode": 0, "results": {} } } 
+{ "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
 ## Catalog Operations
@@ -497,14 +493,13 @@ Run `ferk` using Alpine Linux as the rootfs and invoke `/bin/echo`.
 
 [testmark]:# (catalog/then-add/then-ferk/sequence)
 ```
-warpforge --json ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/echo --no-interactive
+warpforge --json --quiet ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/echo --no-interactive
 ```
 
 Check that `ferk` ran successfully, no outputs are expected.
 
 [testmark]:# (catalog/then-add/then-ferk/stdout)
 ```
-{
-	"out": "tar:-"
-} 
+{ "runrecord": { "guid": "055a7ca6-4ea8-49d1-8053-e01e05202495", "time": 1648067779, "formulaID": "bafyrgqa3vklfqcqd6pjj6roc6vzny4p2rx4cqnptgo3rgze3qvemajrlpraiutycb2bebfk2lobgcmvaqpdnoip6zsfwooaulqqoraweyln6k", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
+{ "plotresults": { "out": "tar:-" } } 
 ```

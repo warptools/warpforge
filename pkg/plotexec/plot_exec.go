@@ -456,7 +456,6 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecCo
 		logger.Info(LOG_TAG, "")
 	}
 
-	logger.Info(LOG_TAG, "outputs:")
 	// collect the outputs of this plot
 	results.Values = make(map[wfapi.LocalLabel]wfapi.WareID)
 	for name, output := range plot.Outputs.Values {
@@ -464,12 +463,13 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecCo
 		if err != nil {
 			return results, err
 		}
-		logger.Info(LOG_TAG, "\t%s -> %s",
-			color.HiBlueString(string(name)),
-			color.WhiteString(result.Basis().WareID.String()))
+
 		results.Keys = append(results.Keys, name)
 		results.Values[name] = *result.Basis().WareID
 	}
+
+	logger.PrintPlotResults(LOG_TAG, results)
+
 	logger.Info(LOG_TAG_END, "")
 	return results, nil
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
@@ -73,7 +72,7 @@ const ferkPlotTemplate = `
 `
 
 func cmdFerk(c *cli.Context) error {
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("verbose"))
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
 
 	wss, err := openWorkspaceSet()
 	if err != nil {
@@ -131,15 +130,18 @@ func cmdFerk(c *cli.Context) error {
 		}
 	}
 
+	// set up interactive based on flags
+	// disable memoization to force the formula to run
 	config := wfapi.PlotExecConfig{
-		Interactive: !c.Bool("no-interactive"),
+		FormulaExecConfig: wfapi.FormulaExecConfig{
+			DisableMemoization: true,
+			Interactive:        !c.Bool("no-interactive"),
+		},
 	}
-	result, err := plotexec.Exec(wss, plot, config, logger)
+	_, err = plotexec.Exec(wss, plot, config, logger)
 	if err != nil {
 		return err
 	}
-
-	c.App.Metadata["result"] = bindnode.Wrap(&result, wfapi.TypeSystem.TypeByName("PlotResults"))
 
 	return nil
 }
