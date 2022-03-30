@@ -177,6 +177,10 @@ func cmdStatus(c *cli.Context) error {
 	if _, err := os.Stat(filepath.Join(pwd, ".warpforge")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", workspace")
 	}
+	// check if it's a root workspace
+	if _, err := os.Stat(filepath.Join(pwd, ".warpforge/root")); !os.IsNotExist(err) {
+		fmt.Fprintf(c.App.Writer, ", root workspace")
+	}
 	// check if it's a git repo
 	if _, err := os.Stat(filepath.Join(pwd, ".git")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", git repo")
@@ -187,7 +191,7 @@ func cmdStatus(c *cli.Context) error {
 	// handle all other workspaces
 	for _, ws := range wss.Stack {
 		fs, subPath := ws.Path()
-		path := fmt.Sprintf("\t%s%s", fs, subPath)
+		path := fmt.Sprintf("%s%s", fs, subPath)
 
 		if path == pwd {
 			// we handle pwd earlier, ignore
@@ -213,7 +217,7 @@ func cmdStatus(c *cli.Context) error {
 		}
 
 		// print a line for this dir
-		fmt.Fprintf(c.App.Writer, "%s (", path)
+		fmt.Fprintf(c.App.Writer, "\t%s (", path)
 		for n, label := range labels {
 			fmt.Fprintf(c.App.Writer, "%s", label)
 			if n != len(labels)-1 {
