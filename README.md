@@ -27,6 +27,13 @@ Here are some terminal movies of what you can do with warpforge:
     [awk in a box ![](https://asciinema.org/a/CqifX73Z2JwDwLOi7DLm5El1h.png)](https://asciinema.org/a/CqifX73Z2JwDwLOi7DLm5El1h)
 
 
+Getting Started
+---------------
+
+- [Install](#install)
+- Try the [Quickstart](#quickstart)
+- Check out the [Examples](./examples/) dir for more examples
+
 
 Install
 -------
@@ -36,8 +43,14 @@ Check that you have Go 1.16+ and that `$GOPATH/bin` (by default, `$HOME/go/bin`)
 To install `warpforge` and the required plugins to your `GOPATH`, run:
 
 ```
+git clone https://github.com/warpfork/warpforge
+cd warpforge
 make install
 ```
+
+Warpforge will now be installed, probably in `$HOME/go/bin`.
+
+(We also often symlink it to `wf` for short: `cd $HOME/go/bin && ln -s warpforge wf` .)
 
 
 Quickstart
