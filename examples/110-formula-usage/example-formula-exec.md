@@ -79,7 +79,6 @@ Note the RunRecord now contains a `results` value which includes the output.
 				"from": "/out",
 				"packtype": "tar"
 			},
-
 		}
 	},
 	"context": {
