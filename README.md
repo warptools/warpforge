@@ -1,5 +1,6 @@
 warpforge
 =========
+
 Putting things together. Consistently.
 
 Many of the docs and much of coordination work is in [Notion](https://www.notion.so/warpforge/Welcome-6653d3362db84ad8a2b0d2a0046748b7) --
@@ -9,8 +10,22 @@ because those are going to tell you a lot about _exactly_ what this tool will do
 
 Here are some terminal movies of what you can do with warpforge:
 
-- Describing computations using filesystems named by catalogs: https://asciinema.org/a/XL03vvethmuqnA1iNJx2xDsRD (This is the "L2" API -- e.g. the thing that has human-readable names.)
-- Describing computations using all hashes: https://asciinema.org/a/FY4iYhlEi5m0h78oFYqqvIZYc (This is the "L1" API -- it's purely content-addressable, cryptographic hashes -- no fun to write by hand, but extremely reproducible!  The "L2" API generates this for you.)
+- Using the quickstart and writing a module:
+
+    [Warpforge Quickstart Demo ![](https://asciinema.org/a/ax3iU4aRu17Cx4CG1OYBNCPb6.png?t=38)](https://asciinema.org/a/ax3iU4aRu17Cx4CG1OYBNCPb6)
+
+- Adding content to a catalog from the web:
+
+    [Plot Demo ![](https://asciinema.org/a/XL03vvethmuqnA1iNJx2xDsRD.png)](https://asciinema.org/a/XL03vvethmuqnA1iNJx2xDsRD)
+
+- Compute using hashes — this is the low-level API on display:
+
+    [Formula Demo ![](https://asciinema.org/a/FY4iYhlEi5m0h78oFYqqvIZYc.png)](https://asciinema.org/a/FY4iYhlEi5m0h78oFYqqvIZYc)
+
+- Awk in a box!  This is what it looks like to combine a tool and a dataset (think: reproducible scientific compute, or distributable bigdata jobs):
+
+    [awk in a box ![](https://asciinema.org/a/CqifX73Z2JwDwLOi7DLm5El1h.png)](https://asciinema.org/a/CqifX73Z2JwDwLOi7DLm5El1h)
+
 
 
 Install
@@ -23,6 +38,7 @@ To install `warpforge` and the required plugins to your `GOPATH`, run:
 ```
 make install
 ```
+
 
 Quickstart
 ----------
@@ -106,6 +122,7 @@ warpforge run
 └─ plot  
 ```
 
+
 Running Tests
 -------------
 
@@ -114,6 +131,7 @@ All tests can be executed using:
 ```
 make test
 ```
+
 
 License
 -------
