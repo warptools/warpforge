@@ -5,7 +5,7 @@ Okay -- no examples here.  You'll have to deal with the live, real content inste
 
 Check out https://github.com/warpsys/catalog !
 
-See the [Catalogs page on Notion](https://www.notion.so/warpforge/Catalogs-f53f2c9a2f0b4a8ba4d55d5f52997555)
+See the [Catalogs page on Notion](https://warpforge.notion.site/Catalogs-f53f2c9a2f0b4a8ba4d55d5f52997555)
 for a primer on what Catalogs are, what they're for, etc.
 
 Key highlights you can expect to see in a catalog filesystem:
