@@ -23,11 +23,16 @@ interpreter (`sh`, `bash`, `zsh`, etc...).
 				"contents": [
 					"MESSAGE='hello, this is a script action'",
 					"echo $MESSAGE",
+					"mkdir /out && echo $MESSAGE > /out/log"
 					"echo done!"
 				]
 			}
 		},
 		"outputs": {
+			"test": {
+				"from": "/out",
+				"packtype": "tar"
+			},
 		}
 	},
 	"context": {
@@ -45,8 +50,10 @@ interpreter (`sh`, `bash`, `zsh`, etc...).
 {
 	"guid": "cb351d5f-9b85-4404-aec9-b54cb71d249c",
 	"time": 1634850353,
-	"formulaID": "bafyrgqf27e6rwqjv7zrya6jaxsf3z3fbp3czzn4skllljq3lvdrv7ednfi77yczrphups7y6h3mc7p4dtnjsvrxxlgbz7utgsjt2cubbqzf4i",
+	"formulaID": "bafyrgqbi4azgrked6grddtcu5rc6aat7y6g2sbc7cc4e2iyh4kktkdj7anh3gk5cqei277xufvesyhhe56w6erys4lyu7lnwfizkaglc5pqfe",
 	"exitcode": 0,
-	"results": {}
+	"results": {
+		"test": "ware:tar:3vmwry1wdxQjTaCjmoJnvGbdpg9ucTvCpWzGzvtujbLQSwvPPAECTm3YxrsHnERtzg"
+	}
 }
 ```
