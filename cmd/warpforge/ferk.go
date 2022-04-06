@@ -36,7 +36,7 @@ var ferkCmdDef = cli.Command{
 const ferkPlotTemplate = `
 {
         "inputs": {
-                "rootfs": "catalog:warpsys.org/bootstrap-rootfs:bullseye-1646092800:amd64"
+                "rootfs": "catalog:warpsys.org/debian-bootstrap:bullseye-1646092800:amd64"
         },
         "steps": {
                 "ferk": {
