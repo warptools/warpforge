@@ -67,7 +67,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 		FormulaInput{FormulaInputSimple: &FormulaInputSimple{WareID: &WareID{"tar", "qwerasdf"}}},
 	)
 	qt.Check(t, inputs.Values[inputs.Keys[1]], qt.DeepEquals,
-		FormulaInput{FormulaInputSimple: &FormulaInputSimple{Literal: func() *string { v := "hello"; return &v }()}},
+		FormulaInput{FormulaInputSimple: &FormulaInputSimple{Literal: func() *Literal { v := Literal("hello"); return &v }()}},
 	)
 	qt.Check(t, inputs.Values[inputs.Keys[2]], qt.DeepEquals,
 		FormulaInput{FormulaInputComplex: &FormulaInputComplex{

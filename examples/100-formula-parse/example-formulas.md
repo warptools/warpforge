@@ -163,7 +163,7 @@ and what types we see after parsing the information:
 struct<FormulaAndContext>{
 	formula: struct<Formula>{
 		inputs: map<Map__SandboxPort__FormulaInput>{
-			union<SandboxPort>{string<SandboxVar>{"HOME"}}: union<FormulaInput>{union<FormulaInputSimple>{string<String>{"/home/hello"}}}
+			union<SandboxPort>{string<SandboxVar>{"HOME"}}: union<FormulaInput>{union<FormulaInputSimple>{string<Literal>{"/home/hello"}}}
 			union<SandboxPort>{string<SandboxPath>{"mount/me"}}: union<FormulaInput>{union<FormulaInputSimple>{struct<WareID>{
 				packtype: string<Packtype>{"tar"}
 				hash: string<String>{"qwerasdf"}
@@ -179,12 +179,10 @@ struct<FormulaAndContext>{
 			}}
 		}
 		action: union<Action>{struct<Action_Exec>{
-			command: list<List__String>{
-			}
+			command: list<List__String>{}
 			network: absent
 		}}
-		outputs: map<Map__OutputName__GatherDirective>{
-		}
+		outputs: map<Map__OutputName__GatherDirective>{}
 	}
 	context: absent
 }

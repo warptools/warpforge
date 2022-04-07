@@ -116,7 +116,7 @@ func apiLog(w io.Writer, f string, args ...interface{}) {
 		return
 	}
 	log := wfapi.LogOutput{
-		Msg: wfapi.LogString(stripAnsiAndWhitespace(fmt.Sprintf(f, args...))),
+		Msg: stripAnsiAndWhitespace(fmt.Sprintf(f, args...)),
 	}
 	out := wfapi.ApiOutput{
 		Log: &log,
@@ -126,9 +126,8 @@ func apiLog(w io.Writer, f string, args ...interface{}) {
 }
 
 func apiOutput(w io.Writer, s string) {
-	str := wfapi.OutputString(s)
 	out := wfapi.ApiOutput{
-		Output: &str,
+		Output: &s,
 	}
 
 	apiWrite(w, out)

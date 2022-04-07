@@ -1,0 +1,334 @@
+# WareID is a simple tuple of what kind of packing is used, and a hash.
+# WareIDs are content-addressable.
+#
+# We use opaque strings for the packtype and the hash for simplicity.
+type WareID struct {
+	packtype Packtype   # typically "tar" or "get" or etc.
+	hash String   # usually an actual hash, but handed to the io plugin verbatim.
+} representation stringjoin {
+	join ":"
+}
+
+# Packtype is a string that should identify a format for fileset packing.
+# Typical examples are "tar", "git", etc.
+# An enum could be used here; however, we use an opaque string here
+# rather than enum because fileset packing is regarded as a plugin-style system.
+type Packtype string
+
+# TODO placeholder type, we may want something more structured here.
+# TODO if it does get more structured, some if its uses might need union wrapper.
+# TODO or this might be a good place to use multi-phase pattern recognition.
+type FilterMap {String:String} # TODO not supported by ipld yet. representation stringpairs {
+#	entrySep ","
+#	pairSep "="
+#}
+
+type Mount struct {
+	mode MountMode
+	hostPath String
+} representation stringjoin {
+	join ":"
+}
+
+type MountMode enum {
+	| readonly ("ro")
+	| readwrite ("rw")
+	| overlay ("overlay")
+}
+
+type Literal string
+
+type WarehouseAddr string
+
+# Formula describes a single computation.
+# What exactly the computation is is defined by the action
+# (of which there are several kinds, but typically, it's commands
+# which will be evaluated in some kind of hermetic container),
+# and the environment the action wil run it is described by the inputs map.
+# What data we collect after the action is completed is defined by the outputs.
+type Formula struct {
+	inputs {SandboxPort:FormulaInput}
+	action Action
+	outputs {OutputName:GatherDirective}
+}
+
+# SandboxPort defines someplace within the sandbox we'll run the action in
+# where data can be either put in or pulled out.
+type SandboxPort union {
+	| SandboxPath "/"
+	| SandboxVar "$"
+} representation stringprefix
+
+# SandboxPath is one of the members of the SandboxPort sum type.
+# It's a unix-like path, e.g. something like "foo/bar/baz".
+#
+# (Despite not beginning with a slash, it's interpreted as an absolute path,
+# because the leading slash was stripped by SandboxPort union parse step.)
+type SandboxPath string
+
+# SandboxVar is used to describe a variable (as contrasted with a path).
+# When the action is a one of the unixy-container actions,
+# these will correspond to environment variables.
+#
+# Note that though SandboxVar is syntactically accepted in output declarations,
+# it's not guaranteed to be supported by all actions.
+#
+# Mapping a SandboxVar to any kind of input other than a literal is strange
+# and currently undefined.
+type SandboxVar string
+
+type FormulaInput union {
+	| FormulaInputSimple string
+	| FormulaInputComplex map
+} representation kinded
+
+# FIXME revisit name, this happens to also be the RunRecord.results value type!
+#  ... except for the mount part, which would make no sense there.  Meh.
+type FormulaInputSimple union {
+	| WareID  "ware:"     # this is most of the time!
+	| Mount   "mount:"    # not hermetic!  we'll warn about the use of these.
+	| Literal "literal:"  # a fun escape valve, isn't it.
+} representation stringprefix
+
+type FormulaInputComplex struct {
+	basis FormulaInputSimple
+	filters FilterMap
+}
+
+# OutputName is a plain freetext string which a Formula (or Plot) author uses
+# to identify the output data they want to collect.
+# It's used when writing the Formula's outputs description,
+# and will be seen again returned in the RunRecord
+# which is produced by a tool when it evaluates the Formula.
+type OutputName string
+
+type GatherDirective struct {
+	from SandboxPort
+	packtype optional Packtype # should be absent iff SandboxPort is a VariableName.
+	filters optional FilterMap # must be absent if SandboxPort is a VariableName.
+}
+
+type Action union {
+	| Action_Echo "echo"
+	| Action_Exec "exec"
+	| Action_Script "script"
+} representation keyed
+
+# Action_Echo is an action which will cause a formula to execute by
+# just echoing its own formula.
+# It's not useful on its own, except for as a debugging and demo tool.
+type Action_Echo struct {
+	# Not much to say in this one!
+}
+
+# Action_Exec describes launching a container, and running a single process in it.
+# (Consider using Action_Script; it's more user-friendly.)
+type Action_Exec struct {
+	command [String] # fairly literally, what will be handed to exec syscall.
+	# cwd optional String
+	network optional Bool (implicit false)
+	# userinfo optional ActionUserinfo
+}
+
+# Action_Script describes launching a container, launching a shell processes
+# within the container, and then feeding your commands to that shell process.
+# This is somewhat more complicated than Action_Exec, but also offers more
+# opportunities for debugging, and lets you easily run several commands
+# while in the same container.
+type Action_Script struct {
+	interpreter String # specifies what's going to parse your commands.
+	contents [String] # very different than exec's string list, though!  is parsed.
+	# future: consider an optional enum here for what features to expect from shell.
+	# cwd optional String
+	network optional Bool (implicit false)
+	# userinfo optional ActionUserinfo
+}
+
+# Action_Noop is an action which does... nothing!
+# It's sometimes useful if you have data munging work to do that's so simple
+# that you can do it using the FilterMap on a FormulaInputComplex.
+# (This is fairly rare to see in practice.)
+type Action_Noop struct {
+	# Not much to say in this one!
+}
+
+# ActionUserinfo can describe optional configuration for unix-like environments.
+# Actions that launch containers will optionally contain this information.
+type ActionUserinfo struct {
+	uid Int (implicit 0)
+	gid Int (implicit 0)
+	username String (implicit "luser")
+	homedir String (implicit "/home/luser")
+}
+
+# FormulaAndContext is what we actually use as the document root
+# when parsing a formula file.
+type FormulaAndContext struct {
+	formula Formula
+	context optional FormulaContext
+}
+
+type FormulaContext struct {
+	warehouses {WareID:WarehouseAddr}
+}
+
+type RunRecord struct {
+    guid String      # purely to force uniqueness.
+    time Int         # again, to force uniqueness.
+    formulaID String # hash of the Formula that triggered this.
+    exitcode Int     # what is says on the tin.  zero is success, per unix.
+    results {OutputName:FormulaInputSimple} # map corresponding to output gathers.
+}
+
+type Module struct {
+	name ModuleName
+	# semantically: "plot optional Plot"... but practically: it's in a sibling file.
+	# future: other optional fields used by "override modules".
+	# future: maybe something about recommended update patterns for any catalog inputs in the plot?
+}
+
+# ModuleName strings tend to look a bit like URLs.
+# For example: "foo.org/teamname/projectname".
+#
+# Characters like "/" and "." are allowed, but ":" and whitespace is forbidden
+# and the use of other punctuation characters is Not Recommended.
+type ModuleName string
+
+type Plot struct { # has previously had many names: protoformula, module, etc.
+	inputs {LocalLabel:PlotInput}
+	steps {StepName:Step}
+	outputs {LocalLabel:PlotOutput}
+}
+
+# StepName is for assigning string names to Steps in a Plot.
+# StepNames will be part of wiring things together using Pipes.
+#
+# Must not contain ':' charaters or unprintables or whitespace.
+type StepName string
+
+# LocalLabel is for referencing data within a Plot.
+# Input data gets assigned a LocalLabel;
+# Pipes pull info from a LocalLabel (possibly together with a StepName to scope it);
+# when a Step is evaluated (e.g. turned into a Formula, executed, and produces results),
+# the results will become identifiable by a LocalLabel (scoped by the StepName).
+#
+# (LocalLabel and OutputName are essentially the same thing: an OutputName
+# gets casted to being considered a LocalLabel when a Formula's results are hoisted
+# into the Plot.)
+#
+# Must not contain ':' charaters or unprintables or whitespace.
+type LocalLabel string
+
+type PlotInput union {
+	| PlotInputSimple string
+	| PlotInputComplex map
+} representation kinded
+
+# PlotInputSimple is extremely comparable to FormulaInputSimple --
+# and it's a superset of it: all the same things are acceptable here.
+# PlotInputSimple adds more features:
+# some are for getting data from the wider universe (mediated by Catalogs);
+# some are for getting data ingested from a host environemnt (unhermetic!);
+# and some are simply for wiring all the steps in a Plot together
+# into a computable graph!
+type PlotInputSimple union {
+	| WareID "ware:" # same as in FormulaInputSimple.
+	| Mount "mount:" # same as in FormulaInputSimple.
+	| Literal "literal:" # same as in FormulaInputSimple.
+	| Pipe "pipe:" # allows wiring outputs from one formula into inputs of another!
+	| CatalogRef "catalog:" # allows lookup of a WareID via the catalog!
+	| Ingest "ingest:" # allows demanding ingest of data from the environment!
+	#| CandidateRef "candidate:" # Like catalog, but dangling a bit.
+} representation stringprefix
+
+# PlotInputComplex allows decorating a PlotInputSimple with filters.
+type PlotInputComplex struct {
+	basis PlotInputSimple
+	filters FilterMap
+}
+
+type PlotOutput union {
+	| Pipe "pipe:"
+} representation stringprefix
+
+type Pipe struct {
+	stepName StepName # if set, should be a sibling; if empty, means it's a reference to the parent's input map.
+	label LocalLabel
+} representation stringjoin {
+	join ":"
+}
+
+# We'll define the rest of those new members of InputSketch in the next codeblock.
+
+type Step union {
+	| Plot "plot"
+	| Protoformula "protoformula"
+} representation keyed
+
+type Protoformula struct {
+	inputs {SandboxPort:PlotInput} # same as Formula -- but value is PlotInput.
+	action Action # literally verbatim passed through to the Formula.
+	outputs {LocalLabel:GatherDirective} # same as Formula -- but key is LocalLabel.
+}
+
+type CatalogRef struct {
+	moduleName ModuleName
+	releaseName String
+	itemName String
+} representation stringjoin {
+	join ":"
+}
+
+type CatalogModule struct {
+	name ModuleName
+	releases {ReleaseName:CatalogReleaseCID}
+	metadata {String:String}
+}
+
+type CatalogRelease struct {
+	name  String
+	items {ItemLabel:WareID}
+	metadata {String:String}
+}
+
+type ItemLabel string
+type ReleaseName string
+type CatalogReleaseCID string
+
+type Ingest union {
+	| GitIngest "git:"
+} representation stringprefix
+
+type GitIngest struct {
+	hostPath String
+	ref      String
+} representation stringjoin {
+	join ":"
+}
+
+type LogOutput struct {
+	Msg String
+}
+
+type PlotResults {LocalLabel:WareID}
+
+type ApiOutput union {
+	| String "output"
+	| LogOutput "log"
+	| RunRecord	"runrecord"
+	| PlotResults "plotresults"
+} representation keyed
+
+type CatalogMirror union {
+	| CatalogMirrorByWare "byWare"
+	| CatalogMirrorByModule "byModule"
+} representation keyed
+
+type WarehouseAddrList [WarehouseAddr]
+
+type CatalogMirrorByWare {WareID:WarehouseAddrList}
+
+type CatalogMirrorByModule {ModuleName:CatalogMirrorsByPacktype}
+
+type CatalogMirrorsByPacktype {Packtype:WarehouseAddrList}
+

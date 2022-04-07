@@ -36,11 +36,8 @@ result = Plot(
 
 	// Output:
 	// result = struct<Plot>{
-	// 	inputs: map<Map__LocalLabel__PlotInput>{
-	// 	}
-	// 	steps: map<Map__StepName__Step>{
-	// 	}
-	// 	outputs: map<Map__LocalLabel__PlotOutput>{
-	// 	}
+	// 	inputs: map<Map__LocalLabel__PlotInput>{}
+	// 	steps: map<Map__StepName__Step>{}
+	// 	outputs: map<Map__LocalLabel__PlotOutput>{}
 	// }
 }

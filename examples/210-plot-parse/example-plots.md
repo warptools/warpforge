@@ -112,7 +112,7 @@ struct<Plot>{
 					0: string<String>{"/bin/echo"}
 					1: string<String>{"hi"}
 				}
-				network: bool<Boolean>{false}
+				network: bool<Bool>{false}
 			}}
 			outputs: map<Map__LocalLabel__GatherDirective>{
 				string<LocalLabel>{"stuff"}: struct<GatherDirective>{
