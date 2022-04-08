@@ -1,4 +1,13 @@
-# WareID is a simple tuple of what kind of packing is used, and a hash.
+# Warpforge API Schema
+
+# This document defines the Warpforge API schema using the IPLD schema DSL.
+# For more info, see the IPLD schema docs: https://ipld.io/specs/schemas/.
+
+# Layer 0
+
+# The Layer 0 API is just content, represented as WareIDs.
+
+# A WareID is a simple tuple of what kind of packing is used, and a hash.
 # WareIDs are content-addressable.
 #
 # We use opaque strings for the packtype and the hash for simplicity.
@@ -15,32 +24,12 @@ type WareID struct {
 # rather than enum because fileset packing is regarded as a plugin-style system.
 type Packtype string
 
-# TODO placeholder type, we may want something more structured here.
-# TODO if it does get more structured, some if its uses might need union wrapper.
-# TODO or this might be a good place to use multi-phase pattern recognition.
-type FilterMap {String:String} # TODO not supported by ipld yet. representation stringpairs {
-#	entrySep ","
-#	pairSep "="
-#}
+# Layer 1
 
-type Mount struct {
-	mode MountMode
-	hostPath String
-} representation stringjoin {
-	join ":"
-}
+# The Layer 1 API consists of the things we need to do execution. This provides
+# the minimal set of features needed to define inputs, an action, and outputs.
 
-type MountMode enum {
-	| readonly ("ro")
-	| readwrite ("rw")
-	| overlay ("overlay")
-}
-
-type Literal string
-
-type WarehouseAddr string
-
-# Formula describes a single computation.
+# Formula describes a single computation. 
 # What exactly the computation is is defined by the action
 # (of which there are several kinds, but typically, it's commands
 # which will be evaluated in some kind of hermetic container),
@@ -77,6 +66,14 @@ type SandboxPath string
 # and currently undefined.
 type SandboxVar string
 
+# TODO placeholder type, we may want something more structured here.
+# TODO if it does get more structured, some if its uses might need union wrapper.
+# TODO or this might be a good place to use multi-phase pattern recognition.
+type FilterMap {String:String} # TODO not supported by ipld yet. representation stringpairs {
+#	entrySep ","
+#	pairSep "="
+#}
+
 type FormulaInput union {
 	| FormulaInputSimple string
 	| FormulaInputComplex map
@@ -90,9 +87,25 @@ type FormulaInputSimple union {
 	| Literal "literal:"  # a fun escape valve, isn't it.
 } representation stringprefix
 
+
 type FormulaInputComplex struct {
 	basis FormulaInputSimple
 	filters FilterMap
+}
+
+type Literal string
+
+type Mount struct {
+	mode MountMode
+	hostPath String
+} representation stringjoin {
+	join ":"
+}
+
+type MountMode enum {
+	| readonly ("ro")
+	| readwrite ("rw")
+	| overlay ("overlay")
 }
 
 # OutputName is a plain freetext string which a Formula (or Plot) author uses
@@ -161,6 +174,8 @@ type ActionUserinfo struct {
 	homedir String (implicit "/home/luser")
 }
 
+type WarehouseAddr string
+
 # FormulaAndContext is what we actually use as the document root
 # when parsing a formula file.
 type FormulaAndContext struct {
@@ -179,6 +194,20 @@ type RunRecord struct {
     exitcode Int     # what is says on the tin.  zero is success, per unix.
     results {OutputName:FormulaInputSimple} # map corresponding to output gathers.
 }
+
+# Logging Types
+type LogOutput struct {
+	Msg String
+}
+
+type ApiOutput union {
+	| String "output"
+	| LogOutput "log"
+	| RunRecord	"runrecord"
+	| PlotResults "plotresults"
+} representation keyed
+
+# Layer 2
 
 type Module struct {
 	name ModuleName
@@ -238,7 +267,7 @@ type PlotInputSimple union {
 	| Pipe "pipe:" # allows wiring outputs from one formula into inputs of another!
 	| CatalogRef "catalog:" # allows lookup of a WareID via the catalog!
 	| Ingest "ingest:" # allows demanding ingest of data from the environment!
-	#| CandidateRef "candidate:" # Like catalog, but dangling a bit.
+	#| CandidateRef "candidate:" # TODO Like catalog, but dangling a bit.
 } representation stringprefix
 
 # PlotInputComplex allows decorating a PlotInputSimple with filters.
@@ -258,7 +287,7 @@ type Pipe struct {
 	join ":"
 }
 
-# We'll define the rest of those new members of InputSketch in the next codeblock.
+type PlotResults {LocalLabel:WareID}
 
 type Step union {
 	| Plot "plot"
@@ -271,6 +300,19 @@ type Protoformula struct {
 	outputs {LocalLabel:GatherDirective} # same as Formula -- but key is LocalLabel.
 }
 
+# Ingest Types
+type Ingest union {
+	| GitIngest "git:"
+} representation stringprefix
+
+type GitIngest struct {
+	hostPath String
+	ref      String
+} representation stringjoin {
+	join ":"
+}
+
+# Catalog Types
 type CatalogRef struct {
 	moduleName ModuleName
 	releaseName String
@@ -295,30 +337,6 @@ type ItemLabel string
 type ReleaseName string
 type CatalogReleaseCID string
 
-type Ingest union {
-	| GitIngest "git:"
-} representation stringprefix
-
-type GitIngest struct {
-	hostPath String
-	ref      String
-} representation stringjoin {
-	join ":"
-}
-
-type LogOutput struct {
-	Msg String
-}
-
-type PlotResults {LocalLabel:WareID}
-
-type ApiOutput union {
-	| String "output"
-	| LogOutput "log"
-	| RunRecord	"runrecord"
-	| PlotResults "plotresults"
-} representation keyed
-
 type CatalogMirror union {
 	| CatalogMirrorByWare "byWare"
 	| CatalogMirrorByModule "byModule"
@@ -327,8 +345,5 @@ type CatalogMirror union {
 type WarehouseAddrList [WarehouseAddr]
 
 type CatalogMirrorByWare {WareID:WarehouseAddrList}
-
 type CatalogMirrorByModule {ModuleName:CatalogMirrorsByPacktype}
-
 type CatalogMirrorsByPacktype {Packtype:WarehouseAddrList}
-
