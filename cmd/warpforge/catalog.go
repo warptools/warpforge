@@ -9,6 +9,9 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
@@ -120,8 +123,8 @@ func cmdCatalogInit(c *cli.Context) error {
 }
 
 func cmdCatalogAdd(c *cli.Context) error {
-	if c.Args().Len() != 3 {
-		return fmt.Errorf("invalid input. usage: warpforge catalog add [pack type] [catalog ref] [url]")
+	if c.Args().Len() < 3 {
+		return fmt.Errorf("invalid input. usage: warpforge catalog add [pack type] [catalog ref] [url] [ref]")
 	}
 
 	catalogName := c.String("name")
@@ -166,28 +169,77 @@ func cmdCatalogAdd(c *cli.Context) error {
 		ItemName:    wfapi.ItemLabel(itemName),
 	}
 
-	// perform rio scan to determine the ware id of the provided item
-	scanWareId, err := scanWareId(wfapi.Packtype(packType), wfapi.WarehouseAddr(url))
-	if err != nil {
-		return fmt.Errorf("scanning %q failed: %s", url, err)
-	}
-
-	// add the new item
 	cat, err := wsSet.Root.OpenCatalog(&catalogName)
 	if err != nil {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
-	err = cat.AddItem(ref, scanWareId)
-	if err != nil {
-		return fmt.Errorf("failed to add item to catalog: %s", err)
-	}
-	err = cat.AddByWareMirror(ref, scanWareId, wfapi.WarehouseAddr(url))
-	if err != nil {
-		return fmt.Errorf("failed to add mirror: %s", err)
+
+	switch packType {
+	case "tar":
+		// perform rio scan to determine the ware id of the provided item
+		scanWareId, err := scanWareId(wfapi.Packtype(packType), wfapi.WarehouseAddr(url))
+		if err != nil {
+			return fmt.Errorf("scanning %q failed: %s", url, err)
+		}
+
+		err = cat.AddItem(ref, scanWareId)
+		if err != nil {
+			return fmt.Errorf("failed to add item to catalog: %s", err)
+		}
+		err = cat.AddByWareMirror(ref, scanWareId, wfapi.WarehouseAddr(url))
+		if err != nil {
+			return fmt.Errorf("failed to add mirror: %s", err)
+		}
+	case "git":
+		if c.Args().Len() != 4 {
+			return fmt.Errorf("no git reference provided")
+		}
+		refStr := c.Args().Get(3)
+
+		// open the remote and list all references
+		remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+			Name: "origin",
+			URLs: []string{url},
+		})
+		refs, err := remote.List(&git.ListOptions{})
+		if err != nil {
+			return err
+		}
+
+		// find the requested reference by short name
+		var gitRef *plumbing.Reference = nil
+		for _, r := range refs {
+			if r.Name().Short() == refStr {
+				gitRef = r
+				break
+			}
+		}
+		if gitRef == nil {
+			// no matching reference found
+			return fmt.Errorf("git reference %q not found in repository %q", refStr, url)
+		}
+
+		// found a matching ref, add it
+		wareId := wfapi.WareID{
+			Packtype: "git",
+			Hash:     gitRef.Hash().String(),
+		}
+		err = cat.AddItem(ref, wareId)
+		if err != nil {
+			return fmt.Errorf("failed to add item to catalog: %s", err)
+		}
+		err = cat.AddByModuleMirror(ref, wfapi.Packtype(packType), wfapi.WarehouseAddr(url))
+		if err != nil {
+			return fmt.Errorf("failed to add mirror: %s", err)
+		}
+
+	default:
+		return fmt.Errorf("unsupported packtype: %q", packType)
 	}
 
 	if c.Bool("verbose") {
 		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root.CatalogPath(&catalogName))
+
 	}
 
 	return nil

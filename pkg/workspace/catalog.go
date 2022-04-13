@@ -487,6 +487,97 @@ func (cat *Catalog) AddByWareMirror(
 	return nil
 }
 
+// Adds a ByModule mirror to a catalog entry
+//
+// Errors:
+//
+//    - warpforge-error-io -- when reading or writing mirror file fails
+//    - warpforge-error-catalog-parse -- when parsing existing mirror file fails
+//    - warpforge-error-serialization -- when serializing the new mirror file fails
+//    - warpforge-error-catalog-invalid -- when the wrong type of mirror file already exists
+func (cat *Catalog) AddByModuleMirror(
+	ref wfapi.CatalogRef,
+	packType wfapi.Packtype,
+	addr wfapi.WarehouseAddr) error {
+	// load mirrors file, or create it if it doesn't exist
+	mirrorsPath := filepath.Join(
+		cat.path,
+		string(ref.ModuleName),
+		"mirrors.json",
+	)
+
+	var mirrors wfapi.CatalogMirror
+	mirrorsBytes, err := fs.ReadFile(cat.workspace.fsys, mirrorsPath)
+	if os.IsNotExist(err) {
+		mirrors = wfapi.CatalogMirror{
+			ByModule: &wfapi.CatalogMirrorByModule{
+				Values: make(map[wfapi.ModuleName]wfapi.CatalogMirrorsByPacktype),
+			},
+		}
+	} else if err == nil {
+		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+		if err != nil {
+			return wfapi.ErrorCatalogParse(mirrorsPath, err)
+		}
+	} else {
+		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)
+	}
+
+	// add this item to the mirrors file
+	if mirrors.ByModule == nil {
+		return wfapi.ErrorCatalogInvalid(mirrorsPath, "existing mirrors file is not of type ByModule")
+	}
+
+	// ensure mirror file has this module
+	_, hasModule := mirrors.ByModule.Values[ref.ModuleName]
+	if !hasModule {
+		mirrors.ByModule.Keys = append(mirrors.ByModule.Keys, ref.ModuleName)
+		mirrors.ByModule.Values[ref.ModuleName] = wfapi.CatalogMirrorsByPacktype{
+			Values: make(map[wfapi.Packtype][]wfapi.WarehouseAddr),
+		}
+	}
+
+	// ensure module has this packtype
+	_, hasPacktype := mirrors.ByModule.Values[ref.ModuleName].Values[packType]
+	if !hasPacktype {
+		m := mirrors.ByModule.Values[ref.ModuleName]
+		m.Keys = append(m.Keys, wfapi.Packtype(packType))
+		m.Values[packType] = []wfapi.WarehouseAddr{}
+		mirrors.ByModule.Values[ref.ModuleName] = m
+	}
+
+	mirrorList := mirrors.ByModule.Values[ref.ModuleName].Values[packType]
+	// avoid adding duplicate values
+	mirrorExists := false
+	for _, m := range mirrorList {
+		if m == addr {
+			mirrorExists = true
+			break
+		}
+	}
+	if !mirrorExists {
+		mirrorList = append(mirrorList, addr)
+		mirrors.ByModule.Values[ref.ModuleName].Values[packType] = mirrorList
+	}
+
+	// write the updated data to the mirrors file
+	path := filepath.Join("/", filepath.Dir(mirrorsPath))
+	err = os.MkdirAll(path, 0755)
+	if err != nil {
+		return wfapi.ErrorIo("could not create catalog path", &path, err)
+	}
+	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+	if err != nil {
+		return wfapi.ErrorSerialization("could not serialize mirror", err)
+	}
+	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
+	if err != nil {
+		return wfapi.ErrorIo("failed to write mirrors file", &mirrorsPath, err)
+	}
+
+	return nil
+}
+
 // Get the list of modules within this catalog.
 func (cat *Catalog) Modules() []wfapi.ModuleName {
 	return cat.moduleList
