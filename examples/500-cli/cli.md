@@ -414,19 +414,21 @@ warpforge catalog ls
 
 ### Add an Item to a Catalog
 
-[testmark]:# (catalog/then-add/sequence)
+#### tar
+
+[testmark]:# (catalog/then-add-tar/sequence)
 ```
 warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.15.0:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
 ```
 
-[testmark]:# (catalog/then-add/then-check/script)
+[testmark]:# (catalog/then-add-tar/then-check/script)
 ```
 cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/module.json
 cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/releases/v3.15.0.json
 cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 ```
 
-[testmark]:# (catalog/then-add/then-check/output)
+[testmark]:# (catalog/then-add-tar/then-check/output)
 ```
 {
 	"name": "alpinelinux.org/alpine",
@@ -450,6 +452,49 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 	}
 }
 ```
+
+#### git
+
+[testmark]:# (catalog/then-add-git/sequence)
+```
+warpforge catalog --name my-catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
+```
+
+[testmark]:# (catalog/then-add-git/then-check/script)
+```
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/module.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/releases/v1.0.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mirrors.json
+```
+
+[testmark]:# (catalog/then-add-git/then-check/output)
+```
+{
+	"name": "github.com/githubtraining/training-manual",
+	"releases": {
+		"v1.0": "bafyrgqdnmwk6s4fr2vzfdlhfqzafyvfld2kkjrrgio3kfzoevtxk6pfzcads76ej4xckx4ge2i5rcw3vsbjoku7fxhn6xn3g6rz262mjwvwu4"
+	},
+	"metadata": {}
+}
+{
+	"name": "v1.0",
+	"items": {
+		"src": "git:d5af19cebecb2a162bffcf1994cb87f8c9041ae1"
+	},
+	"metadata": {}
+}
+{
+	"byModule": {
+		"github.com/githubtraining/training-manual": {
+			"git": [
+				"https://github.com/githubtraining/training-manual"
+			]
+		}
+	}
+}
+```
+
+
 
 ### Bundle Catalog
 
