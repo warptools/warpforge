@@ -567,7 +567,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 				Hash:     ref.Hash().String(),
 			}
 			err = cat.AddItem(catalogRef, wareId)
-			if err != nil && err.(*wfapi.ErrorVal).Code() == "warpforge-error-catalog-already-exists" {
+			if err != nil && err.(*wfapi.ErrorVal).Code() == "warpforge-error-catalog-item-already-exists" {
 				fmt.Printf("catalog already has item %s:%s:%s\n", catalogRef.ModuleName,
 					catalogRef.ReleaseName, catalogRef.ItemName)
 				continue

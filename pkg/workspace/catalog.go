@@ -304,6 +304,7 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 //    - warpforge-error-io -- when reading or writing the lineage file fails
 //    - warpforge-error-serialization -- when serializing the lineage fails
 //    - warpforge-error-catalog-invalid -- when an error occurs while searching for module or release
+//    - warpforge-error-catalog-item-already-exists -- when trying to insert an already existing item
 func (cat *Catalog) AddItem(
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID) wfapi.Error {

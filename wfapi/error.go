@@ -347,7 +347,7 @@ func ErrorCatalogInvalid(path string, reason string) Error {
 //    - warpforge-error-catalog-item-already-exists --
 func ErrorCatalogAlreadyExists(path string, itemName ItemLabel) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-catalog-already-exists",
+		CodeString: "warpforge-error-catalog-item-already-exists",
 		Message:    fmt.Sprintf("item %q already exists in release file %q", itemName, path),
 		Details: [][2]string{
 			{"path", path},
