@@ -61,6 +61,11 @@ var catalogCmdDef = cli.Command{
 			Usage:  "Update remote catalogs.",
 			Action: cmdCatalogUpdate,
 		},
+		{
+			Name:   "ingest-git-tags",
+			Usage:  "Ingest all tags from a git repository into a catalog entry.",
+			Action: cmdIngestGitTags,
+		},
 	},
 }
 
@@ -515,6 +520,68 @@ func cmdCatalogInsertReplay(c *cli.Context) error {
 			return err
 		}
 
+	}
+
+	return nil
+}
+
+func cmdIngestGitTags(c *cli.Context) error {
+	if c.Args().Len() != 3 {
+		return fmt.Errorf("invalid input. usage: warpforge catalog ingest-git-repo [module name] [url] [item name]")
+	}
+	moduleName := c.Args().Get(0)
+	url := c.Args().Get(1)
+	itemName := c.Args().Get(2)
+
+	// open the remote and list all references
+	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{url},
+	})
+	refs, err := remote.List(&git.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	// open the workspace set and catalog
+	catalogName := c.String("name")
+	wsSet, err := openWorkspaceSet()
+	if err != nil {
+		return err
+	}
+	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
+	}
+
+	for _, ref := range refs {
+		var err wfapi.Error
+		if ref.Name().IsTag() {
+			catalogRef := wfapi.CatalogRef{
+				ModuleName:  wfapi.ModuleName(moduleName),
+				ReleaseName: wfapi.ReleaseName(ref.Name().Short()),
+				ItemName:    wfapi.ItemLabel(itemName),
+			}
+			wareId := wfapi.WareID{
+				Packtype: "git",
+				Hash:     ref.Hash().String(),
+			}
+			err = cat.AddItem(catalogRef, wareId)
+			if err != nil && err.(*wfapi.ErrorVal).Code() == "warpforge-error-catalog-already-exists" {
+				fmt.Printf("catalog already has item %s:%s:%s\n", catalogRef.ModuleName,
+					catalogRef.ReleaseName, catalogRef.ItemName)
+				continue
+			} else if err != nil {
+				return fmt.Errorf("failed to add item to catalog: %s", err)
+			}
+			err = cat.AddByModuleMirror(catalogRef, wfapi.Packtype("git"), wfapi.WarehouseAddr(url))
+			if err != nil {
+				return fmt.Errorf("failed to add mirror: %s", err)
+			}
+			fmt.Printf("adding item %s:%s:%s \t-> %s\n", catalogRef.ModuleName,
+				catalogRef.ReleaseName, catalogRef.ItemName, wareId)
+
+		}
 	}
 
 	return nil

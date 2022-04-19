@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/facette/natsort"
 	"github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
@@ -305,7 +306,7 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 //    - warpforge-error-catalog-invalid -- when an error occurs while searching for module or release
 func (cat *Catalog) AddItem(
 	ref wfapi.CatalogRef,
-	wareId wfapi.WareID) error {
+	wareId wfapi.WareID) wfapi.Error {
 
 	// determine paths for the module, release, and the corresponding files
 	moduleFilePath := filepath.Join("/", cat.moduleFilePath(ref))
@@ -337,8 +338,7 @@ func (cat *Catalog) AddItem(
 	// ensure the item does not already exist
 	_, hasItem := release.Items.Values[ref.ItemName]
 	if hasItem {
-		return wfapi.ErrorCatalogInvalid(releaseFilePath,
-			fmt.Sprintf("release %q already has item %q", ref.ReleaseName, ref.ItemName))
+		return wfapi.ErrorCatalogAlreadyExists(releaseFilePath, ref.ItemName)
 	}
 
 	release.Items.Keys = append(release.Items.Keys, ref.ItemName)
@@ -387,6 +387,17 @@ func (cat *Catalog) AddItem(
 	// create or update the CID link to the module
 	module.Releases.Values[ref.ReleaseName] = release.Cid()
 
+	// sort the release list
+	releaseList := []string{}
+	for _, r := range module.Releases.Keys {
+		releaseList = append(releaseList, string(r))
+	}
+	natsort.Sort(releaseList)
+	module.Releases.Keys = []wfapi.ReleaseName{}
+	for _, r := range releaseList {
+		module.Releases.Keys = append(module.Releases.Keys, wfapi.ReleaseName(r))
+	}
+
 	// serialize the updated structures
 	moduleSerial, errRaw := ipld.Marshal(json.Encode, module, wfapi.TypeSystem.TypeByName("CatalogModule"))
 	if errRaw != nil {
@@ -421,7 +432,7 @@ func (cat *Catalog) AddItem(
 func (cat *Catalog) AddByWareMirror(
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID,
-	addr wfapi.WarehouseAddr) error {
+	addr wfapi.WarehouseAddr) wfapi.Error {
 	// load mirrors file, or create it if it doesn't exist
 	mirrorsPath := filepath.Join(
 		cat.path,
@@ -498,7 +509,7 @@ func (cat *Catalog) AddByWareMirror(
 func (cat *Catalog) AddByModuleMirror(
 	ref wfapi.CatalogRef,
 	packType wfapi.Packtype,
-	addr wfapi.WarehouseAddr) error {
+	addr wfapi.WarehouseAddr) wfapi.Error {
 	// load mirrors file, or create it if it doesn't exist
 	mirrorsPath := filepath.Join(
 		cat.path,
