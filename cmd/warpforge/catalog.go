@@ -503,6 +503,16 @@ func cmdCatalogInsertReplay(c *cli.Context) error {
 		return err
 	}
 
+	ref := wfapi.CatalogRef{
+		ModuleName:  module.Name,
+		ReleaseName: wfapi.ReleaseName(releaseName),
+		ItemName:    wfapi.ItemLabel(""), // replay is not item specific
+	}
+	err = cat.AddReplay(ref, plot)
+	if err != nil {
+		return err
+	}
+
 	for itemName, wareId := range results.Values {
 		ref := wfapi.CatalogRef{
 			ModuleName:  module.Name,
@@ -515,11 +525,6 @@ func cmdCatalogInsertReplay(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		err = cat.AddReplay(ref, plot)
-		if err != nil {
-			return err
-		}
-
 	}
 
 	return nil
