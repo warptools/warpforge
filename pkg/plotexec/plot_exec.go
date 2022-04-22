@@ -416,7 +416,11 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecCo
 					color.WhiteString(string(name)), color.WhiteString(string(result)),
 				)
 				pipeCtx[name][wfapi.LocalLabel(result)] = wfapi.FormulaInput{
-					FormulaInputSimple: &input,
+					FormulaInputSimple: &wfapi.FormulaInputSimple{
+						WareID:  input.WareID,
+						Literal: input.Literal,
+						Mount:   input.Mount,
+					},
 				}
 			}
 		case step.Plot != nil:
@@ -463,7 +467,6 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecCo
 		if err != nil {
 			return results, err
 		}
-
 		results.Keys = append(results.Keys, name)
 		results.Values[name] = *result.Basis().WareID
 	}
