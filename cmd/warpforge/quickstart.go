@@ -18,7 +18,7 @@ var quickstartCmdDef = cli.Command{
 
 const defaultPlotJson = `{
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		"rootfs": "catalog:warpsys.org/alpinelinux/rootfs:v3.15.4:amd64"
 	},
 	"steps": {
 		"hello-world": {
