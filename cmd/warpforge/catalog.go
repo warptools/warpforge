@@ -374,12 +374,16 @@ func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 		return nil
 	}
 
-	fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", warpsysCatalogPath)
+	if !c.Bool("quiet") {
+		fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", warpsysCatalogPath)
+	}
 	_, err := git.PlainClone(warpsysCatalogPath, false, &git.CloneOptions{
 		URL: warpsysCatalogUrl,
 	})
 
-	fmt.Fprintf(c.App.Writer, " done.\n")
+	if !c.Bool("quiet") {
+		fmt.Fprintf(c.App.Writer, " done.\n")
+	}
 
 	if err != nil {
 		return err
@@ -424,7 +428,9 @@ func cmdCatalogUpdate(c *cli.Context) error {
 
 		r, err := git.PlainOpen(path)
 		if err == git.ErrRepositoryNotExists {
-			fmt.Fprintf(c.App.Writer, "%s: local catalog\n", cat.Name())
+			if !c.Bool("quiet") {
+				fmt.Fprintf(c.App.Writer, "%s: local catalog\n", cat.Name())
+			}
 			continue
 		} else if err != nil {
 			return fmt.Errorf("failed to open git repo: %s", err)
@@ -437,11 +443,15 @@ func cmdCatalogUpdate(c *cli.Context) error {
 
 		err = wt.Pull(&git.PullOptions{})
 		if err == git.NoErrAlreadyUpToDate {
-			fmt.Fprintf(c.App.Writer, "%s: already up to date\n", cat.Name())
+			if !c.Bool("quiet") {
+				fmt.Fprintf(c.App.Writer, "%s: already up to date\n", cat.Name())
+			}
 		} else if err != nil {
 			return fmt.Errorf("failed to pull from git: %s", err)
 		} else {
-			fmt.Fprintf(c.App.Writer, "%s: updated\n", cat.Name())
+			if !c.Bool("quiet") {
+				fmt.Fprintf(c.App.Writer, "%s: updated\n", cat.Name())
+			}
 		}
 	}
 

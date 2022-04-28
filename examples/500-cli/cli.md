@@ -529,7 +529,7 @@ warpforge -v catalog bundle module.wf
 bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
 ```
 
- # Ferk
+# Ferk
 
 The `ferk` command rapidly spawns a container in interactive mode. If the directory 
 `/out` is created, its contents will be packed into a ware on exit.
@@ -547,4 +547,52 @@ Check that `ferk` ran successfully, no outputs are expected.
 ```
 { "runrecord": { "guid": "055a7ca6-4ea8-49d1-8053-e01e05202495", "time": 1648067779, "formulaID": "bafyrgqa3vklfqcqd6pjj6roc6vzny4p2rx4cqnptgo3rgze3qvemajrlpraiutycb2bebfk2lobgcmvaqpdnoip6zsfwooaulqqoraweyln6k", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
 { "plotresults": { "out": "tar:-" } } 
+```
+
+# Catalog Update
+
+The `catalog update` command updates the catalogs from Git. If the default `warpsys` catalog is not installed, this command will install it.
+
+[testmark]:# (catalog/then-update/sequence)
+```
+warpforge --quiet catalog update
+```
+
+[testmark]:# (catalog/then-update/stdout)
+```
+```
+
+# Quickstart
+
+The `quickstart` command creates a minimal Plot and Module. 
+
+[testmark]:# (catalog/then-update/then-quickstart/sequence)
+```
+warpforge --quiet quickstart warpforge.org/my-quickstart-module
+```
+
+[testmark]:# (catalog/then-update/then-quickstart/stdout)
+```
+```
+
+This "hello world" example can the be run normally.
+
+[testmark]:# (catalog/then-update/then-quickstart/then-run/sequence)
+```
+warpforge --json run
+```
+
+[testmark]:# (catalog/then-update/then-quickstart/then-run/stdout)
+```
+{ "log": { "Msg": "inputs:" } } 
+{ "log": { "Msg": "type = catalog ref = catalog:warpsys.org/alpinelinux/rootfs:v3.15.4:amd64" } } 
+{ "log": { "Msg": "wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.4-x86_64.tar.gz" } } 
+{ "log": { "Msg": "(hello-world) evaluating protoformula" } } 
+{ "log": { "Msg": "ware mount: wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP destPath = /" } } 
+{ "log": { "Msg": "executing script interpreter = /bin/sh" } } 
+{ "log": { "Msg": "packed \"out\": path = /output wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
+{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "bafyrgqgw7lgxqksjtimtytj2jiuhytzxolzbgtzlzvhzrza5leimr24abcnmgesykec3elwyfqsfnr75uple5sq3liawuekyyejkchkrwoaei", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
+{ "log": { "Msg": "(hello-world) collected output hello-world:out" } } 
+{ "log": { "Msg": "(hello-world) complete" } } 
+{ "plotresults": { "output": "tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
 ```
