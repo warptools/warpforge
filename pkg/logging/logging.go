@@ -73,6 +73,17 @@ func (l *Logger) Info(tag string, f string, args ...interface{}) {
 	}
 }
 
+func (l *Logger) Output(tag string, f string, args ...interface{}) {
+	if l.quiet {
+		return
+	}
+	if l.json {
+		apiLog(l.out, f, args...)
+	} else {
+		print(l.err, color.New(color.FgMagenta), tag, f, args...)
+	}
+}
+
 func (l *Logger) Debug(tag string, f string, args ...interface{}) {
 	if l.quiet {
 		return
@@ -190,18 +201,30 @@ func (l *Logger) PrintPlotResults(tag string, pr wfapi.PlotResults) {
 }
 
 type Writer struct {
-	pipe io.Writer
-	tag  string
-	raw  bool
-	json bool
+	pipe     io.Writer
+	tag      string
+	tagColor color.Attribute
+	raw      bool
+	json     bool
 }
 
 func (l *Logger) InfoWriter(tag string) *Writer {
 	return &Writer{
-		pipe: l.err,
-		tag:  tag,
-		raw:  false,
-		json: l.json,
+		pipe:     l.err,
+		tag:      tag,
+		tagColor: color.FgHiGreen,
+		raw:      false,
+		json:     l.json,
+	}
+}
+
+func (l *Logger) OutputWriter(tag string) *Writer {
+	return &Writer{
+		pipe:     l.err,
+		tag:      tag,
+		tagColor: color.FgMagenta,
+		raw:      false,
+		json:     l.json,
 	}
 }
 
@@ -226,7 +249,7 @@ func (w *Writer) Write(data []byte) (n int, err error) {
 		} else {
 			for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 				fmt.Fprintf(w.pipe, "%s  %s\n",
-					color.HiGreenString(w.tag),
+					color.New(w.tagColor).Sprint(w.tag),
 					line)
 			}
 		}

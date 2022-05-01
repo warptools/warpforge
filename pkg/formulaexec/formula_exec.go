@@ -838,13 +838,13 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 	if formulaConfig.Interactive {
 		runcWriter = logger.RawWriter()
 	} else {
-		runcWriter = logger.InfoWriter(LOG_TAG_OUTPUT)
+		runcWriter = logger.OutputWriter(LOG_TAG_OUTPUT)
 	}
 
 	// run the action
-	logger.Info(LOG_TAG_OUTPUT_START, "")
+	logger.Output(LOG_TAG_OUTPUT_START, "")
 	_, err = invokeRunc(execConfig, runcWriter)
-	logger.Info(LOG_TAG_OUTPUT_END, "")
+	logger.Output(LOG_TAG_OUTPUT_END, "")
 	if err != nil {
 		return rr, err
 	}
