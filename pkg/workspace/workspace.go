@@ -95,10 +95,8 @@ func OpenRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Worksp
 	}
 
 	for _, ws := range stack {
-		// check if the root marker file exists
-		_, err := fsys.Open(filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
-		if err == nil {
-			// it does, so this is our root workspace and we're done
+		if ws.IsRootWorkspace() {
+			// this is our root workspace so we're done
 			return ws, nil
 		}
 	}
@@ -125,6 +123,12 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
 		wareId.Hash[0:3],
 		wareId.Hash[3:6],
 		wareId.Hash), nil
+}
+
+func (ws *Workspace) IsRootWorkspace() bool {
+	// check if the root marker file exists
+	_, err := ws.fsys.Open(filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
+	return err == nil
 }
 
 // Returns the base path which contains memos (i.e., `.../.warpforge/memos`)

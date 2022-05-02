@@ -107,8 +107,9 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 		}
 		wss = append(wss, ws)
 	}
-	// Include the home workspace at the end of the stack.  Unless it's already there, of course.
-	if len(wss) == 0 || !wss[len(wss)-1].isHomeWorkspace {
+	// If no root workspace was found, include the home workspace at the end of the stack.
+	// Unless it's already there, of course.
+	if len(wss) == 0 || (!wss[len(wss)-1].isHomeWorkspace && !wss[len(wss)-1].IsRootWorkspace()) {
 		wss = append(wss, openWorkspace(fsys, homedir))
 	}
 	return wss, nil
