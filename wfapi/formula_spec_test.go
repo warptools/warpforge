@@ -63,12 +63,14 @@ func TestFormulaParseFixtures(t *testing.T) {
 						lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
 							Version:  1,    // Usually '1'.
 							Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-							MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-							MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+							MhType:   0x20, // 0x20 means "sha2-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+							MhLength: 48,   // sha2-384 hash has a 48-byte sum.
 						}}, nFormula.(schema.TypedNode).Representation())
 						qt.Assert(t, err, qt.IsNil)
 						expect := strings.TrimSpace(string(dir.Children["cid"].Hunk.Body))
-						qt.Assert(t, expect, qt.Equals, lnk.String())
+						cid, err := lnk.(cidlink.Link).StringOfBase('z')
+						qt.Assert(t, err, qt.IsNil)
+						qt.Assert(t, expect, qt.Equals, cid)
 					}
 				})
 			case dir.Children["runrecord"] != nil:

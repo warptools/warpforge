@@ -214,7 +214,7 @@ The result of this will be a `RunRecord` object printed to stdout:
 
 [testmark]:# (runformula/stdout)
 ```
-{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "bafyrgqhdywzmzh4bocoldc3ncwwbucuzzjkiadib5khpvhgi33qx7k63kg5i53rmszd6t2a7agdue6vuihjwx7whvciiktkwytczeronejynk", "exitcode": 0, "results": {} } }
+{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3WpphQToL6ERGu7aFofXfzn4XW1ASrSkwMmna8GGqSY2n8YqDp432JjVaRBSPQrbUj2", "exitcode": 0, "results": {} } }
 ```
 
 (Note that we've normalized some of the values in this object for testing purposes.
@@ -348,7 +348,7 @@ a `mirrors.json` file to show where the ware can be fetched.
 {
         "name": "alpinelinux.org/alpine",
         "releases": {
-                "v3.15.0": "bafyrgqbk3rkp3iamateldm6akhxc2bd7syptofs4gv5s2sgh5osu76cyblxlweonfnokr555hoskl76zi32jq4nm3aze4yczyuwmnalpiwvp2"
+                "v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
         },
         "metadata": {}
 }
@@ -384,10 +384,10 @@ there's only one record in this map.
 
 [testmark]:# (runmodule/stdout)
 ```
-{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "bafyrgqdpfphotd5c2tisgexwuq7urbp4yypdnd7ywjpftpy4lmjf6lxi3lovjiaxb3mspvfdcjs7ndr6unnrae7in5ms5cg3kclzuyxz7afw4", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
-{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "bafyrgqbkeulqc4ezs5hbon5kwlhvuqi4gmufsllpkrhf3je6iku7eghqphbw4u56gbpsu4jgye22qyxte3hd7n35xwxcryll4c7souggu3gwo", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
+{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "zM5K3WmBs5w8a8gd1NjjPWRg89kNrmj62KFTJrHFfAf7KgEF9vY5q3uRJGekwDP4jNZQw8D", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
+{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "zM5K3Rzuq8RxLBrS6aKdfZaBxXegeDsd8Cb7tRUAvX6N489GCC7ySP3easLccH2v6Fk1jnT", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
-{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "bafyrgqeealcjyzhibpgqohblaszjqxndr77esqkbb5jovavjk72uujarhkmgkkiai52tirww3db257fkkxmoxdlhzvzlfhzlsb25mwqmisui6", "exitcode": 0, "results": {} } } 
+{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "zM5K3TQvghyrGZf3ptqHEUvcEmmaAPB1cjQYZaoFrESuhLDwp5CfLUaiiuCbW99JAMHeqXG", "exitcode": 0, "results": {} } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
@@ -433,7 +433,7 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 {
 	"name": "alpinelinux.org/alpine",
 	"releases": {
-		"v3.15.0": "bafyrgqbk3rkp3iamateldm6akhxc2bd7syptofs4gv5s2sgh5osu76cyblxlweonfnokr555hoskl76zi32jq4nm3aze4yczyuwmnalpiwvp2"
+		"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
 	},
 	"metadata": {}
 }
@@ -472,7 +472,7 @@ cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mir
 {
 	"name": "github.com/githubtraining/training-manual",
 	"releases": {
-		"v1.0": "bafyrgqdnmwk6s4fr2vzfdlhfqzafyvfld2kkjrrgio3kfzoevtxk6pfzcads76ej4xckx4ge2i5rcw3vsbjoku7fxhn6xn3g6rz262mjwvwu4"
+		"v1.0": "zM5K3SVi6ptQmHx9cAhq6HefLtMqLLPSoHH5yxqHspgyzrD8p4LQtZ48GMnWk3HqbHPZeA1"
 	},
 	"metadata": {}
 }
@@ -564,7 +564,8 @@ warpforge --quiet catalog update
 
 # Quickstart
 
-The `quickstart` command creates a minimal Plot and Module. 
+The `quickstart` command creates a minimal Plot and Module. This requires content from
+the default catalog, which was installed and updated in the previous section.
 
 [testmark]:# (catalog/then-update/then-quickstart/sequence)
 ```
@@ -585,13 +586,13 @@ warpforge --json run
 [testmark]:# (catalog/then-update/then-quickstart/then-run/stdout)
 ```
 { "log": { "Msg": "inputs:" } } 
-{ "log": { "Msg": "type = catalog ref = catalog:warpsys.org/alpinelinux/rootfs:v3.15.4:amd64" } } 
+{ "log": { "Msg": "type = catalog ref = catalog:catalog.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64" } } 
 { "log": { "Msg": "wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.4-x86_64.tar.gz" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
 { "log": { "Msg": "ware mount: wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
 { "log": { "Msg": "packed \"out\": path = /output wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
-{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "bafyrgqgw7lgxqksjtimtytj2jiuhytzxolzbgtzlzvhzrza5leimr24abcnmgesykec3elwyfqsfnr75uple5sq3liawuekyyejkchkrwoaei", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
+{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "zM5K3ZvkKNbGHfn6zGpo7BiKj4Zxy1u3UjG2NQWfDeNiuQtffeeCMJwc2q5snCPTYLFPzXW", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
 { "log": { "Msg": "(hello-world) collected output hello-world:out" } } 
 { "log": { "Msg": "(hello-world) complete" } } 
 { "plotresults": { "output": "tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 

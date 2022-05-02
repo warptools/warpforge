@@ -50,7 +50,7 @@ This formula echos a value to stdout.
 {
 	"guid": "4f1c8e65-9875-4482-bdd5-f1fa78625e88",
 	"time": 1631717098,
-	"formulaID": "bafyrgqhdywzmzh4bocoldc3ncwwbucuzzjkiadib5khpvhgi33qx7k63kg5i53rmszd6t2a7agdue6vuihjwx7whvciiktkwytczeronejynk",
+	"formulaID": "zM5K3WpphQToL6ERGu7aFofXfzn4XW1ASrSkwMmna8GGqSY2n8YqDp432JjVaRBSPQrbUj2",
 	"exitcode": 0,
 	"results": {}
 }
@@ -95,7 +95,7 @@ Note the RunRecord now contains a `results` value which includes the output.
 {
 	"guid": "f63741da-e6e9-4d34-95ab-2342fe000a1c",
 	"time": 1631717580,
-	"formulaID": "bafyrgqfmj3qxe4lb5liyr7o6aumzwrscsxpgfccpqoomecicdvzvinqpfb55txxfwxmfed7knonxaki6qwhu7q23kiwzeqtahgcohs63b2ste",
+	"formulaID": "zM5K3YBjQCHbsibFMTYt3J9A17bXzC5dKNXvbU3ViWJBq4XtMcusvjub7f3kEkfYhGjVdi6",
 	"exitcode": 0,
 	"results": {
 		"test": "ware:tar:7wjdwS2Bn5faUcq6t156Je8KY9CoSejC4vMbvTQNeKzdeNLzt4sEtzKQ6H56x6KuD7"
@@ -141,7 +141,7 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 {
 	"guid": "dee7c993-d653-45d2-b299-3b1cdec4e28d",
 	"time": 1633531181,
-	"formulaID": "bafyrgqaqkncrcgdpkglphvc66btkxp26ldgsiz2rk7xdbqygalzta4z4ugz65f6mlwja5lsazrckbrklqarmjgndcmdlk5p3yov6kgg2bgs2i",
+	"formulaID": "zM5K3S3PFam7c5Hr1y5K1ofknvUHdWx3qMY4svqkhfnzGAvHd51yxRuwgG6tXv9X5qiH4Z5",
 	"exitcode": 0,
 	"results": {}
 }
@@ -188,7 +188,7 @@ This formula uses an input with filters.
 {
 	"guid": "2355eefb-2e93-4183-bf3b-e04b0150b86a",
 	"time": 1633531905,
-	"formulaID": "bafyrgqd7ym6wxhvmdbcqc5kuh7763uqb7tktid5f7azblfibc2ipetpighyk2peurqzdtqff7sfk3j44hzk3vpbthrogg36jsyrswwlznr5k4",
+	"formulaID": "zM5K3URYzS3M3X8Hx7QeWdMddjuDYBGgGy94ZNBbVsfuEtgn4Zcv54zScFSVdNbdwzz3mBW",
 	"exitcode": 0,
 	"results": {}
 }

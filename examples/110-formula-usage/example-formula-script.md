@@ -50,7 +50,7 @@ interpreter (`sh`, `bash`, `zsh`, etc...).
 {
 	"guid": "cb351d5f-9b85-4404-aec9-b54cb71d249c",
 	"time": 1634850353,
-	"formulaID": "bafyrgqbi4azgrked6grddtcu5rc6aat7y6g2sbc7cc4e2iyh4kktkdj7anh3gk5cqei277xufvesyhhe56w6erys4lyu7lnwfizkaglc5pqfe",
+	"formulaID": "zM5K3VaLMeNTrjRHGTJCHZfrS5QgT5vdBZHiHoPWrRwe5V5DX3TdMYRTvnvF4NLp7bwrqaz",
 	"exitcode": 0,
 	"results": {
 		"test": "ware:tar:3vmwry1wdxQjTaCjmoJnvGbdpg9ucTvCpWzGzvtujbLQSwvPPAECTm3YxrsHnERtzg"

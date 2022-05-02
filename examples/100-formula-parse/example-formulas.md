@@ -66,7 +66,7 @@ Formulas can be hashed.  This is the CID of the above formula
 
 [testmark]:# (zero-formula/cid)
 ```
-bafyrgqelzywg34w5h55k5tqw6zn4beeeonglldq5q7oihmdlpalav4imqco3zkdf5llnpncdwmlgjdk7o6rwema2dg34qp4hhwocxjwk6y4a4
+zM5K3Yqw5VpnVtqFmX6n3cGcCcoaeTzwktz4HBKG6TdXEQrS1pAwme3pW6QDZT96CXv8ffJ
 ```
 
 ---

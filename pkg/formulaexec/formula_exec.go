@@ -537,14 +537,18 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 	lnk, errRaw := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
 		Version:  1,    // Usually '1'.
 		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-		MhType:   0x13, // 0x13 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-		MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+		MhType:   0x20, // 0x20 means "sha2-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhLength: 48,   // sha2-384 hash has a 48-byte sum.
 	}}, nFormulaAndContext.(schema.TypedNode).Representation())
 	if errRaw != nil {
 		// panic! this should never fail unless IPLD is broken
 		panic(fmt.Sprintf("Fatal IPLD Error: lsys.ComputeLink failed for FormulaAndContext: %s", errRaw))
 	}
-	rr.FormulaID = lnk.String()
+	fid, errRaw := lnk.(cidlink.Link).StringOfBase('z')
+	if errRaw != nil {
+		panic(fmt.Sprintf("Fatal IPLD Error: failed to encode CID for FormulaAndContext: %s", errRaw))
+	}
+	rr.FormulaID = fid
 
 	logger.Info(LOG_TAG_START, "")
 

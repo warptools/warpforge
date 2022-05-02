@@ -14,14 +14,14 @@ func TestCatalogLookup(t *testing.T) {
 	"name": "example.com/module",
 	"metadata": {},
 	"releases": {
-		"v1.0": "bafyrgqaziwrghuevyr4bfoirkk7i4zzqrtuzy6w5yyxmhu56n6oovrnrflltwpfj6oer7lusp7tgasskqtto5o6hn6lairgv4ucyvayg7htxi"
+		"v1.0": "zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s"
 	} 
 }
 `
 		releaseData := `{
 	"name": "v1.0",
 	"metadata": {
-		"replay": "bafyrgqggewrtcuo56oznqri5zykl35izosgco24pezynmbnlapwbkfg75uq45j4dlw5k5bjxnblt3lmeaq2co5khffyiabhgfv74fez4xnwbo"
+		"replay": "zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7"
 	},
 	"items": {
 		"x86_64": "tar:abcd"
