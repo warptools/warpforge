@@ -551,7 +551,7 @@ Check that `ferk` ran successfully, no outputs are expected.
 
 # Catalog Update
 
-The `catalog update` command updates the catalogs from Git. If the default `warpsys` catalog is not installed, this command will install it.
+The `catalog update` command updates the catalogs from Git. If the default `min.warpforge.io` catalog is not installed, this command will install it.
 
 [testmark]:# (catalog/then-update/sequence)
 ```
@@ -586,7 +586,7 @@ warpforge --json run
 [testmark]:# (catalog/then-update/then-quickstart/then-run/stdout)
 ```
 { "log": { "Msg": "inputs:" } } 
-{ "log": { "Msg": "type = catalog ref = catalog:catalog.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64" } } 
+{ "log": { "Msg": "type = catalog ref = catalog:min.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64" } } 
 { "log": { "Msg": "wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.4-x86_64.tar.gz" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
 { "log": { "Msg": "ware mount: wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP destPath = /" } } 
