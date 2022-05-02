@@ -368,7 +368,7 @@ func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 	// install our default remote catalog as "default-remote" by cloning from git
 	// this will noop if the catalog already exists
 
-	defaultCatalogPath := filepath.Join(path, "default")
+	defaultCatalogPath := filepath.Join(path, "catalog.warpforge.io")
 	if _, err := os.Stat(defaultCatalogPath); !os.IsNotExist(err) {
 		// a dir exists for this catalog, do nothing
 		return nil
