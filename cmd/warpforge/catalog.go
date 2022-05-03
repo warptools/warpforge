@@ -42,9 +42,9 @@ var catalogCmdDef = cli.Command{
 			Action: cmdCatalogAdd,
 		},
 		{
-			Name:   "insertreplay",
-			Usage:  "Add a replay to the catalog.",
-			Action: cmdCatalogInsertReplay,
+			Name:   "release",
+			Usage:  "Add a module to the catalog as a new release.",
+			Action: cmdCatalogRelease,
 		},
 		{
 			Name:   "ls",
@@ -458,9 +458,9 @@ func cmdCatalogUpdate(c *cli.Context) error {
 	return nil
 }
 
-func cmdCatalogInsertReplay(c *cli.Context) error {
+func cmdCatalogRelease(c *cli.Context) error {
 	if c.Args().Len() != 1 {
-		return fmt.Errorf("invalid input. usage: warpforge catalog insertreplay [release name]")
+		return fmt.Errorf("invalid input. usage: warpforge catalog release [release name]")
 	}
 	catalogName := c.String("name")
 	if catalogName == "" {
