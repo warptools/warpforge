@@ -554,7 +554,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 
 	// check if a memoized RunRecord already exists
 	if !formulaConfig.DisableMemoization {
-		memo, err := loadMemo(ws, lnk.String())
+		memo, err := loadMemo(ws, fid)
 		if err != nil {
 			return rr, err
 		}
