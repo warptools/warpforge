@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const VERSION = "alpha"
+const VERSION = "v0.1"
 
 func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 	app := cli.NewApp()
