@@ -15,7 +15,7 @@ import (
 
 var statusCmdDef = cli.Command{
 	Name:    "status",
-	Usage:   "Get status of workspaces and installation.",
+	Usage:   "Get status of workspaces and installation",
 	Action:  cmdStatus,
 	Aliases: []string{"info"},
 }

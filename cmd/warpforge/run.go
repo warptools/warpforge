@@ -24,12 +24,12 @@ var runCmdDef = cli.Command{
 		&cli.BoolFlag{
 			Name:    "recursive",
 			Aliases: []string{"r"},
-			Usage:   "Recursively execute replays required to assemble inputs to this module.",
+			Usage:   "Recursively execute replays required to assemble inputs to this module",
 		},
 		&cli.BoolFlag{
 			Name:    "force",
 			Aliases: []string{"f"},
-			Usage:   "Force execution, even if memoized formulas exist.",
+			Usage:   "Force execution, even if memoized formulas exist",
 		},
 	},
 }
@@ -39,6 +39,9 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 
 	// parse the module, even though it is not currently used
 	_, err := moduleFromFile(fileName)
+	if err != nil {
+		return result, err
+	}
 
 	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), PLOT_FILE_NAME))
 	if err != nil {

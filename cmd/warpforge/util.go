@@ -9,7 +9,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -20,12 +19,12 @@ const PLOT_FILE_NAME = "plot.wf"
 const MODULE_FILE_NAME = "module.wf"
 
 // Returns the file type, which is the file name without extension
-// e.g., formula.json -> formula, module.json -> module, etc...
+// e.g., formula.wf -> formula, module.wf -> module, etc...
 func getFileType(name string) (string, error) {
 	split := strings.Split(filepath.Base(name), ".")
-	if len(split) < 2 {
+	if len(split) != 2 {
 		// ignore files without extensions
-		return "", nil
+		return "", fmt.Errorf("unsupported file: %q", name)
 	}
 	return split[0], nil
 }
@@ -43,10 +42,6 @@ func binPath(bin string) (string, error) {
 	}
 
 	return filepath.Join(filepath.Dir(path), bin), nil
-}
-
-func unimplemented(c *cli.Context) error {
-	return fmt.Errorf("sorry, command %s is not implemented", c.Command.Name)
 }
 
 // Opens the default WorkspaceSet.
@@ -68,8 +63,8 @@ func openWorkspaceSet() (workspace.WorkspaceSet, error) {
 }
 
 // takes a path to a plot file, returns a plot
-func plotFromFile(fileName string) (wfapi.Plot, error) {
-	f, err := ioutil.ReadFile(fileName)
+func plotFromFile(filename string) (wfapi.Plot, error) {
+	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return wfapi.Plot{}, err
 	}
@@ -84,8 +79,8 @@ func plotFromFile(fileName string) (wfapi.Plot, error) {
 }
 
 // takes a path to a module file, returns a module
-func moduleFromFile(fileName string) (wfapi.Module, error) {
-	f, err := ioutil.ReadFile(fileName)
+func moduleFromFile(filename string) (wfapi.Module, error) {
+	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return wfapi.Module{}, err
 	}

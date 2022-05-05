@@ -12,7 +12,7 @@ import (
 
 var quickstartCmdDef = cli.Command{
 	Name:   "quickstart",
-	Usage:  "Generate a basic module and plot.",
+	Usage:  "Generate a basic module and plot",
 	Action: cmdQuickstart,
 }
 

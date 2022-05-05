@@ -35,32 +35,13 @@ This works even if there are no modules found; the output will simply be empty:
 ```
 ```
 
-
-## Check Input Files are Valid
-
-This usage will infer the file's type based on its name, then check it for validity.
-Multiple files can be provided, and unrecognized filenames will be ignored.
-
-[testmark]:# (check/sequence)
-```
-warpforge check *
-```
-
-If everything passes, the output is silent, as good unix-style tools should be:
-
-[testmark]:# (check/output)
-```
-```
-
-(TODO: this probably needs a verbose flag, too, so we can more easily see that it's actually doing work!)
-
 ## Check a Formula is Valid
 
 Specific formats can also be checked explicitly, using `check` commands specific to that subsystem:
 
 [testmark]:# (checkformula/sequence)
 ```
-warpforge --json --verbose formula check formula.json
+warpforge --verbose check formula.json
 ```
 
 We'll run this in a filesystem that contains a `formula.json`:
@@ -125,7 +106,7 @@ There's also an explicit `check` subcommand for dealing with modules:
 
 [testmark]:# (checkmodule/sequence)
 ```
-warpforge --verbose module check module.wf
+warpforge check module.wf
 ```
 
 We'll run this in a filesystem that contains a `module.wf` (albeit a pretty silly one):
@@ -149,7 +130,7 @@ There's also an explicit `check` subcommand for dealing with plots:
 
 [testmark]:# (checkplot/sequence)
 ```
-warpforge plot check plot.wf
+warpforge check plot.wf
 ```
 
 We'll run this in a filesystem that contains a `plot.wf` (albeit a pretty silly one):
@@ -163,7 +144,7 @@ We'll run this in a filesystem that contains a `plot.wf` (albeit a pretty silly 
 }
 ```
 
-Because we haven't asked for verbose output, and it's successfully checked, the output is nothing:
+Because it was successfully checked, the output is nothing:
 
 [testmark]:# (checkplot/output)
 ```

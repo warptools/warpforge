@@ -35,15 +35,13 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 			Name: "quiet",
 		},
 		&cli.BoolFlag{
-			Name: "json",
+			Name:  "json",
+			Usage: "Enable JSON API output",
 		},
 	}
 	app.ExitErrHandler = exitErrHandler
 	app.After = afterFunc
 	app.Commands = []*cli.Command{
-		&formulaCmdDef,
-		&moduleCmdDef,
-		&plotCmdDef,
 		&runCmdDef,
 		&checkCmdDef,
 		&catalogCmdDef,
@@ -84,13 +82,11 @@ func afterFunc(c *cli.Context) error {
 			panic("invalid result value - not a datamodel.Node")
 		}
 
-		if c.Bool("json") {
-			serial, err := ipld.Encode(n, ipldjson.Encode)
-			if err != nil {
-				panic("failed to serialize output")
-			}
-			fmt.Fprintf(c.App.Writer, "%s\n", serial)
+		serial, err := ipld.Encode(n, ipldjson.Encode)
+		if err != nil {
+			panic("failed to serialize output")
 		}
+		fmt.Fprintf(c.App.Writer, "%s\n", serial)
 	}
 	return nil
 }

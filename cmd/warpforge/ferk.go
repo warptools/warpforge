@@ -15,7 +15,7 @@ import (
 
 var ferkCmdDef = cli.Command{
 	Name:   "ferk",
-	Usage:  "Idk yet",
+	Usage:  "Starts a containerized environment for interactive use",
 	Action: cmdFerk,
 	Flags: []cli.Flag{
 		&cli.StringFlag{

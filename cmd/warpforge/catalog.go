@@ -22,7 +22,7 @@ const defaultCatalogUrl = "https://github.com/warpsys/mincatalog.git"
 
 var catalogCmdDef = cli.Command{
 	Name:  "catalog",
-	Usage: "Subcommands that operate on catalogs.",
+	Usage: "Subcommands that operate on catalogs",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "name",
@@ -33,37 +33,37 @@ var catalogCmdDef = cli.Command{
 	Subcommands: []*cli.Command{
 		{
 			Name:   "init",
-			Usage:  "Initialize a catalog in the current directory.",
+			Usage:  "Initialize a catalog in the current directory",
 			Action: cmdCatalogInit,
 		},
 		{
 			Name:   "add",
-			Usage:  "Add an item to the catalog.",
+			Usage:  "Add an item to the catalog",
 			Action: cmdCatalogAdd,
 		},
 		{
 			Name:   "release",
-			Usage:  "Add a module to the catalog as a new release.",
+			Usage:  "Add a module to the catalog as a new release",
 			Action: cmdCatalogRelease,
 		},
 		{
 			Name:   "ls",
-			Usage:  "List available catalogs.",
+			Usage:  "List available catalogs",
 			Action: cmdCatalogLs,
 		},
 		{
 			Name:   "bundle",
-			Usage:  "Bundle required catalog items into this project's catalog.",
+			Usage:  "Bundle required catalog items into this project's catalog",
 			Action: cmdCatalogBundle,
 		},
 		{
 			Name:   "update",
-			Usage:  "Update remote catalogs.",
+			Usage:  "Update remote catalogs",
 			Action: cmdCatalogUpdate,
 		},
 		{
 			Name:   "ingest-git-tags",
-			Usage:  "Ingest all tags from a git repository into a catalog entry.",
+			Usage:  "Ingest all tags from a git repository into a catalog entry",
 			Action: cmdIngestGitTags,
 		},
 	},

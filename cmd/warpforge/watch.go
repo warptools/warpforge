@@ -14,7 +14,7 @@ import (
 
 var watchCmdDef = cli.Command{
 	Name:   "watch",
-	Usage:  "Watch a directory for changes to ingests",
+	Usage:  "Watch a directory for git commits, executing plot on each new commit",
 	Action: cmdWatch,
 }
 
