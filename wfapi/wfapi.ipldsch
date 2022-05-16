@@ -12,7 +12,7 @@
 #
 # We use opaque strings for the packtype and the hash for simplicity.
 type WareID struct {
-	packtype Packtype   # typically "tar" or "get" or etc.
+	packtype Packtype   # typically "tar" or "git" or etc.
 	hash String   # usually an actual hash, but handed to the io plugin verbatim.
 } representation stringjoin {
 	join ":"
