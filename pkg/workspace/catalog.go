@@ -224,7 +224,11 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 			return &wareId, nil, nil
 		}
 	case mirror.ByModule != nil:
-		return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
+		if len(mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype]) > 0 {
+			return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
+		} else {
+			return &wareId, nil, nil
+		}
 	default:
 		panic("unreachable")
 	}
