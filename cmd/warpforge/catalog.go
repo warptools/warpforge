@@ -25,9 +25,10 @@ var catalogCmdDef = cli.Command{
 	Usage: "Subcommands that operate on catalogs",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "name",
-			Aliases: []string{"n"},
-			Usage:   "Name of the catalog to operate on",
+			Name:        "name",
+			Aliases:     []string{"n"},
+			Usage:       "Name of the catalog to operate on",
+			DefaultText: "default",
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -133,9 +134,6 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	catalogName := c.String("name")
-	if catalogName == "" {
-		catalogName = "default"
-	}
 
 	packType := c.Args().Get(0)
 	catalogRefStr := c.Args().Get(1)
@@ -463,9 +461,6 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return fmt.Errorf("invalid input. usage: warpforge catalog release [release name]")
 	}
 	catalogName := c.String("name")
-	if catalogName == "" {
-		catalogName = "default"
-	}
 
 	// open the workspace set
 	wsSet, err := openWorkspaceSet()
