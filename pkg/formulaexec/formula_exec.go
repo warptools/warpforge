@@ -80,19 +80,37 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 	// some operations require network access, which requires some configuration
 	// we provide a resolv.conf for DNS configuration and /etc/ssl/certs
 	// for trusted CAs from the host system
-	etcMount := specs.Mount{
+
+	mounts := []specs.Mount{}
+	resolvMount := specs.Mount{
 		Source:      "/etc/resolv.conf",
 		Destination: "/etc/resolv.conf",
 		Type:        "none",
 		Options:     []string{"rbind"},
 	}
+	mounts = append(mounts, resolvMount)
+
 	caMount := specs.Mount{
 		Source:      "/etc/ssl/certs",
 		Destination: "/etc/ssl/certs",
 		Type:        "none",
 		Options:     []string{"rbind", "ro"},
 	}
-	return []specs.Mount{etcMount, caMount}
+	mounts = append(mounts, caMount)
+
+	// some distros (namely, arch) use symlinks in /etc/ssl/certificates which
+	// point to /etc/ca-certificates. if this directory exists, mount it so the
+	// symlinks will resolve.
+	if _, err := os.Stat("/etc/ca-certificates"); err == nil {
+		caCertsMount := specs.Mount{
+			Source:      "/etc/ca-certificates",
+			Destination: "/etc/ca-certificates",
+			Type:        "none",
+			Options:     []string{"rbind", "ro"},
+		}
+		mounts = append(mounts, caCertsMount)
+	}
+	return mounts
 }
 
 // Creates a base configuration for runc, which is later modified before running``
