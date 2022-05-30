@@ -676,7 +676,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 
 			// create the mount based on type
 			switch {
-			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "overlay":
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == wfapi.MountMode_Overlay:
 				// overlay mount
 				logger.Info(LOG_TAG,
 					"overlay mount:\t%s = %s\t%s = %s",
@@ -688,7 +688,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 				if err != nil {
 					return rr, err
 				}
-			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "ro":
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == wfapi.MountMode_Readonly:
 				// read only bind mount
 				logger.Info(LOG_TAG,
 					"bind mount (ro):\t%s = %s\t%s = %s",
@@ -700,7 +700,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 				if err != nil {
 					return rr, err
 				}
-			case inputSimple.Mount != nil && inputSimple.Mount.Mode == "rw":
+			case inputSimple.Mount != nil && inputSimple.Mount.Mode == wfapi.MountMode_Readwrite:
 				// bind mount
 				logger.Info(LOG_TAG,
 					"bind mount (rw):\t%s = %s\t%s = %s",

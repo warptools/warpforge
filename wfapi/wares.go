@@ -32,8 +32,8 @@ type Mount struct {
 type MountMode string
 
 const (
-	MountMode_Readonly  MountMode = "ro"
-	MountMode_Readwrite MountMode = "rw"
+	MountMode_Readonly  MountMode = "readonly"
+	MountMode_Readwrite MountMode = "readwrite"
 	MountMode_Overlay   MountMode = "overlay"
 )
 

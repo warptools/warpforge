@@ -193,3 +193,30 @@ This formula uses an input with filters.
 	"results": {}
 }
 ```
+
+## Mount Types
+[testmark]:# (mounttypes/formula)
+```json
+{
+	"formula": {
+		"inputs": {
+			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
+			"/mnt/overlay": "mount:overlay:.",
+			"/mnt/ro": "mount:ro:.",
+			"/mnt/rw": "mount:rw:."
+		},
+		"action": {
+			"exec": {
+				"command": ["/bin/sh", "-c", "ls -al /mnt"]
+			}
+		},
+		"outputs": {
+		}
+	},
+	"context": {
+		"warehouses": {
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		}
+	}
+}
+```
