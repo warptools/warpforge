@@ -840,7 +840,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		}
 
 		// create a mount for the script file
-		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath(), true)
+		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath(), false)
 		if err != nil {
 			return rr, err
 		}
