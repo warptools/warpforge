@@ -1,0 +1,8 @@
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+indent_style = tab
+indent_size = 4
+# Setting tab size mostly just so github takes this as a rendering cue.  The default of 8 is excessive.
+# Unfortunately, this does not affect how code blocks in markdown are rendered.  Drat.
