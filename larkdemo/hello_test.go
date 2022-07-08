@@ -23,7 +23,10 @@ func ExampleHello() {
 	thread := &starlark.Thread{Name: "thethreadname"}
 	globals, err := starlark.ExecFile(thread, "thefilename.star", `
 result = Plot(
-	inputs={},
+	inputs={
+		"one": "ware:tar:asdf",
+		"two": "literal:foobar",
+	},
 	steps={},
 	outputs={},
 )
@@ -37,7 +40,13 @@ result = Plot(
 
 	// Output:
 	// result = struct<Plot>{
-	// 	inputs: map<Map__LocalLabel__PlotInput>{}
+	// 	inputs: map<Map__LocalLabel__PlotInput>{
+	// 		string<LocalLabel>{"one"}: union<PlotInput>{union<PlotInputSimple>{struct<WareID>{
+	// 			packtype: string<Packtype>{"tar"}
+	// 			hash: string<String>{"asdf"}
+	// 		}}}
+	// 		string<LocalLabel>{"two"}: union<PlotInput>{union<PlotInputSimple>{string<Literal>{"foobar"}}}
+	// 	}
 	// 	steps: map<Map__StepName__Step>{}
 	// 	outputs: map<Map__LocalLabel__PlotOutput>{}
 	// }
