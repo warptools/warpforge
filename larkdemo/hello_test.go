@@ -5,6 +5,7 @@ import (
 
 	"github.com/ipld/go-datalark"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
 
 	"github.com/warpfork/warpforge/wfapi"
@@ -13,10 +14,10 @@ import (
 func ExampleHello() {
 	// Build the globals map that makes our API's surfaces available in starlark.
 	globals := starlark.StringDict{}
-	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrimitives())
-	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrototypes(
+	datalark.InjectGlobals(globals, datalark.PrimitiveConstructors())
+	datalark.InjectGlobals(globals, datalark.MakeConstructors([]schema.TypedPrototype{
 		bindnode.Prototype((*wfapi.Plot)(nil), wfapi.TypeSystem.TypeByName("Plot")),
-	))
+	}))
 
 	// Execute Starlark program in a file.
 	thread := &starlark.Thread{Name: "thethreadname"}
