@@ -16,7 +16,12 @@ func ExampleHello() {
 	globals := starlark.StringDict{}
 	datalark.InjectGlobals(globals, datalark.PrimitiveConstructors())
 	datalark.InjectGlobals(globals, datalark.MakeConstructors([]schema.TypedPrototype{
+		// Wishlist: if this was a little easier to bind all in one place.
+		//  We do need to know the concrete types.  But we should usually only need to say that once in the whole program.
+		//   ... ohhey, Rod introduced a bindnode registry recently.  That might be just the thing.
 		bindnode.Prototype((*wfapi.Plot)(nil), wfapi.TypeSystem.TypeByName("Plot")),
+		bindnode.Prototype((*wfapi.Protoformula)(nil), wfapi.TypeSystem.TypeByName("Protoformula")),
+		bindnode.Prototype((*wfapi.Action_Script)(nil), wfapi.TypeSystem.TypeByName("Action_Script")),
 	}))
 
 	// Execute Starlark program in a file.
@@ -27,7 +32,20 @@ result = Plot(
 		"one": "ware:tar:asdf",
 		"two": "literal:foobar",
 	},
-	steps={},
+	steps={
+		"beep": Protoformula(
+			inputs={
+				"/": "pipe::one",
+				"$FOO": "pipe::two",
+			},
+			action=Action_Script( # FIXME handing in a type that's a union member here should work, like this.  currently doesn't?  appears to be trying to copy the content
+				interpreter="/bin/bash", # todo soon, make a wrapper func where this kwarg has a default
+				contents=["hey", "hello"],
+				network=False,
+			),
+			outputs={},
+		)
+	},
 	outputs={},
 )
 `, globals)
