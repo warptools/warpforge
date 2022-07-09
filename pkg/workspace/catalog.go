@@ -12,6 +12,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
+
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -24,9 +25,40 @@ const (
 // functionality to traverse multiple catalogs is provided by Workspace and
 // WorkspaceSet structs.
 type Catalog struct {
-	workspace  *Workspace
-	path       string
+	fsys       fs.FS  // Usually `osfs.Dir("/")` when live, but may vary for tests.
+	path       string // Always concatenated to the front of anything else we do.
 	moduleList []wfapi.ModuleName
+}
+
+// OpenCatalog creates an object that can be used to access catalog data on the local filesystem.
+// It will check if files looking like catalog data exist, and error if not.
+// It also immediately loads a list of available modules into memory.
+//
+// Note that you can get a similar object through `Workspace.OpenCatalog()`,
+// which is often more convenient.
+//
+// Errors:
+//
+// 	warpforge-error-io -- when building the module list fails due to I/O error
+func OpenCatalog(fsys fs.FS, path string) (Catalog, wfapi.Error) {
+	// check that the catalog path exists
+	// FUTURE: We should add more indicator files here, to help avoid some forms of possible user error and give better messages.
+	if _, errRaw := fs.Stat(fsys, path); os.IsNotExist(errRaw) {
+		return Catalog{}, wfapi.ErrorCatalogInvalid(path, "catalog does not exist")
+	}
+
+	cat := Catalog{
+		fsys: fsys,
+		path: path,
+	}
+
+	// build a list of the modules in this catalog
+	err := cat.updateModuleList()
+	if err != nil {
+		return Catalog{}, err
+	}
+
+	return cat, nil
 }
 
 // Get the file path for a CatalogModule file.
@@ -63,33 +95,6 @@ func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) string {
 	return path
 }
 
-// Open a catalog.
-// This is only intended to be used internally in the workspace package. It
-// should be publically accessed through Workspace.OpenCatalog()
-//
-// Errors:
-//
-// warpforge-error-io -- when building the module list fails due to I/O error
-func openCatalog(ws *Workspace, path string) (Catalog, wfapi.Error) {
-	// check that the catalog path exists
-	if _, errRaw := fs.Stat(ws.fsys, path); os.IsNotExist(errRaw) {
-		return Catalog{}, wfapi.ErrorCatalogInvalid(path, "catalog does not exist")
-	}
-
-	cat := Catalog{
-		workspace: ws,
-		path:      path,
-	}
-
-	// build a list of the modules in this catalog
-	err := cat.updateModuleList()
-	if err != nil {
-		return Catalog{}, err
-	}
-
-	return cat, nil
-}
-
 // Update a Catalog's list of modules.
 // This will be called when opening the catalog, and after updating the filesystem.
 func (cat *Catalog) updateModuleList() wfapi.Error {
@@ -105,7 +110,7 @@ func (cat *Catalog) updateModuleList() wfapi.Error {
 func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName) wfapi.Error {
 	// list the directory
 	thisDir := filepath.Join(basePath, string(moduleName))
-	files, errRaw := fs.ReadDir(cat.workspace.fsys, thisDir)
+	files, errRaw := fs.ReadDir(cat.fsys, thisDir)
 	if errRaw != nil {
 		return wfapi.ErrorIo("could not read catalog directory", &cat.path, errRaw)
 	}
@@ -159,7 +164,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, wfa
 
 	// release was found in catalog, attempt to open release file
 	releasePath := cat.releaseFilePath(ref)
-	releaseBytes, errRaw := fs.ReadFile(cat.workspace.fsys, releasePath)
+	releaseBytes, errRaw := fs.ReadFile(cat.fsys, releasePath)
 	if os.IsNotExist(errRaw) {
 		return nil, nil
 	} else if errRaw != nil {
@@ -247,7 +252,7 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi
 	mirrorPath := cat.mirrorFilePath(ref)
 	var mirrorFile fs.File
 	var err error
-	if mirrorFile, err = cat.workspace.fsys.Open(mirrorPath); os.IsNotExist(err) {
+	if mirrorFile, err = cat.fsys.Open(mirrorPath); os.IsNotExist(err) {
 		// no mirror file for this ware
 		return nil, nil
 	} else if err != nil {
@@ -280,7 +285,7 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 	modPath := cat.moduleFilePath(ref)
 	var modFile fs.File
 	var err error
-	if modFile, err = cat.workspace.fsys.Open(modPath); os.IsNotExist(err) {
+	if modFile, err = cat.fsys.Open(modPath); os.IsNotExist(err) {
 		// lineage file does not exist for this workspace
 		return nil, nil
 	} else if err != nil {
@@ -446,7 +451,7 @@ func (cat *Catalog) AddByWareMirror(
 	)
 
 	var mirrors wfapi.CatalogMirror
-	mirrorsBytes, err := fs.ReadFile(cat.workspace.fsys, mirrorsPath)
+	mirrorsBytes, err := fs.ReadFile(cat.fsys, mirrorsPath)
 	if os.IsNotExist(err) {
 		mirrors = wfapi.CatalogMirror{
 			ByWare: &wfapi.CatalogMirrorByWare{},
@@ -523,7 +528,7 @@ func (cat *Catalog) AddByModuleMirror(
 	)
 
 	var mirrors wfapi.CatalogMirror
-	mirrorsBytes, err := fs.ReadFile(cat.workspace.fsys, mirrorsPath)
+	mirrorsBytes, err := fs.ReadFile(cat.fsys, mirrorsPath)
 	if os.IsNotExist(err) {
 		mirrors = wfapi.CatalogMirror{
 			ByModule: &wfapi.CatalogMirrorByModule{
@@ -629,7 +634,7 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 		string(ref.ReleaseName))
 	replayPath = strings.Join([]string{replayPath, ".json"}, "")
 
-	replayBytes, errRaw := fs.ReadFile(cat.workspace.fsys, replayPath)
+	replayBytes, errRaw := fs.ReadFile(cat.fsys, replayPath)
 	if os.IsNotExist(errRaw) {
 		return nil, wfapi.ErrorCatalogInvalid(replayPath, "referenced replay file does not exist")
 	} else if errRaw != nil {
