@@ -3,7 +3,7 @@ warpforge
 
 Putting things together. Consistently.
 
-Many of the docs and much of coordination work is in [Notion](https://warpforge.notion.site/Welcome-6653d3362db84ad8a2b0d2a0046748b7) --
+Many of the docs and much of coordination work is in [Notion](https://warpforge.notion.site/Welcome-6653d3362db84ad8a2b0d2a0046748b7) on http://warpforge.io/ --
 check out the content there.
 Especially check out the [API Specs](https://warpforge.notion.site/API-Specs-41830e3da58646d2927ef6ae5b2902e4),
 because those are going to tell you a lot about _exactly_ what this tool will do for you.
