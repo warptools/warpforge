@@ -39,7 +39,8 @@ type Catalog struct {
 //
 // Errors:
 //
-// 	warpforge-error-io -- when building the module list fails due to I/O error
+// 	- warpforge-error-io -- when building the module list fails due to I/O error
+// 	- warpforge-error-catalog-invalid -- when the catalog does not exist
 func OpenCatalog(fsys fs.FS, path string) (Catalog, wfapi.Error) {
 	// check that the catalog path exists
 	// FUTURE: We should add more indicator files here, to help avoid some forms of possible user error and give better messages.
