@@ -664,7 +664,11 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 
 	// each formula execution gets a unique run directory
 	// this is used to store working files and is destroyed upon completion
-	runPath, errRaw := ioutil.TempDir(os.TempDir(), "warpforge-run-")
+	base, override := os.LookupEnv("WARPFORGE_RUNPATH")
+	if !override {
+		base = os.TempDir()
+	}
+	runPath, errRaw := ioutil.TempDir(base, "warpforge-run-")
 	if err != nil {
 		return rr, wfapi.ErrorIo("failed to create temp run directory", nil, errRaw)
 	}

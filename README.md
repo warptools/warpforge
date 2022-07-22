@@ -3,10 +3,27 @@ warpforge
 
 Putting things together. Consistently.
 
-Many of the docs and much of coordination work is in [Notion](https://warpforge.notion.site/Welcome-6653d3362db84ad8a2b0d2a0046748b7) --
+Many of the docs and much of coordination work is in [Notion](https://warpforge.notion.site/Welcome-6653d3362db84ad8a2b0d2a0046748b7) on http://warpforge.io/ --
 check out the content there.
 Especially check out the [API Specs](https://warpforge.notion.site/API-Specs-41830e3da58646d2927ef6ae5b2902e4),
 because those are going to tell you a lot about _exactly_ what this tool will do for you.
+
+Warpforge is solving three problems:
+
+- **One**: we need computation that's "hashes go in, hashes come out".  We need this as sheer foundation.
+	- Warpforge runs processes based on instructions in a JSON API for saying what data hashes to use as inputs, what script to run on them, and what outputs you want collected.  The outputs will be hashed, and Warpforge tells you the result (in more JSON).
+	- Warpforge does this with containers and filesystems: for heremeticism and reproducibility, and because we care about working with the vast wealth of software that humanity has already produced.
+- **Two**: we need some human-readable naming system to label the hashes, so humans can use this system: say what they want, build update conventions, etc.  (People won't copy and paste hashes manually: we need tools for communcating about data.)
+	- Warpforge solves this with an API layer called "catalogs".  Catalogs are still content-addressable data: you can easily snapshot them and refer to them by hashes (so you can compose secure, reliable, and decentralized systems with them).
+- **Three**: we want packages and executables that are isolated and work under a wide range of conditions, with minimal dependencies.  Things should be simple; simple things work better, and are easier to collaborate on.
+	- Warpforge itself doesn't do anything about this...
+	- Warpsys, however, is a suite of packages made *with* Warpforge that's all about this.
+
+By targetting all three of these problems at once, we hope to make more reliable computers, and more productive environments.
+
+
+Demos
+-----
 
 Here are some terminal movies of what you can do with warpforge:
 

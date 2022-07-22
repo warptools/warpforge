@@ -5,6 +5,7 @@ import (
 
 	"github.com/ipld/go-datalark"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
 
 	"github.com/warpfork/warpforge/wfapi"
@@ -13,16 +14,19 @@ import (
 func ExampleHello() {
 	// Build the globals map that makes our API's surfaces available in starlark.
 	globals := starlark.StringDict{}
-	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrimitives())
-	datalark.InjectGlobals(globals, datalark.ObjOfConstructorsForPrototypes(
+	datalark.InjectGlobals(globals, datalark.PrimitiveConstructors())
+	datalark.InjectGlobals(globals, datalark.MakeConstructors([]schema.TypedPrototype{
 		bindnode.Prototype((*wfapi.Plot)(nil), wfapi.TypeSystem.TypeByName("Plot")),
-	))
+	}))
 
 	// Execute Starlark program in a file.
 	thread := &starlark.Thread{Name: "thethreadname"}
 	globals, err := starlark.ExecFile(thread, "thefilename.star", `
 result = Plot(
-	inputs={},
+	inputs={
+		"one": "ware:tar:asdf",
+		"two": "literal:foobar",
+	},
 	steps={},
 	outputs={},
 )
@@ -36,7 +40,13 @@ result = Plot(
 
 	// Output:
 	// result = struct<Plot>{
-	// 	inputs: map<Map__LocalLabel__PlotInput>{}
+	// 	inputs: map<Map__LocalLabel__PlotInput>{
+	// 		string<LocalLabel>{"one"}: union<PlotInput>{union<PlotInputSimple>{struct<WareID>{
+	// 			packtype: string<Packtype>{"tar"}
+	// 			hash: string<String>{"asdf"}
+	// 		}}}
+	// 		string<LocalLabel>{"two"}: union<PlotInput>{union<PlotInputSimple>{string<Literal>{"foobar"}}}
+	// 	}
 	// 	steps: map<Map__StepName__Step>{}
 	// 	outputs: map<Map__LocalLabel__PlotOutput>{}
 	// }

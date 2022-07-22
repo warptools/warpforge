@@ -182,7 +182,7 @@ func (ws *Workspace) CatalogPath(name *string) string {
 //    - warpforge-error-io -- when IO error occurs during opening of catalog
 func (ws *Workspace) OpenCatalog(name *string) (Catalog, wfapi.Error) {
 	path := ws.CatalogPath(name)
-	return openCatalog(ws, path)
+	return OpenCatalog(ws.fsys, path)
 }
 
 // List the catalogs available within a workspace
