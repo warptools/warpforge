@@ -123,6 +123,23 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 
 			for _, p := range getMountDirSymlinks(path) {
 				dir := filepath.Dir(p)
+
+				// ignore relative symlinks
+				if !filepath.IsAbs(p) {
+					continue
+				}
+
+				// ignore duplicate mounts
+				duplicate := false
+				for _, m := range mounts {
+					if m.Source == dir {
+						duplicate = true
+						break
+					}
+				}
+				if duplicate {
+					continue
+				}
 				
 				caSymlinkMount := specs.Mount{
 					Source:      dir,
