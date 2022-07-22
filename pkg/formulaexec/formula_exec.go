@@ -76,6 +76,21 @@ func containerScriptPath() string {
 	return filepath.Join(CONTAINER_BASE_PATH, "script")
 }
 
+func getMountDirSymlinks(start string) []string {
+	paths := []string{}
+	path := start
+
+	fi, _ := os.Lstat(path)
+	for fi != nil && fi.Mode() & os.ModeSymlink == os.ModeSymlink {
+		pointee, _ := os.Readlink(path)
+		path = pointee
+		paths = append(paths, path)
+		fi, _ = os.Lstat(path)
+	}
+
+	return paths
+}
+
 func getNetworkMounts(wsPath string) []specs.Mount {
 	// some operations require network access, which requires some configuration
 	// we provide a resolv.conf for DNS configuration and /etc/ssl/certs
@@ -98,18 +113,45 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 	}
 	mounts = append(mounts, caMount)
 
-	// some distros (namely, arch) use symlinks in /etc/ssl/certificates which
-	// point to /etc/ca-certificates. if this directory exists, mount it so the
-	// symlinks will resolve.
-	if _, err := os.Stat("/etc/ca-certificates"); err == nil {
-		caCertsMount := specs.Mount{
-			Source:      "/etc/ca-certificates",
-			Destination: "/etc/ca-certificates",
-			Type:        "none",
-			Options:     []string{"rbind", "ro"},
+	
+	// some distros use symlinks in /etc/ssl/certificates
+	// if this directory exists, mount and follow all symlinks
+	// so that they will resolve.
+	if certFiles, err := ioutil.ReadDir("/etc/ssl/certs"); err == nil {
+		for _, file := range certFiles {
+			path := filepath.Join("/etc/ssl/certs", file.Name())
+
+			for _, p := range getMountDirSymlinks(path) {
+				dir := filepath.Dir(p)
+
+				// ignore relative symlinks
+				if !filepath.IsAbs(p) {
+					continue
+				}
+
+				// ignore duplicate mounts
+				duplicate := false
+				for _, m := range mounts {
+					if m.Source == dir {
+						duplicate = true
+						break
+					}
+				}
+				if duplicate {
+					continue
+				}
+				
+				caSymlinkMount := specs.Mount{
+					Source:      dir,
+					Destination: dir,
+					Type:        "none",
+					Options:     []string{"rbind", "ro"},
+				}
+				mounts = append(mounts, caSymlinkMount)
+			}
 		}
-		mounts = append(mounts, caCertsMount)
 	}
+
 	return mounts
 }
 
