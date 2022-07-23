@@ -83,6 +83,11 @@ func getMountDirSymlinks(start string) []string {
 	fi, _ := os.Lstat(path)
 	for fi != nil && fi.Mode() & os.ModeSymlink == os.ModeSymlink {
 		pointee, _ := os.Readlink(path)
+		if !filepath.IsAbs(pointee) {
+			// the symlink points to a relative path
+			//add the symlink's path to create an absolute path
+			pointee = filepath.Join(filepath.Dir(path), pointee)
+		}
 		path = pointee
 		paths = append(paths, path)
 		fi, _ = os.Lstat(path)
@@ -123,11 +128,6 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 
 			for _, p := range getMountDirSymlinks(path) {
 				dir := filepath.Dir(p)
-
-				// ignore relative symlinks
-				if !filepath.IsAbs(p) {
-					continue
-				}
 
 				// ignore duplicate mounts
 				duplicate := false
