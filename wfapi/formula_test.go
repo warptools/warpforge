@@ -58,7 +58,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 		SandboxPort{SandboxVar: func() *SandboxVar { v := SandboxVar("ENV_VAR"); return &v }()},
 		SandboxPort{SandboxPath: func() *SandboxPath { v := SandboxPath("more/mounts"); return &v }()},
 	}
-	inputs := frmAndCtx.Formula.Inputs
+	inputs := frmAndCtx.Formula.Formula.Inputs
 	qt.Assert(t, inputs.Keys, qt.DeepEquals, ports)
 	// Okay, this is going to look a little funny, and it's because we've got another upstream bug to fix.
 	// `inputs.Values[ports[0]]` isn't enough ... because SandboxPort has pointers in it... so, key equality fail.

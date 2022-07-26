@@ -11,11 +11,13 @@ import (
 func TestCatalogLookup(t *testing.T) {
 	t.Run("catalog-lookup", func(t *testing.T) {
 		moduleData := `{
-	"name": "example.com/module",
-	"metadata": {},
-	"releases": {
-		"v1.0": "zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s"
-	} 
+	"catalogmodule.v1": {
+		"name": "example.com/module",
+		"metadata": {},
+		"releases": {
+			"v1.0": "zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s"
+		} 
+	}
 }
 `
 		releaseData := `{
@@ -29,44 +31,48 @@ func TestCatalogLookup(t *testing.T) {
 }
 `
 		mirrorData := `{
-	"byWare": {
-		"tar:abcd": [
-			"https://example.com/module/module-v1.0-x86_64.tgz"
-		]
+	"catalogmirrors.v1": {
+		"byWare": {
+			"tar:abcd": [
+				"https://example.com/module/module-v1.0-x86_64.tgz"
+			]
+		}
 	}
 }
 `
 		replayData := `{
-	"inputs": {
-			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-	},
-	"steps": {
-			"hello-world": {
-					"protoformula": {
-							"inputs": {
-									"/": "pipe::rootfs"
-							},
-							"action": {
-									"script": {
-											"interpreter": "/bin/sh",
-											"contents": [
-													"mkdir /output",
-													"echo 'hello world' | tee /output/file"
-											],
-											"network": false
-									}
-							},
-							"outputs": {
-									"out": {
-											"from": "/output",
-											"packtype": "tar"
-									}
-							}
-					}
-			}
-	},
-	"outputs": {
-			"output": "pipe:hello-world:out"
+	"plot.v1": {
+		"inputs": {
+				"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		},
+		"steps": {
+				"hello-world": {
+						"protoformula": {
+								"inputs": {
+										"/": "pipe::rootfs"
+								},
+								"action": {
+										"script": {
+												"interpreter": "/bin/sh",
+												"contents": [
+														"mkdir /output",
+														"echo 'hello world' | tee /output/file"
+												],
+												"network": false
+										}
+								},
+								"outputs": {
+										"out": {
+												"from": "/output",
+												"packtype": "tar"
+										}
+								}
+						}
+				}
+		},
+		"outputs": {
+				"output": "pipe:hello-world:out"
+		}
 	}
 }
 `

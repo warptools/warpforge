@@ -1,5 +1,9 @@
 package wfapi
 
+type FormulaCapsule struct {
+	Formula *Formula
+}
+
 type Formula struct {
 	Inputs struct {
 		Keys   []SandboxPort
@@ -88,7 +92,7 @@ type FormulaContext struct {
 }
 
 type FormulaAndContext struct {
-	Formula Formula
+	Formula FormulaCapsule
 	Context *FormulaContext
 }
 

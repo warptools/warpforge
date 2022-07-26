@@ -81,7 +81,7 @@ func getMountDirSymlinks(start string) []string {
 	path := start
 
 	fi, _ := os.Lstat(path)
-	for fi != nil && fi.Mode() & os.ModeSymlink == os.ModeSymlink {
+	for fi != nil && fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		pointee, _ := os.Readlink(path)
 		if !filepath.IsAbs(pointee) {
 			// the symlink points to a relative path
@@ -118,7 +118,6 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 	}
 	mounts = append(mounts, caMount)
 
-	
 	// some distros use symlinks in /etc/ssl/certificates
 	// if this directory exists, mount and follow all symlinks
 	// so that they will resolve.
@@ -140,7 +139,7 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 				if duplicate {
 					continue
 				}
-				
+
 				caSymlinkMount := specs.Mount{
 					Source:      dir,
 					Destination: dir,
@@ -579,16 +578,16 @@ func GetBinPath() (string, wfapi.Error) {
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
 // - warpforge-error-serialization -- when serialization or deserialization of a memo fails
 func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
-	formula := fc.Formula
-	context := fc.Context
 	rr := wfapi.RunRecord{}
 
-	// convert formula to node
-	nFormulaAndContext, errRaw := bindnode.Wrap(&fc, wfapi.TypeSystem.TypeByName("FormulaAndContext")).LookupByString("formula")
-	if errRaw != nil {
-		// panic! this should never fail unless the TypeSystem is broken
-		panic(fmt.Sprintf("Fatal IPLD Error: bindnode.Wrap failed for FormulaAndContext: %s", errRaw))
+	if fc.Formula.Formula == nil {
+		return rr, wfapi.ErrorFormulaInvalid("FormulaCapsule does not contain a v1 formula")
 	}
+	formula := fc.Formula.Formula
+	context := fc.Context
+
+	// convert formula to node
+	nFormula := bindnode.Wrap(fc.Formula.Formula, wfapi.TypeSystem.TypeByName("Formula"))
 
 	// set up the runrecord result
 	rr.Guid = uuid.New().String()
@@ -599,14 +598,14 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
 		MhType:   0x20, // 0x20 means "sha2-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/
 		MhLength: 48,   // sha2-384 hash has a 48-byte sum.
-	}}, nFormulaAndContext.(schema.TypedNode).Representation())
+	}}, nFormula.(schema.TypedNode).Representation())
 	if errRaw != nil {
 		// panic! this should never fail unless IPLD is broken
-		panic(fmt.Sprintf("Fatal IPLD Error: lsys.ComputeLink failed for FormulaAndContext: %s", errRaw))
+		panic(fmt.Sprintf("Fatal IPLD Error: lsys.ComputeLink failed for Formula: %s", errRaw))
 	}
 	fid, errRaw := lnk.(cidlink.Link).StringOfBase('z')
 	if errRaw != nil {
-		panic(fmt.Sprintf("Fatal IPLD Error: failed to encode CID for FormulaAndContext: %s", errRaw))
+		panic(fmt.Sprintf("Fatal IPLD Error: failed to encode CID for Formula: %s", errRaw))
 	}
 	rr.FormulaID = fid
 
@@ -626,7 +625,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		}
 	}
 
-	formulaSerial, errRaw := ipld.Marshal(ipldjson.Encode, &formula, wfapi.TypeSystem.TypeByName("Formula"))
+	formulaSerial, errRaw := ipld.Marshal(ipldjson.Encode, formula, wfapi.TypeSystem.TypeByName("Formula"))
 	if errRaw != nil {
 		return rr, wfapi.ErrorFormulaInvalid(fmt.Sprintf("failed to re-serialize formula: %s", errRaw))
 	}

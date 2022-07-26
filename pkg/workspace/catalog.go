@@ -246,9 +246,7 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 //
 //    - warpforge-error-io -- when reading lineage file fails
 //    - warpforge-error-catalog-parse -- when ipld parsing of mirror file fails
-func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi.Error) {
-	mirror := wfapi.CatalogMirror{}
-
+func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, wfapi.Error) {
 	// open lineage file
 	mirrorPath := cat.mirrorFilePath(ref)
 	var mirrorFile fs.File
@@ -265,12 +263,16 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi
 	if err != nil {
 		return nil, wfapi.ErrorIo("failed to read mirror file", &mirrorPath, err)
 	}
-	_, err = ipld.Unmarshal(mirrorBytes, json.Decode, &mirror, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+	mirrorCapsule := wfapi.CatalogMirrorsCapsule{}
+	_, err = ipld.Unmarshal(mirrorBytes, json.Decode, &mirrorCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 	if err != nil {
 		return nil, wfapi.ErrorCatalogParse(mirrorPath, err)
 	}
+	if mirrorCapsule.CatalogMirrors == nil {
+		return nil, wfapi.ErrorCatalogParse(mirrorPath, fmt.Errorf("no v1 CatalogMirrors in capsule"))
+	}
 
-	return &mirror, nil
+	return mirrorCapsule.CatalogMirrors, nil
 }
 
 // Get a lineage for a given catalog reference.
@@ -280,8 +282,6 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirror, wfapi
 //    - warpforge-error-io -- when reading lineage file fails
 //    - warpforge-error-catalog-parse -- when ipld unmarshaling fails
 func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi.Error) {
-	mod := wfapi.CatalogModule{}
-
 	// open lineage file
 	modPath := cat.moduleFilePath(ref)
 	var modFile fs.File
@@ -298,12 +298,17 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 	if err != nil {
 		return nil, wfapi.ErrorIo("error reading module file", &modPath, err)
 	}
-	_, err = ipld.Unmarshal(modBytes, json.Decode, &mod, wfapi.TypeSystem.TypeByName("CatalogModule"))
+
+	modCapsule := wfapi.CatalogModuleCapsule{}
+	_, err = ipld.Unmarshal(modBytes, json.Decode, &modCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
 	if err != nil {
 		return nil, wfapi.ErrorCatalogParse(modPath, err)
 	}
+	if modCapsule.CatalogModule == nil {
+		return nil, wfapi.ErrorCatalogParse(modPath, fmt.Errorf("no v1 CatalogModule found"))
+	}
 
-	return &mod, nil
+	return modCapsule.CatalogModule, nil
 }
 
 // Adds a new item to the catalog.
@@ -410,7 +415,8 @@ func (cat *Catalog) AddItem(
 	}
 
 	// serialize the updated structures
-	moduleSerial, errRaw := ipld.Marshal(json.Encode, module, wfapi.TypeSystem.TypeByName("CatalogModule"))
+	modCapsule := wfapi.CatalogModuleCapsule{CatalogModule: module}
+	moduleSerial, errRaw := ipld.Marshal(json.Encode, modCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
 	if errRaw != nil {
 		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
 	}
@@ -451,20 +457,27 @@ func (cat *Catalog) AddByWareMirror(
 		"mirrors.json",
 	)
 
-	var mirrors wfapi.CatalogMirror
+	var mirrorsCapsule wfapi.CatalogMirrorsCapsule
 	mirrorsBytes, err := fs.ReadFile(cat.fsys, mirrorsPath)
 	if os.IsNotExist(err) {
-		mirrors = wfapi.CatalogMirror{
-			ByWare: &wfapi.CatalogMirrorByWare{},
+		mirrorsCapsule = wfapi.CatalogMirrorsCapsule{
+			CatalogMirrors: &wfapi.CatalogMirrors{
+				ByWare: &wfapi.CatalogMirrorsByWare{},
+			},
 		}
 	} else if err == nil {
-		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorCapsule"))
 		if err != nil {
 			return wfapi.ErrorCatalogParse(mirrorsPath, err)
+		}
+		if mirrorsCapsule.CatalogMirrors == nil {
+			return wfapi.ErrorCatalogParse(mirrorsPath, fmt.Errorf("no v1 CatalogMirrors in capsule"))
 		}
 	} else {
 		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)
 	}
+
+	mirrors := mirrorsCapsule.CatalogMirrors
 
 	// add this item to the mirrors file
 	if mirrors.ByWare == nil {
@@ -497,7 +510,7 @@ func (cat *Catalog) AddByWareMirror(
 	if err != nil {
 		return wfapi.ErrorIo("could not create catalog path", &path, err)
 	}
-	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 	if err != nil {
 		return wfapi.ErrorSerialization("could not serialize mirror", err)
 	}
@@ -528,22 +541,26 @@ func (cat *Catalog) AddByModuleMirror(
 		"mirrors.json",
 	)
 
-	var mirrors wfapi.CatalogMirror
+	var mirrorsCapsule wfapi.CatalogMirrorsCapsule
 	mirrorsBytes, err := fs.ReadFile(cat.fsys, mirrorsPath)
 	if os.IsNotExist(err) {
-		mirrors = wfapi.CatalogMirror{
-			ByModule: &wfapi.CatalogMirrorByModule{
-				Values: make(map[wfapi.ModuleName]wfapi.CatalogMirrorsByPacktype),
+		mirrorsCapsule = wfapi.CatalogMirrorsCapsule{
+			CatalogMirrors: &wfapi.CatalogMirrors{
+				ByModule: &wfapi.CatalogMirrorsByModule{
+					Values: make(map[wfapi.ModuleName]wfapi.CatalogMirrorsByPacktype),
+				},
 			},
 		}
 	} else if err == nil {
-		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 		if err != nil {
 			return wfapi.ErrorCatalogParse(mirrorsPath, err)
 		}
 	} else {
 		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)
 	}
+
+	mirrors := mirrorsCapsule.CatalogMirrors
 
 	// add this item to the mirrors file
 	if mirrors.ByModule == nil {
@@ -588,7 +605,7 @@ func (cat *Catalog) AddByModuleMirror(
 	if err != nil {
 		return wfapi.ErrorIo("could not create catalog path", &path, err)
 	}
-	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirror"))
+	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 	if err != nil {
 		return wfapi.ErrorSerialization("could not serialize mirror", err)
 	}
@@ -642,11 +659,15 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 		return nil, wfapi.ErrorIo("could not stat replay file", &replayPath, errRaw)
 	}
 
-	replay := wfapi.Plot{}
-	_, errRaw = ipld.Unmarshal(replayBytes, json.Decode, &replay, wfapi.TypeSystem.TypeByName("Plot"))
+	replayCapsule := wfapi.ReplayCapsule{}
+	_, errRaw = ipld.Unmarshal(replayBytes, json.Decode, &replayCapsule, wfapi.TypeSystem.TypeByName("ReplayCapsule"))
 	if errRaw != nil {
 		return nil, wfapi.ErrorCatalogParse(replayPath, err)
 	}
+	if replayCapsule.Plot == nil {
+		return nil, wfapi.ErrorCatalogParse(replayPath, fmt.Errorf("no v1 Plot in ReplayCapsule"))
+	}
+	replay := replayCapsule.Plot
 
 	// ensure the CID matches the expected value
 	if replay.Cid() != wfapi.PlotCID(replayCid) {
@@ -654,7 +675,7 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 			fmt.Sprintf("expected CID %q for plot, actual CID is %q", replayCid, replay.Cid()))
 	}
 
-	return &replay, nil
+	return replay, nil
 }
 
 // Add a replay plot to a catalog.
@@ -746,7 +767,8 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error
 	module.Releases.Values[ref.ReleaseName] = release.Cid()
 
 	// serialize the CatalogModule and write the file
-	moduleSerial, errRaw := ipld.Marshal(json.Encode, module, wfapi.TypeSystem.TypeByName("CatalogModule"))
+	moduleCapsule := wfapi.CatalogModuleCapsule{CatalogModule: module}
+	moduleSerial, errRaw := ipld.Marshal(json.Encode, moduleCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
 	if errRaw != nil {
 		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
 	}
