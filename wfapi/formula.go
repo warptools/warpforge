@@ -84,6 +84,10 @@ type Action_Script struct {
 	Network     *bool
 }
 
+type FormulaContextCapsule struct {
+	FormulaContext *FormulaContext
+}
+
 type FormulaContext struct {
 	Warehouses struct {
 		Keys   []WareID
@@ -93,7 +97,7 @@ type FormulaContext struct {
 
 type FormulaAndContext struct {
 	Formula FormulaCapsule
-	Context *FormulaContext
+	Context *FormulaContextCapsule
 }
 
 type RunRecord struct {

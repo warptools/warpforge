@@ -498,7 +498,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 		Recursive: false,
 	}
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
-	results, err := plotexec.Exec(wsSet, plot, config, logger)
+	results, err := plotexec.Exec(wsSet, wfapi.PlotCapsule{Plot: &plot}, config, logger)
 	if err != nil {
 		return err
 	}

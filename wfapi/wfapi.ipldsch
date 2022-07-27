@@ -185,8 +185,12 @@ type WarehouseAddr string
 # when parsing a formula file.
 type FormulaAndContext struct {
 	formula FormulaCapsule
-	context optional FormulaContext
+	context optional FormulaContextCapsule
 }
+
+type FormulaContextCapsule union {
+	| FormulaContext "context.v1"
+} representation keyed
 
 type FormulaContext struct {
 	warehouses {WareID:WarehouseAddr}

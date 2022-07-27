@@ -344,7 +344,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 	rr, err := formulaexec.Exec(wsSet.Root,
 		wfapi.FormulaAndContext{
 			Formula: wfapi.FormulaCapsule{Formula: &formula},
-			Context: &ctx,
+			Context: &wfapi.FormulaContextCapsule{FormulaContext: &ctx},
 		},
 		config.FormulaExecConfig,
 		logger)

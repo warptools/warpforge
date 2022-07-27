@@ -50,23 +50,27 @@ We'll run this in a filesystem that contains a `formula.json`:
 ```
 {
     "formula": {
-        "inputs": {
-            "/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-        },
-        "action": {
-            "exec": {
-                "command": [
-                    "/bin/sh",
-                    "-c",
-                    "echo hello from warpforge!"
-                ]
-            }
-        },
-        "outputs": {}
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+			},
+			"action": {
+				"exec": {
+					"command": [
+						"/bin/sh",
+						"-c",
+						"echo hello from warpforge!"
+					]
+				}
+			},
+			"outputs": {}
+		}
     },
     "context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
     }
 }
@@ -78,23 +82,27 @@ Together with the verbosity and output formatting flags used above, this will al
 ```
 {
 	"formula": {
-		"inputs": {
-			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-		},
-		"action": {
-			"exec": {
-				"command": [
-					"/bin/sh",
-					"-c",
-					"echo hello from warpforge!"
-				]
-			}
-		},
-		"outputs": {}
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+			},
+			"action": {
+				"exec": {
+					"command": [
+						"/bin/sh",
+						"-c",
+						"echo hello from warpforge!"
+					]
+				}
+			},
+			"outputs": {}
+		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }
@@ -114,7 +122,9 @@ We'll run this in a filesystem that contains a `module.wf` (albeit a pretty sill
 [testmark]:# (checkmodule/fs/module.wf)
 ```
 {
-    "name": "test"
+	"module.v1": {
+		"name": "test"
+	}
 }
 ```
 
@@ -167,23 +177,27 @@ We'll run this in a filesystem that contains a `formula.json`
 ```
 {
     "formula": {
-        "inputs": {
-            "/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-        },
-        "action": {
-            "exec": {
-                "command": [
-                    "/bin/sh",
-                    "-c",
-                    "echo hello from warpforge!"
-                ]
-            }
-        },
-        "outputs": {}
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+			},
+			"action": {
+				"exec": {
+					"command": [
+						"/bin/sh",
+						"-c",
+						"echo hello from warpforge!"
+					]
+				}
+			},
+			"outputs": {}
+		}
     },
     "context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
     }
 }
@@ -216,7 +230,9 @@ A module is declared with two files.  One is the `module.wf` file:
 [testmark]:# (runmodule/fs/module.wf)
 ```
 {
-    "name": "test"
+	"module.v1": {
+		"name": "test"
+	}
 }
 ```
 
@@ -231,88 +247,90 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 [testmark]:# (runmodule/fs/plot.wf)
 ```
 {
-	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-	},
-	"steps": {
-		"zero-outer": {
-			"plot": {
-				"inputs": {
-					"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-				},
-				"steps": {
-					"zero-inner": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs"
-							},
-							"action": {
-								"exec": {
-									"command": [
-										"/bin/sh",
-										"-c",
-										"mkdir /test; echo 'hello from step zero-inner' > /test/file"
-									]
-								}
-							},
-							"outputs": {
-								"test": {
-									"packtype": "tar",
-									"from": "/test"
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		},
+		"steps": {
+			"zero-outer": {
+				"plot": {
+					"inputs": {
+						"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+					},
+					"steps": {
+						"zero-inner": {
+							"protoformula": {
+								"inputs": {
+									"/": "pipe::rootfs"
+								},
+								"action": {
+									"exec": {
+										"command": [
+											"/bin/sh",
+											"-c",
+											"mkdir /test; echo 'hello from step zero-inner' > /test/file"
+										]
+									}
+								},
+								"outputs": {
+									"test": {
+										"packtype": "tar",
+										"from": "/test"
+									}
 								}
 							}
-						}
-					},
-					"one-inner": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs",
-								"/test": "pipe:zero-inner:test"
-							},
-							"action": {
-								"exec": {
-									"command": [
-										"/bin/sh",
-										"-c",
-										"cat /test/file && echo 'hello from step one-inner' >> /test/file"
-									]
-								}
-							},
-							"outputs": {
-								"test": {
-									"packtype": "tar",
-									"from": "/test"
+						},
+						"one-inner": {
+							"protoformula": {
+								"inputs": {
+									"/": "pipe::rootfs",
+									"/test": "pipe:zero-inner:test"
+								},
+								"action": {
+									"exec": {
+										"command": [
+											"/bin/sh",
+											"-c",
+											"cat /test/file && echo 'hello from step one-inner' >> /test/file"
+										]
+									}
+								},
+								"outputs": {
+									"test": {
+										"packtype": "tar",
+										"from": "/test"
+									}
 								}
 							}
+						},
+					},
+					"outputs": {
+						"test": "pipe:one-inner:test"
+					}
+				}
+			},
+			"one-outer": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs",
+						"/test": "pipe:zero-outer:test"
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/sh",
+								"-c",
+								"echo 'in one-outer'; cat /test/file"
+							]
 						}
 					},
-				},
-				"outputs": {
-					"test": "pipe:one-inner:test"
+					"outputs": {}
 				}
 			}
 		},
-		"one-outer": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs",
-					"/test": "pipe:zero-outer:test"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo 'in one-outer'; cat /test/file"
-						]
-					}
-				},
-				"outputs": {}
-			}
+		"outputs": {
+			"test": "pipe:zero-outer:test"
 		}
-	},
-	"outputs": {
-		"test": "pipe:zero-outer:test"
 	}
 }
 ```
@@ -327,11 +345,13 @@ a `mirrors.json` file to show where the ware can be fetched.
 [testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/module.json)
 ```json
 {
-        "name": "alpinelinux.org/alpine",
-        "releases": {
-                "v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
-        },
-        "metadata": {}
+	"catalogmodule.v1": {
+			"name": "alpinelinux.org/alpine",
+			"releases": {
+					"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
+			},
+			"metadata": {}
+	}
 }
 ```
 
@@ -349,11 +369,13 @@ a `mirrors.json` file to show where the ware can be fetched.
 [testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/mirrors.json)
 ```json
 {
-    "byWare": {
-        "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
-            "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
-        ]
-    }
+	"catalogmirrors.v1": {
+		"byWare": {
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
+				"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			]
+		}
+	}
 }
 ```
 
@@ -412,11 +434,13 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 [testmark]:# (catalog/then-add-tar/then-check/output)
 ```
 {
-	"name": "alpinelinux.org/alpine",
-	"releases": {
-		"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
-	},
-	"metadata": {}
+	"catalogmodule.v1": {
+		"name": "alpinelinux.org/alpine",
+		"releases": {
+			"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
+		},
+		"metadata": {}
+	}
 }
 {
 	"name": "v3.15.0",
@@ -426,10 +450,12 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 	"metadata": {}
 }
 {
-	"byWare": {
-		"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
-			"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
-		]
+	"catalogmirrors.v1": {
+		"byWare": {
+			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
+				"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			]
+		}
 	}
 }
 ```
@@ -451,11 +477,13 @@ cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mir
 [testmark]:# (catalog/then-add-git/then-check/output)
 ```
 {
-	"name": "github.com/githubtraining/training-manual",
-	"releases": {
-		"v1.0": "zM5K3SVi6ptQmHx9cAhq6HefLtMqLLPSoHH5yxqHspgyzrD8p4LQtZ48GMnWk3HqbHPZeA1"
-	},
-	"metadata": {}
+	"catalogmodule.v1": {
+		"name": "github.com/githubtraining/training-manual",
+		"releases": {
+			"v1.0": "zM5K3SVi6ptQmHx9cAhq6HefLtMqLLPSoHH5yxqHspgyzrD8p4LQtZ48GMnWk3HqbHPZeA1"
+		},
+		"metadata": {}
+	}
 }
 {
 	"name": "v1.0",
@@ -465,11 +493,13 @@ cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mir
 	"metadata": {}
 }
 {
-	"byModule": {
-		"github.com/githubtraining/training-manual": {
-			"git": [
-				"https://github.com/githubtraining/training-manual"
-			]
+	"catalogmirrors.v1": {
+		"byModule": {
+			"github.com/githubtraining/training-manual": {
+				"git": [
+					"https://github.com/githubtraining/training-manual"
+				]
+			}
 		}
 	}
 }

@@ -1,5 +1,9 @@
 package wfapi
 
+type ModuleCapsule struct {
+	Module *Module
+}
+
 type Module struct {
 	// name might go here?  other config?  unsure honestly, mostly leaving space for future expansion.
 	Name ModuleName

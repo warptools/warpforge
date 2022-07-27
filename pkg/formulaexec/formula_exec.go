@@ -584,7 +584,11 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		return rr, wfapi.ErrorFormulaInvalid("FormulaCapsule does not contain a v1 formula")
 	}
 	formula := fc.Formula.Formula
-	context := fc.Context
+
+	context := wfapi.FormulaContext{}
+	if fc.Context != nil && fc.Context.FormulaContext != nil {
+		context = *fc.Context.FormulaContext
+	}
 
 	// convert formula to node
 	nFormula := bindnode.Wrap(fc.Formula.Formula, wfapi.TypeSystem.TypeByName("Formula"))
@@ -785,7 +789,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 					color.WhiteString(inputSimple.WareID.String()),
 					color.HiBlueString("destPath"),
 					color.WhiteString(destPath))
-				mnt, err = makeWareMount(config, *inputSimple.WareID, destPath, context, filters, logger)
+				mnt, err = makeWareMount(config, *inputSimple.WareID, destPath, &context, filters, logger)
 				if err != nil {
 					return rr, err
 				}

@@ -416,7 +416,7 @@ func (cat *Catalog) AddItem(
 
 	// serialize the updated structures
 	modCapsule := wfapi.CatalogModuleCapsule{CatalogModule: module}
-	moduleSerial, errRaw := ipld.Marshal(json.Encode, modCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
+	moduleSerial, errRaw := ipld.Marshal(json.Encode, &modCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
 	if errRaw != nil {
 		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
 	}
@@ -510,7 +510,7 @@ func (cat *Catalog) AddByWareMirror(
 	if err != nil {
 		return wfapi.ErrorIo("could not create catalog path", &path, err)
 	}
-	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrors, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
+	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 	if err != nil {
 		return wfapi.ErrorSerialization("could not serialize mirror", err)
 	}
