@@ -16,7 +16,7 @@ func TestCatalogLookup(t *testing.T) {
 		"metadata": {},
 		"releases": {
 			"v1.0": "zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s"
-		} 
+		}
 	}
 }
 `

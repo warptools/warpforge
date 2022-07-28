@@ -305,7 +305,7 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 		return nil, wfapi.ErrorCatalogParse(modPath, err)
 	}
 	if modCapsule.CatalogModule == nil {
-		return nil, wfapi.ErrorCatalogParse(modPath, fmt.Errorf("no v1 CatalogModule found"))
+		return nil, wfapi.ErrorCatalogParse(modPath, fmt.Errorf("no v1 CatalogModule in CatalogModuleCapsule"))
 	}
 
 	return modCapsule.CatalogModule, nil
@@ -471,7 +471,7 @@ func (cat *Catalog) AddByWareMirror(
 			return wfapi.ErrorCatalogParse(mirrorsPath, err)
 		}
 		if mirrorsCapsule.CatalogMirrors == nil {
-			return wfapi.ErrorCatalogParse(mirrorsPath, fmt.Errorf("no v1 CatalogMirrors in capsule"))
+			return wfapi.ErrorCatalogParse(mirrorsPath, fmt.Errorf("no v1 CatalogMirrors in CatalogMirrorsCapsule"))
 		}
 	} else {
 		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)

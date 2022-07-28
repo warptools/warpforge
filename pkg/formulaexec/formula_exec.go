@@ -581,7 +581,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 	rr := wfapi.RunRecord{}
 
 	if fc.Formula.Formula == nil {
-		return rr, wfapi.ErrorFormulaInvalid("FormulaCapsule does not contain a v1 formula")
+		return rr, wfapi.ErrorFormulaInvalid("no v1 Formula in FormulaCapsule")
 	}
 	formula := fc.Formula.Formula
 
