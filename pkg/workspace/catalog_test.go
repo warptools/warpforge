@@ -89,7 +89,7 @@ func TestCatalogLookup(t *testing.T) {
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/module.releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
@@ -116,7 +116,7 @@ func TestCatalogLookup(t *testing.T) {
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/module.releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
@@ -128,7 +128,7 @@ func TestCatalogLookup(t *testing.T) {
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/module.releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
@@ -160,11 +160,11 @@ func TestCatalogLookup(t *testing.T) {
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/module.releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/replays/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/module.replays/zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(replayData),
 				},

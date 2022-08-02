@@ -82,18 +82,22 @@ func (cat *Catalog) mirrorFilePath(ref wfapi.CatalogRef) string {
 // This will be [catalog path]/[module name]/releases/[release name].json
 func (cat *Catalog) releaseFilePath(ref wfapi.CatalogRef) string {
 	base := filepath.Dir(cat.moduleFilePath(ref))
-	path := filepath.Join(base, "releases", string(ref.ReleaseName))
+	path := filepath.Join(base, "module.releases", string(ref.ReleaseName))
 	path = strings.Join([]string{path, ".json"}, "")
 	return path
 }
 
 // Get the path for a CatalogReplay file.
 // This will be [catalog path]/[module name]/replays/[release name].json
-func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) string {
+func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) (string, wfapi.Error) {
 	base := filepath.Dir(cat.moduleFilePath(ref))
-	path := filepath.Join(base, "replays", string(ref.ReleaseName))
+	module, err := cat.GetModule(ref)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(base, "module.replays", string(module.Releases.Values[ref.ReleaseName]))
 	path = strings.Join([]string{path, ".json"}, "")
-	return path
+	return path, nil
 }
 
 // Update a Catalog's list of modules.
@@ -645,12 +649,10 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 		return nil, nil
 	}
 
-	replayPath := filepath.Join(
-		cat.path,
-		string(ref.ModuleName),
-		"replays",
-		string(ref.ReleaseName))
-	replayPath = strings.Join([]string{replayPath, ".json"}, "")
+	replayPath, err := cat.replayFilePath(ref)
+	if err != nil {
+		return nil, err
+	}
 
 	replayBytes, errRaw := fs.ReadFile(cat.fsys, replayPath)
 	if os.IsNotExist(errRaw) {
@@ -691,7 +693,11 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error
 
 	// determine the release and replay paths
 	releasePath := filepath.Join("/", cat.releaseFilePath(ref))
-	replayPath := filepath.Join("/", cat.replayFilePath(ref))
+	replayPath, err := cat.replayFilePath(ref)
+	if err != nil {
+		return err
+	}
+	replayPath = filepath.Join("/", replayPath)
 
 	// determine where the replay should be stored, and create the dir if it does not exist
 	replaysPath := filepath.Dir(replayPath)
