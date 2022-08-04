@@ -91,11 +91,11 @@ func (cat *Catalog) releaseFilePath(ref wfapi.CatalogRef) string {
 // This will be [catalog path]/[module name]/replays/[release name].json
 func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) (string, wfapi.Error) {
 	base := filepath.Dir(cat.moduleFilePath(ref))
-	module, err := cat.GetModule(ref)
+	release, err := cat.GetRelease(ref)
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(base, "module.replays", string(module.Releases.Values[ref.ReleaseName]))
+	path := filepath.Join(base, "module.replays", string(release.Metadata.Values["replay"]))
 	path = strings.Join([]string{path, ".json"}, "")
 	return path, nil
 }
