@@ -164,7 +164,7 @@ func TestCatalogLookup(t *testing.T) {
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/module.replays/zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/module.replays/zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(replayData),
 				},
