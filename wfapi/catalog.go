@@ -9,10 +9,6 @@ import (
 	"github.com/ipld/go-ipld-prime/schema"
 )
 
-type CatalogLineageEnvelope struct {
-	CatalogLineage *CatalogLineage
-}
-
 type CatalogLineage struct {
 	Name     string
 	Metadata struct {
@@ -22,16 +18,12 @@ type CatalogLineage struct {
 	Releases []CatalogRelease
 }
 
-type CatalogMirrorEnvelope struct {
-	CatalogMirror *CatalogMirror
-}
-
-type CatalogMirrorByWare struct {
+type CatalogMirrorsByWare struct {
 	Keys   []WareID
 	Values map[WareID][]WarehouseAddr
 }
 
-type CatalogMirrorByModule struct {
+type CatalogMirrorsByModule struct {
 	Keys   []ModuleName
 	Values map[ModuleName]CatalogMirrorsByPacktype
 }
@@ -41,18 +33,24 @@ type CatalogMirrorsByPacktype struct {
 	Values map[Packtype][]WarehouseAddr
 }
 
-type CatalogMirror struct {
-	ByWare   *CatalogMirrorByWare
-	ByModule *CatalogMirrorByModule
+type CatalogMirrorsCapsule struct {
+	CatalogMirrors *CatalogMirrors
 }
 
-// NEW CATALOG TYPES
+type CatalogMirrors struct {
+	ByWare   *CatalogMirrorsByWare
+	ByModule *CatalogMirrorsByModule
+}
 
 type CatalogReleaseCID string
 
 type Catalog struct {
 	Keys   []ModuleName
 	Values map[ModuleName]CatalogModule
+}
+
+type CatalogModuleCapsule struct {
+	CatalogModule *CatalogModule
 }
 
 type CatalogModule struct {
@@ -100,4 +98,8 @@ func (rel *CatalogRelease) Cid() CatalogReleaseCID {
 		panic(fmt.Sprintf("Fatal IPLD Error: failed to encode CID for CatalogRelease: %s", errRaw))
 	}
 	return CatalogReleaseCID(cid)
+}
+
+type ReplayCapsule struct {
+	Plot *Plot
 }

@@ -45,13 +45,15 @@ Here's about the simplest formula one could have:
 ```json
 {
 	"formula": {
-		"inputs": {},
-		"action": {
-			"exec": {
-				"command": []
-			}
-		},
-		"outputs": {}
+		"formula.v1": {
+			"inputs": {},
+			"action": {
+				"exec": {
+					"command": []
+				}
+			},
+			"outputs": {}
+		}
 	}
 }
 ```
@@ -80,16 +82,18 @@ Formulas usually have inputs.  And the most common type is a "ware", which will 
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/mount/path": "ware:tar:qwerasdf",
-			"/other/place": "ware:git:abcd1234"
-		},
-		"action": {
-			"exec": {
-				"command": []
-			}
-		},
-		"outputs": {}
+		"formula.v1": {
+			"inputs": {
+				"/mount/path": "ware:tar:qwerasdf",
+				"/other/place": "ware:git:abcd1234"
+			},
+			"action": {
+				"exec": {
+					"command": []
+				}
+			},
+			"outputs": {}
+		}
 	}
 }
 ```
@@ -103,17 +107,19 @@ And in this case, they also are more likely to use a "literal" form.
 ```json
 {
 	"formula": {
-		"inputs": {
-			"$USER": "literal:hello",
-			"$HOME": "literal:/home/hello",
-			"$PATH": "literal:/bin:/usr/bin:/local/bin"
-		},
-		"action": {
-			"exec": {
-				"command": []
-			}
-		},
-		"outputs": {}
+		"formula.v1": {
+			"inputs": {
+				"$USER": "literal:hello",
+				"$HOME": "literal:/home/hello",
+				"$PATH": "literal:/bin:/usr/bin:/local/bin"
+			},
+			"action": {
+				"exec": {
+					"command": []
+				}
+			},
+			"outputs": {}
+		}
 	}
 }
 ```
@@ -135,22 +141,24 @@ Let's show how these values are being parsed.
 ```json
 {
 	"formula": {
-		"inputs": {
-			"$HOME": "literal:/home/hello",
-			"/mount/me": "ware:tar:qwerasdf",
-			"/fancy/stuff": {
-				"basis": "ware:tar:asdfzxcv",
-				"filters": {
-					"demo": "value"
+		"formula.v1": {
+			"inputs": {
+				"$HOME": "literal:/home/hello",
+				"/mount/me": "ware:tar:qwerasdf",
+				"/fancy/stuff": {
+					"basis": "ware:tar:asdfzxcv",
+					"filters": {
+						"demo": "value"
+					}
 				}
-			}
-		},
-		"action": {
-			"exec": {
-				"command": []
-			}
-		},
-		"outputs": {}
+			},
+			"action": {
+				"exec": {
+					"command": []
+				}
+			},
+			"outputs": {}
+		}
 	}
 }
 ```
@@ -161,7 +169,7 @@ and what types we see after parsing the information:
 [testmark]:# (hello-and-debug/formula.debug)
 ```text
 struct<FormulaAndContext>{
-	formula: struct<Formula>{
+	formula: union<FormulaCapsule>{struct<Formula>{
 		inputs: map<Map__SandboxPort__FormulaInput>{
 			union<SandboxPort>{string<SandboxVar>{"HOME"}}: union<FormulaInput>{union<FormulaInputSimple>{string<Literal>{"/home/hello"}}}
 			union<SandboxPort>{string<SandboxPath>{"mount/me"}}: union<FormulaInput>{union<FormulaInputSimple>{struct<WareID>{
@@ -183,7 +191,7 @@ struct<FormulaAndContext>{
 			network: absent
 		}}
 		outputs: map<Map__OutputName__GatherDirective>{}
-	}
+	}}
 	context: absent
 }
 ```
@@ -214,20 +222,22 @@ and a `contents` array. Each element of `contents` will be executed as an indivi
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/mount/path": "ware:tar:qwerasdf",
-			"/other/place": "ware:git:abcd1234"
-		},
-		"action": {
-			"script": {
-				"interpreter": "/bin/sh",
-				"contents": [
-					"echo hello!",
-					"echo this is a script action!"
-				]
-			}
-		},
-		"outputs": {}
+		"formula.v1": {
+			"inputs": {
+				"/mount/path": "ware:tar:qwerasdf",
+				"/other/place": "ware:git:abcd1234"
+			},
+			"action": {
+				"script": {
+					"interpreter": "/bin/sh",
+					"contents": [
+						"echo hello!",
+						"echo this is a script action!"
+					]
+				}
+			},
+			"outputs": {}
+		}
 	}
 }
 ```

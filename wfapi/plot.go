@@ -11,6 +11,10 @@ import (
 
 type PlotCID string
 
+type PlotCapsule struct {
+	Plot *Plot
+}
+
 type Plot struct {
 	Inputs struct {
 		Keys   []LocalLabel

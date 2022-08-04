@@ -11,39 +11,43 @@ import (
 func TestParseFormulaAndContext(t *testing.T) {
 	serial := `{
 	"formula": {
-		"inputs": {
-			"/mount/path": "ware:tar:qwerasdf",
-			"$ENV_VAR": "literal:hello",
-			"/more/mounts": {
-				"basis": "ware:tar:fghjkl",
-				"filters": {
-					"uid": "10"
+		"formula.v1": {
+			"inputs": {
+				"/mount/path": "ware:tar:qwerasdf",
+				"$ENV_VAR": "literal:hello",
+				"/more/mounts": {
+					"basis": "ware:tar:fghjkl",
+					"filters": {
+						"uid": "10"
+					}
 				}
-			}
-		},
-		"action": {
-			"exec": {
-				"command": [
-					"/bin/bash",
-					"-c",
-					"echo hey there"
-				]
-			}
-		},
-		"outputs": {
-			"theoutputlabel": {
-				"from": "/collect/here",
-				"packtype": "tar"
 			},
-			"another": {
-				"from": "$VAR"
+			"action": {
+				"exec": {
+					"command": [
+						"/bin/bash",
+						"-c",
+						"echo hey there"
+					]
+				}
+			},
+			"outputs": {
+				"theoutputlabel": {
+					"from": "/collect/here",
+					"packtype": "tar"
+				},
+				"another": {
+					"from": "$VAR"
+				}
 			}
 		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:qwerasdf": "ca+file:///somewhere/",
-			"tar:fghjkl": "ca+file:///elsewhere/"
+		"context.v1": {
+			"warehouses": {
+				"tar:qwerasdf": "ca+file:///somewhere/",
+				"tar:fghjkl": "ca+file:///elsewhere/"
+			}
 		}
 	}
 }
@@ -58,7 +62,7 @@ func TestParseFormulaAndContext(t *testing.T) {
 		SandboxPort{SandboxVar: func() *SandboxVar { v := SandboxVar("ENV_VAR"); return &v }()},
 		SandboxPort{SandboxPath: func() *SandboxPath { v := SandboxPath("more/mounts"); return &v }()},
 	}
-	inputs := frmAndCtx.Formula.Inputs
+	inputs := frmAndCtx.Formula.Formula.Inputs
 	qt.Assert(t, inputs.Keys, qt.DeepEquals, ports)
 	// Okay, this is going to look a little funny, and it's because we've got another upstream bug to fix.
 	// `inputs.Values[ports[0]]` isn't enough ... because SandboxPort has pointers in it... so, key equality fail.

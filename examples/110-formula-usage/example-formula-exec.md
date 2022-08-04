@@ -24,20 +24,24 @@ This formula echos a value to stdout.
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "echo hello from warpforge!"]
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+			},
+			"action": {
+				"exec": {
+					"command": ["/bin/sh", "-c", "echo hello from warpforge!"]
+				}
+			},
+			"outputs": {
 			}
-		},
-		"outputs": {
 		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }
@@ -66,24 +70,28 @@ Note the RunRecord now contains a `results` value which includes the output.
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "mkdir /out; echo hello from warpforge! > /out/test"]
-			}
-		},
-		"outputs": {
-			"test": {
-				"from": "/out",
-				"packtype": "tar"
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 			},
+			"action": {
+				"exec": {
+					"command": ["/bin/sh", "-c", "mkdir /out; echo hello from warpforge! > /out/test"]
+				}
+			},
+			"outputs": {
+				"test": {
+					"from": "/out",
+					"packtype": "tar"
+				},
+			}
 		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }
@@ -115,21 +123,25 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
-			"/work": "mount:overlay:."
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "ls -al /work"]
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
+				"/work": "mount:overlay:."
+			},
+			"action": {
+				"exec": {
+					"command": ["/bin/sh", "-c", "ls -al /work"]
+				}
+			},
+			"outputs": {
 			}
-		},
-		"outputs": {
 		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }
@@ -157,25 +169,29 @@ This formula uses an input with filters.
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/": {
-				"basis": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
-				"filters": {
-					"setid": "ignore"
+		"formula.v1": {
+			"inputs": {
+				"/": {
+					"basis": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
+					"filters": {
+						"setid": "ignore"
+					}
 				}
+			},
+			"action": {
+				"exec": {
+					"command": ["/bin/sh", "-c", "echo hello from warpforge!"]
+				}
+			},
+			"outputs": {
 			}
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "echo hello from warpforge!"]
-			}
-		},
-		"outputs": {
 		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }
@@ -199,23 +215,27 @@ This formula uses an input with filters.
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
-			"/mnt/overlay": "mount:overlay:.",
-			"/mnt/ro": "mount:ro:.",
-			"/mnt/rw": "mount:rw:."
-		},
-		"action": {
-			"exec": {
-				"command": ["/bin/sh", "-c", "ls -al /mnt"]
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN",
+				"/mnt/overlay": "mount:overlay:.",
+				"/mnt/ro": "mount:ro:.",
+				"/mnt/rw": "mount:rw:."
+			},
+			"action": {
+				"exec": {
+					"command": ["/bin/sh", "-c", "ls -al /mnt"]
+				}
+			},
+			"outputs": {
 			}
 		},
-		"outputs": {
-		}
-	},
+	}
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }

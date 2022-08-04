@@ -17,36 +17,38 @@ var quickstartCmdDef = cli.Command{
 }
 
 const defaultPlotJson = `{
-	"inputs": {
-		"rootfs": "catalog:min.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64"
-	},
-	"steps": {
-		"hello-world": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs"
-				},
-				"action": {
-					"script": {
-						"interpreter": "/bin/sh",
-						"contents": [
-							"mkdir /output",
-							"echo 'hello world' | tee /output/file"
-						],
-						"network": false
-					}
-				},
-				"outputs": {
-					"out": {
-						"from": "/output",
-						"packtype": "tar"
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:min.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64"
+		},
+		"steps": {
+			"hello-world": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs"
+					},
+					"action": {
+						"script": {
+							"interpreter": "/bin/sh",
+							"contents": [
+								"mkdir /output",
+								"echo 'hello world' | tee /output/file"
+							],
+							"network": false
+						}
+					},
+					"outputs": {
+						"out": {
+							"from": "/output",
+							"packtype": "tar"
+						}
 					}
 				}
 			}
+		},
+		"outputs": {
+			"output": "pipe:hello-world:out"
 		}
-	},
-	"outputs": {
-		"output": "pipe:hello-world:out"
 	}
 }
 `
@@ -68,10 +70,12 @@ func cmdQuickstart(c *cli.Context) error {
 
 	moduleName := c.Args().First()
 
-	module := wfapi.Module{
-		Name: wfapi.ModuleName(moduleName),
+	moduleCapsule := wfapi.ModuleCapsule{
+		Module: &wfapi.Module{
+			Name: wfapi.ModuleName(moduleName),
+		},
 	}
-	moduleSerial, err := ipld.Marshal(json.Encode, &module, wfapi.TypeSystem.TypeByName("Module"))
+	moduleSerial, err := ipld.Marshal(json.Encode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
 	if err != nil {
 		return fmt.Errorf("failed to serialize module")
 	}
@@ -80,12 +84,12 @@ func cmdQuickstart(c *cli.Context) error {
 		return fmt.Errorf("failed to write module.json file: %s", err)
 	}
 
-	plot := wfapi.Plot{}
-	_, err = ipld.Unmarshal([]byte(defaultPlotJson), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	plotCapsule := wfapi.PlotCapsule{}
+	_, err = ipld.Unmarshal([]byte(defaultPlotJson), json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 	if err != nil {
 		return fmt.Errorf("failed to deserialize default plot")
 	}
-	plotSerial, err := ipld.Marshal(json.Encode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	plotSerial, err := ipld.Marshal(json.Encode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 	if err != nil {
 		return fmt.Errorf("failed to serialize plot")
 	}

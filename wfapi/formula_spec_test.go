@@ -58,7 +58,8 @@ func TestFormulaParseFixtures(t *testing.T) {
 					// (Also encodes, implicitly.  So will probably fail if the above was broken.)
 					// Path into the Formula before doing this -- we don't want to hash the context or the envelope type.
 					if dir.Children["cid"] != nil {
-						nFormula, _ := n.LookupByString("formula")
+						nCapsule, _ := n.LookupByString("formula")
+						nFormula, _ := nCapsule.LookupByString("Formula")
 						lsys := cidlink.DefaultLinkSystem()
 						lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
 							Version:  1,    // Usually '1'.

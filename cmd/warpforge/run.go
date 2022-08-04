@@ -71,7 +71,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 			DisableMemoization: c.Bool("force"),
 		},
 	}
-	result, err = plotexec.Exec(wss, plot, config, logger)
+	result, err = plotexec.Exec(wss, wfapi.PlotCapsule{Plot: &plot}, config, logger)
 	cdErr := os.Chdir(pwd)
 	if cdErr != nil {
 		return result, cdErr

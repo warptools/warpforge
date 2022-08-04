@@ -23,8 +23,8 @@ func checkModule(fileName string) (*ipld.Node, error) {
 		return nil, err
 	}
 
-	module := wfapi.Module{}
-	n, err := ipld.Unmarshal([]byte(f), json.Decode, &module, wfapi.TypeSystem.TypeByName("Module"))
+	moduleCapsule := wfapi.ModuleCapsule{}
+	n, err := ipld.Unmarshal([]byte(f), json.Decode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
 	return &n, err
 }
 

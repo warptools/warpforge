@@ -1,5 +1,9 @@
 package wfapi
 
+type FormulaCapsule struct {
+	Formula *Formula
+}
+
 type Formula struct {
 	Inputs struct {
 		Keys   []SandboxPort
@@ -80,6 +84,10 @@ type Action_Script struct {
 	Network     *bool
 }
 
+type FormulaContextCapsule struct {
+	FormulaContext *FormulaContext
+}
+
 type FormulaContext struct {
 	Warehouses struct {
 		Keys   []WareID
@@ -88,8 +96,8 @@ type FormulaContext struct {
 }
 
 type FormulaAndContext struct {
-	Formula Formula
-	Context *FormulaContext
+	Formula FormulaCapsule
+	Context *FormulaContextCapsule
 }
 
 type RunRecord struct {

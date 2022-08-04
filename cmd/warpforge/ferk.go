@@ -138,7 +138,7 @@ func cmdFerk(c *cli.Context) error {
 			Interactive:        !c.Bool("no-interactive"),
 		},
 	}
-	_, err = plotexec.Exec(wss, plot, config, logger)
+	_, err = plotexec.Exec(wss, wfapi.PlotCapsule{Plot: &plot}, config, logger)
 	if err != nil {
 		return err
 	}
