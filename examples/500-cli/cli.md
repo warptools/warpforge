@@ -342,7 +342,7 @@ This will also require a catalog entry for the referenced input (`catalog:alpine
 This consists of a `module.json` file at the path of the module name, a `releases/[release name].json` file, and a
 a `mirrors.json` file to show where the ware can be fetched.
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/module.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_module.json)
 ```json
 {
 	"catalogmodule.v1": {
@@ -355,7 +355,7 @@ a `mirrors.json` file to show where the ware can be fetched.
 }
 ```
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/module.releases/v3.15.0.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_releases/v3.15.0.json)
 ```json
 {
         "name": "v3.15.0",
@@ -366,7 +366,7 @@ a `mirrors.json` file to show where the ware can be fetched.
 }
 ```
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/mirrors.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_mirrors.json)
 ```json
 {
 	"catalogmirrors.v1": {
@@ -426,9 +426,9 @@ warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.15.0:x86_6
 
 [testmark]:# (catalog/then-add-tar/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/module.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/module.releases/v3.15.0.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_module.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_releases/v3.15.0.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_mirrors.json
 ```
 
 [testmark]:# (catalog/then-add-tar/then-check/output)
@@ -469,9 +469,9 @@ warpforge catalog --name my-catalog add git github.com/githubtraining/training-m
 
 [testmark]:# (catalog/then-add-git/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/module.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/module.releases/v1.0.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mirrors.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_module.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_releases/v1.0.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mirrors.json
 ```
 
 [testmark]:# (catalog/then-add-git/then-check/output)

@@ -85,15 +85,15 @@ func TestCatalogLookup(t *testing.T) {
 
 		t.Run("single-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
-				"home/user/.warpforge/catalog/example.com/module/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/module.releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
@@ -112,27 +112,27 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("multi-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
-				"home/user/.warpforge/catalogs/test/example.com/module/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module/module.releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/module.releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
@@ -156,19 +156,19 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("catalog-replay", func(t *testing.T) {
 			fsys := fstest.MapFS{
-				"home/user/.warpforge/catalog/example.com/module/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/module.releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/module.replays/zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_replays/zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(replayData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
