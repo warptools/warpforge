@@ -348,7 +348,7 @@ a `mirrors.json` file to show where the ware can be fetched.
 	"catalogmodule.v1": {
 			"name": "alpinelinux.org/alpine",
 			"releases": {
-					"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
+					"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
 			},
 			"metadata": {}
 	}
@@ -358,7 +358,7 @@ a `mirrors.json` file to show where the ware can be fetched.
 [testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_releases/v3.15.0.json)
 ```json
 {
-        "name": "v3.15.0",
+        "releaseName": "v3.15.0",
         "items": {
                 "x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
         },
@@ -437,13 +437,13 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_mirrors.json
 	"catalogmodule.v1": {
 		"name": "alpinelinux.org/alpine",
 		"releases": {
-			"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
+			"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
 		},
 		"metadata": {}
 	}
 }
 {
-	"name": "v3.15.0",
+	"releaseName": "v3.15.0",
 	"items": {
 		"x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 	},
@@ -480,13 +480,13 @@ cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mi
 	"catalogmodule.v1": {
 		"name": "github.com/githubtraining/training-manual",
 		"releases": {
-			"v1.0": "zM5K3SVi6ptQmHx9cAhq6HefLtMqLLPSoHH5yxqHspgyzrD8p4LQtZ48GMnWk3HqbHPZeA1"
+			"v1.0": "zM5K3W15SFfQZ5uJVdcEDgeHCoGhxLYLHKsMXvmUad4MUZ9raT2ropMsE66FqaeHDsaVWc7"
 		},
 		"metadata": {}
 	}
 }
 {
-	"name": "v1.0",
+	"releaseName": "v1.0",
 	"items": {
 		"src": "git:d5af19cebecb2a162bffcf1994cb87f8c9041ae1"
 	},

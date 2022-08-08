@@ -214,7 +214,7 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	if !itemFound {
 		return nil, nil, wfapi.ErrorCatalogInvalid(
 			cat.releaseFilePath(ref),
-			fmt.Sprintf("release %q does not contain the requested item %q", release.Name, ref.ItemName))
+			fmt.Sprintf("release %q does not contain the requested item %q", release.ReleaseName, ref.ItemName))
 	}
 
 	// item found, check for a matching mirror
@@ -341,7 +341,7 @@ func (cat *Catalog) AddItem(
 	if release == nil {
 		// release does not exist, create a new one
 		release = &wfapi.CatalogRelease{
-			Name: ref.ReleaseName,
+			ReleaseName: ref.ReleaseName,
 			Items: struct {
 				Keys   []wfapi.ItemLabel
 				Values map[wfapi.ItemLabel]wfapi.WareID

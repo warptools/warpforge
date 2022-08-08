@@ -15,13 +15,13 @@ func TestCatalogLookup(t *testing.T) {
 		"name": "example.com/module",
 		"metadata": {},
 		"releases": {
-			"v1.0": "zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s"
+			"v1.0": "zM5K3Yhny4Ku6RrwiwqU79rHn1SYb1ePwLA8zT4uEPV51vg2FdAJoBBfDYp7ocY5EHF1K8W"
 		}
 	}
 }
 `
 		releaseData := `{
-	"name": "v1.0",
+	"releaseName": "v1.0",
 	"metadata": {
 		"replay": "zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7"
 	},

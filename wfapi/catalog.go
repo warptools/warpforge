@@ -66,8 +66,8 @@ type CatalogModule struct {
 }
 
 type CatalogRelease struct {
-	Name  ReleaseName
-	Items struct {
+	ReleaseName ReleaseName
+	Items       struct {
 		Keys   []ItemLabel
 		Values map[ItemLabel]WareID
 	}
