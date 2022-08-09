@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	magicModuleFilename = "module.json"
+	magicModuleFilename = "_module.json"
 )
 
 // The Catalog struct represents a single catalog.
@@ -63,37 +63,41 @@ func OpenCatalog(fsys fs.FS, path string) (Catalog, wfapi.Error) {
 }
 
 // Get the file path for a CatalogModule file.
-// This will be [catalog path]/[module name]/module.json
+// This will be [catalog path]/[module name]/_module.json
 func (cat *Catalog) moduleFilePath(ref wfapi.CatalogRef) string {
-	path := filepath.Join(cat.path, string(ref.ModuleName), "module")
+	path := filepath.Join(cat.path, string(ref.ModuleName), "_module")
 	path = strings.Join([]string{path, ".json"}, "")
 	return path
 }
 
 // Get the file path for a CatalogModule file.
-// This will be [catalog path]/[module name]/mirrors.json
+// This will be [catalog path]/[module name]/_mirrors.json
 func (cat *Catalog) mirrorFilePath(ref wfapi.CatalogRef) string {
 	base := filepath.Dir(cat.moduleFilePath(ref))
-	path := filepath.Join(base, "mirrors.json")
+	path := filepath.Join(base, "_mirrors.json")
 	return path
 }
 
 // Get the path for a CatalogRelease file.
-// This will be [catalog path]/[module name]/releases/[release name].json
+// This will be [catalog path]/[module name]/_releases/[release name].json
 func (cat *Catalog) releaseFilePath(ref wfapi.CatalogRef) string {
 	base := filepath.Dir(cat.moduleFilePath(ref))
-	path := filepath.Join(base, "releases", string(ref.ReleaseName))
+	path := filepath.Join(base, "_releases", string(ref.ReleaseName))
 	path = strings.Join([]string{path, ".json"}, "")
 	return path
 }
 
 // Get the path for a CatalogReplay file.
-// This will be [catalog path]/[module name]/replays/[release name].json
-func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) string {
+// This will be [catalog path]/[module name]/_replays/[release name].json
+func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) (string, wfapi.Error) {
 	base := filepath.Dir(cat.moduleFilePath(ref))
-	path := filepath.Join(base, "replays", string(ref.ReleaseName))
+	release, err := cat.GetRelease(ref)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(base, "_replays", string(release.Metadata.Values["replay"]))
 	path = strings.Join([]string{path, ".json"}, "")
-	return path
+	return path, nil
 }
 
 // Update a Catalog's list of modules.
@@ -104,7 +108,7 @@ func (cat *Catalog) updateModuleList() wfapi.Error {
 
 	// recursively assemble module names
 	// modules names are subdirectories of the catalog (e.g., "catalog/example.com/package/module")
-	// we need to recurse through each directory until we hit a "module.json"
+	// we need to recurse through each directory until we hit a "_module.json"
 	return recurseModuleDir(cat, cat.path, "")
 }
 
@@ -116,7 +120,7 @@ func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName
 		return wfapi.ErrorIo("could not read catalog directory", &cat.path, errRaw)
 	}
 
-	// check if a "module.json" exists
+	// check if a "_module.json" exists
 	for _, info := range files {
 		if info.Name() == magicModuleFilename {
 			// found the file, add this module name to the catalog
@@ -210,7 +214,7 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	if !itemFound {
 		return nil, nil, wfapi.ErrorCatalogInvalid(
 			cat.releaseFilePath(ref),
-			fmt.Sprintf("release %q does not contain the requested item %q", release.Name, ref.ItemName))
+			fmt.Sprintf("release %q does not contain the requested item %q", release.ReleaseName, ref.ItemName))
 	}
 
 	// item found, check for a matching mirror
@@ -275,19 +279,19 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, wfap
 	return mirrorCapsule.CatalogMirrors, nil
 }
 
-// Get a lineage for a given catalog reference.
+// Get a module for a given catalog reference.
 //
 // Errors:
 //
-//    - warpforge-error-io -- when reading lineage file fails
+//    - warpforge-error-io -- when reading module file fails
 //    - warpforge-error-catalog-parse -- when ipld unmarshaling fails
 func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi.Error) {
-	// open lineage file
+	// open module file
 	modPath := cat.moduleFilePath(ref)
 	var modFile fs.File
 	var err error
 	if modFile, err = cat.fsys.Open(modPath); os.IsNotExist(err) {
-		// lineage file does not exist for this workspace
+		// module file does not exist for this workspace
 		return nil, nil
 	} else if err != nil {
 		return nil, wfapi.ErrorIo("error opening module file", &modPath, err)
@@ -337,7 +341,7 @@ func (cat *Catalog) AddItem(
 	if release == nil {
 		// release does not exist, create a new one
 		release = &wfapi.CatalogRelease{
-			Name: ref.ReleaseName,
+			ReleaseName: ref.ReleaseName,
 			Items: struct {
 				Keys   []wfapi.ItemLabel
 				Values map[wfapi.ItemLabel]wfapi.WareID
@@ -451,11 +455,7 @@ func (cat *Catalog) AddByWareMirror(
 	wareId wfapi.WareID,
 	addr wfapi.WarehouseAddr) wfapi.Error {
 	// load mirrors file, or create it if it doesn't exist
-	mirrorsPath := filepath.Join(
-		cat.path,
-		string(ref.ModuleName),
-		"mirrors.json",
-	)
+	mirrorsPath := cat.mirrorFilePath(ref)
 
 	var mirrorsCapsule wfapi.CatalogMirrorsCapsule
 	mirrorsBytes, err := fs.ReadFile(cat.fsys, mirrorsPath)
@@ -535,11 +535,7 @@ func (cat *Catalog) AddByModuleMirror(
 	packType wfapi.Packtype,
 	addr wfapi.WarehouseAddr) wfapi.Error {
 	// load mirrors file, or create it if it doesn't exist
-	mirrorsPath := filepath.Join(
-		cat.path,
-		string(ref.ModuleName),
-		"mirrors.json",
-	)
+	mirrorsPath := cat.mirrorFilePath(ref)
 
 	var mirrorsCapsule wfapi.CatalogMirrorsCapsule
 	mirrorsBytes, err := fs.ReadFile(cat.fsys, mirrorsPath)
@@ -645,12 +641,10 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 		return nil, nil
 	}
 
-	replayPath := filepath.Join(
-		cat.path,
-		string(ref.ModuleName),
-		"replays",
-		string(ref.ReleaseName))
-	replayPath = strings.Join([]string{replayPath, ".json"}, "")
+	replayPath, err := cat.replayFilePath(ref)
+	if err != nil {
+		return nil, err
+	}
 
 	replayBytes, errRaw := fs.ReadFile(cat.fsys, replayPath)
 	if os.IsNotExist(errRaw) {
@@ -691,7 +685,11 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error
 
 	// determine the release and replay paths
 	releasePath := filepath.Join("/", cat.releaseFilePath(ref))
-	replayPath := filepath.Join("/", cat.replayFilePath(ref))
+	replayPath, err := cat.replayFilePath(ref)
+	if err != nil {
+		return err
+	}
+	replayPath = filepath.Join("/", replayPath)
 
 	// determine where the replay should be stored, and create the dir if it does not exist
 	replaysPath := filepath.Dir(replayPath)

@@ -342,23 +342,23 @@ This will also require a catalog entry for the referenced input (`catalog:alpine
 This consists of a `module.json` file at the path of the module name, a `releases/[release name].json` file, and a
 a `mirrors.json` file to show where the ware can be fetched.
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/module.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_module.json)
 ```json
 {
 	"catalogmodule.v1": {
 			"name": "alpinelinux.org/alpine",
 			"releases": {
-					"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
+					"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
 			},
 			"metadata": {}
 	}
 }
 ```
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/releases/v3.15.0.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_releases/v3.15.0.json)
 ```json
 {
-        "name": "v3.15.0",
+        "releaseName": "v3.15.0",
         "items": {
                 "x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
         },
@@ -366,7 +366,7 @@ a `mirrors.json` file to show where the ware can be fetched.
 }
 ```
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/mirrors.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_mirrors.json)
 ```json
 {
 	"catalogmirrors.v1": {
@@ -426,9 +426,9 @@ warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.15.0:x86_6
 
 [testmark]:# (catalog/then-add-tar/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/module.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/releases/v3.15.0.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_module.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_releases/v3.15.0.json
+cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_mirrors.json
 ```
 
 [testmark]:# (catalog/then-add-tar/then-check/output)
@@ -437,13 +437,13 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/mirrors.json
 	"catalogmodule.v1": {
 		"name": "alpinelinux.org/alpine",
 		"releases": {
-			"v3.15.0": "zM5K3WcNp7K5hKapbeaVKZmmTQuN8uhXcvzQSX3AKSEbAtc6QhZHQJLk3ZNeM47Ga81iGdU"
+			"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
 		},
 		"metadata": {}
 	}
 }
 {
-	"name": "v3.15.0",
+	"releaseName": "v3.15.0",
 	"items": {
 		"x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 	},
@@ -469,9 +469,9 @@ warpforge catalog --name my-catalog add git github.com/githubtraining/training-m
 
 [testmark]:# (catalog/then-add-git/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/module.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/releases/v1.0.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mirrors.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_module.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_releases/v1.0.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mirrors.json
 ```
 
 [testmark]:# (catalog/then-add-git/then-check/output)
@@ -480,13 +480,13 @@ cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/mir
 	"catalogmodule.v1": {
 		"name": "github.com/githubtraining/training-manual",
 		"releases": {
-			"v1.0": "zM5K3SVi6ptQmHx9cAhq6HefLtMqLLPSoHH5yxqHspgyzrD8p4LQtZ48GMnWk3HqbHPZeA1"
+			"v1.0": "zM5K3W15SFfQZ5uJVdcEDgeHCoGhxLYLHKsMXvmUad4MUZ9raT2ropMsE66FqaeHDsaVWc7"
 		},
 		"metadata": {}
 	}
 }
 {
-	"name": "v1.0",
+	"releaseName": "v1.0",
 	"items": {
 		"src": "git:d5af19cebecb2a162bffcf1994cb87f8c9041ae1"
 	},

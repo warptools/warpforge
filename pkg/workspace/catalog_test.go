@@ -15,13 +15,13 @@ func TestCatalogLookup(t *testing.T) {
 		"name": "example.com/module",
 		"metadata": {},
 		"releases": {
-			"v1.0": "zM5K3YdpMrp1z7Zs2yMQbmRxndxeCbk7LeCqRzgBcC64JTLNSyGnJtwUdim94mddgbFNw2s"
+			"v1.0": "zM5K3Yhny4Ku6RrwiwqU79rHn1SYb1ePwLA8zT4uEPV51vg2FdAJoBBfDYp7ocY5EHF1K8W"
 		}
 	}
 }
 `
 		releaseData := `{
-	"name": "v1.0",
+	"releaseName": "v1.0",
 	"metadata": {
 		"replay": "zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7"
 	},
@@ -85,15 +85,15 @@ func TestCatalogLookup(t *testing.T) {
 
 		t.Run("single-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
-				"home/user/.warpforge/catalog/example.com/module/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
@@ -112,27 +112,27 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("multi-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
-				"home/user/.warpforge/catalogs/test/example.com/module/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalogs/test/example.com/module-two/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalogs/test/example.com/module-two/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},
@@ -156,19 +156,19 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("catalog-replay", func(t *testing.T) {
 			fsys := fstest.MapFS{
-				"home/user/.warpforge/catalog/example.com/module/module.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/releases/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_releases/v1.0.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/replays/v1.0.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_replays/zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(replayData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/mirrors.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_mirrors.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(mirrorData),
 				},

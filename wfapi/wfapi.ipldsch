@@ -350,7 +350,7 @@ type CatalogModule struct {
 }
 
 type CatalogRelease struct {
-	name  String
+	releaseName ReleaseName
 	items {ItemLabel:WareID}
 	metadata {String:String}
 }
