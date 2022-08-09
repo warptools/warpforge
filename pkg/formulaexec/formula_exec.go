@@ -672,7 +672,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		base = os.TempDir()
 	}
 	runPath, errRaw := ioutil.TempDir(base, "warpforge-run-")
-	if err != nil {
+	if errRaw != nil {
 		return rr, wfapi.ErrorIo("failed to create temp run directory", nil, errRaw)
 	}
 
