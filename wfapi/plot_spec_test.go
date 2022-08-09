@@ -29,8 +29,8 @@ func TestPlotParseFixtures(t *testing.T) {
 
 				// Unmarshal.  Assert it works.
 				t.Run("unmarshal", func(t *testing.T) {
-					plot := Plot{}
-					n, err := ipld.Unmarshal(serial, json.Decode, &plot, TypeSystem.TypeByName("Plot"))
+					plotCapsule := PlotCapsule{}
+					n, err := ipld.Unmarshal(serial, json.Decode, &plotCapsule, TypeSystem.TypeByName("PlotCapsule"))
 					qt.Assert(t, err, qt.IsNil)
 
 					// If there was data about debug forms, check that matches.
@@ -41,7 +41,7 @@ func TestPlotParseFixtures(t *testing.T) {
 
 					// Remarshal.  Assert it works.
 					t.Run("remarshal", func(t *testing.T) {
-						reserial, err := ipld.Marshal(json.Encode, &plot, TypeSystem.TypeByName("Plot"))
+						reserial, err := ipld.Marshal(json.Encode, &plotCapsule, TypeSystem.TypeByName("PlotCapsule"))
 						qt.Assert(t, err, qt.IsNil)
 
 						// And assert it's string equal.

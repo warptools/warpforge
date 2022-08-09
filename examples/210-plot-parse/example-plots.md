@@ -40,36 +40,38 @@ Here is a relatively simple plot, which has a single step:
 [testmark]:# (simple-plot/plot)
 ```json
 {
-	"inputs": {
-		"thingy": "ware:tar:qwerasdf",
-		"ingest": "ingest:git:.:HEAD"
-	},
-	"steps": {
-		"one": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::thingy"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/echo",
-							"hi"
-						],
-						"network": false
-					}
-				},
-				"outputs": {
-					"stuff": {
-						"from": "/",
-						"packtype": "tar"
+	"plot.v1": {
+		"inputs": {
+			"thingy": "ware:tar:qwerasdf",
+			"ingest": "ingest:git:.:HEAD"
+		},
+		"steps": {
+			"one": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::thingy"
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/echo",
+								"hi"
+							],
+							"network": false
+						}
+					},
+					"outputs": {
+						"stuff": {
+							"from": "/",
+							"packtype": "tar"
+						}
 					}
 				}
 			}
+		},
+		"outputs": {
+			"test": "pipe:one:stuff"
 		}
-	},
-	"outputs": {
-		"test": "pipe:one:stuff"
 	}
 }
 ```
@@ -88,7 +90,7 @@ The debug dump of this data may be illustrative:
 
 [testmark]:# (simple-plot/plot.debug)
 ```text
-struct<Plot>{
+union<PlotCapsule>{struct<Plot>{
 	inputs: map<Map__LocalLabel__PlotInput>{
 		string<LocalLabel>{"thingy"}: union<PlotInput>{union<PlotInputSimple>{struct<WareID>{
 			packtype: string<Packtype>{"tar"}
@@ -129,7 +131,7 @@ struct<Plot>{
 			label: string<LocalLabel>{"stuff"}
 		}}
 	}
-}
+}}
 ```
 
 This probably seems like a lot of things, compared to a formula.

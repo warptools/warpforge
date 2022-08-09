@@ -197,7 +197,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 					}
 					logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
 						basis.CatalogRef.ModuleName, basis.CatalogRef.ReleaseName)
-					result, err := Exec(wsSet, *replay, config, logger)
+					result, err := execPlot(wsSet, *replay, config, logger)
 					if err != nil {
 						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
 					}
@@ -343,8 +343,8 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 	// execute the derived formula
 	rr, err := formulaexec.Exec(wsSet.Root,
 		wfapi.FormulaAndContext{
-			Formula: formula,
-			Context: &ctx,
+			Formula: wfapi.FormulaCapsule{Formula: &formula},
+			Context: &wfapi.FormulaContextCapsule{FormulaContext: &ctx},
 		},
 		config.FormulaExecConfig,
 		logger)
@@ -352,6 +352,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 }
 
 // Execute a Plot using the provided WorkspaceSet
+// This is an internal function which takes a V1 plot and is called recursively
 //
 // Errors:
 //
@@ -362,7 +363,7 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig, logger logging.Logger) (wfapi.PlotResults, error) {
+func execPlot(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig, logger logging.Logger) (wfapi.PlotResults, error) {
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
 
@@ -430,7 +431,7 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecCo
 				color.WhiteString("evaluating subplot"),
 			)
 
-			stepResults, err := Exec(wsSet, *step.Plot, config, logger)
+			stepResults, err := execPlot(wsSet, *step.Plot, config, logger)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
@@ -475,4 +476,22 @@ func Exec(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecCo
 
 	logger.Info(LOG_TAG_END, "")
 	return results, nil
+}
+
+// Execute a PlotCapsule using the provided WorkspaceSet
+//
+// Errors:
+//
+//    - warpforge-error-plot-invalid -- when the provided plot input is invalid
+//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-git -- when a git related error occurs during a git ingest
+//    - warpforge-error-io -- when an IO error occurs during conversion
+//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
+//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
+//    - warpforge-error-plot-step-failed -- when execution of a plot step fails
+func Exec(wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig, logger logging.Logger) (wfapi.PlotResults, error) {
+	if plotCapsule.Plot == nil {
+		return wfapi.PlotResults{}, wfapi.ErrorPlotInvalid("PlotCapsule does not contain a v1 plot")
+	}
+	return execPlot(wsSet, *plotCapsule.Plot, config, logger)
 }

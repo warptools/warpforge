@@ -23,36 +23,38 @@ This plot has a single protoformula step, which creates a file. This file is use
 [testmark]:# (singlestep/plot)
 ```json
 {
-	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-	},
-	"steps": {
-		"one": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo test > /test"
-						],
-						"network": false
-					}
-				},
-				"outputs": {
-					"test": {
-						"from": "/test",
-						"packtype": "tar"
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		},
+		"steps": {
+			"one": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs"
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/sh",
+								"-c",
+								"echo test > /test"
+							],
+							"network": false
+						}
+					},
+					"outputs": {
+						"test": {
+							"from": "/test",
+							"packtype": "tar"
+						}
 					}
 				}
 			}
+		},
+		"outputs": {
+			"test": "pipe:one:test"
 		}
-	},
-	"outputs": {
-		"test": "pipe:one:test"
 	}
 }
 ```
@@ -82,53 +84,55 @@ The execution order is automatically determined.
 [testmark]:# (multistep/plot)
 ```json
 {
-	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-	},
-	"steps": {
-		"zero": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs"
-				},
-				"action": {
-					"script": {
-						"interpreter": "/bin/sh",
-						"contents": [
-							"mkdir /test",
-							"echo 'hello from step zero' > /test/file"
-						]
-					}
-				},
-				"outputs": {
-					"test": {
-						"from": "/test",
-						"packtype": "tar"
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		},
+		"steps": {
+			"zero": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs"
+					},
+					"action": {
+						"script": {
+							"interpreter": "/bin/sh",
+							"contents": [
+								"mkdir /test",
+								"echo 'hello from step zero' > /test/file"
+							]
+						}
+					},
+					"outputs": {
+						"test": {
+							"from": "/test",
+							"packtype": "tar"
+						}
 					}
 				}
+			},
+			"one": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs",
+						"/test": "pipe:zero:test"
+					},
+					"action": {
+						"script": {
+							"interpreter": "/bin/sh",
+							"contents": [
+								"echo 'in step one'",
+								"cat /test/file"
+							]
+						}
+					},
+					"outputs": {}
+				}
 			}
-		},
-		"one": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs",
-					"/test": "pipe:zero:test"
-				},
-				"action": {
-					"script": {
-						"interpreter": "/bin/sh",
-						"contents": [
-							"echo 'in step one'",
-							"cat /test/file"
-						]
-					}
-				},
-				"outputs": {}
-			}
-		}
 
-	},
-	"outputs": {}
+		},
+		"outputs": {}
+	}
 }
 ```
 
@@ -158,88 +162,90 @@ The execution order is computed automatically.
 [testmark]:# (nested/plot)
 ```json
 {
-	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-	},
-	"steps": {
-		"zero-outer": {
-			"plot": {
-				"inputs": {
-					"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
-				},
-				"steps": {
-					"zero-inner": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs"
-							},
-							"action": {
-								"exec": {
-									"command": [
-										"/bin/sh",
-										"-c",
-										"mkdir /test; echo 'hello from step zero-inner' > /test/file"
-									]
-								}
-							},
-							"outputs": {
-								"test": {
-									"packtype": "tar",
-									"from": "/test"
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		},
+		"steps": {
+			"zero-outer": {
+				"plot": {
+					"inputs": {
+						"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+					},
+					"steps": {
+						"zero-inner": {
+							"protoformula": {
+								"inputs": {
+									"/": "pipe::rootfs"
+								},
+								"action": {
+									"exec": {
+										"command": [
+											"/bin/sh",
+											"-c",
+											"mkdir /test; echo 'hello from step zero-inner' > /test/file"
+										]
+									}
+								},
+								"outputs": {
+									"test": {
+										"packtype": "tar",
+										"from": "/test"
+									}
 								}
 							}
-						}
-					},
-					"one-inner": {
-						"protoformula": {
-							"inputs": {
-								"/": "pipe::rootfs",
-								"/test": "pipe:zero-inner:test"
-							},
-							"action": {
-								"exec": {
-									"command": [
-										"/bin/sh",
-										"-c",
-										"cat /test/file && echo 'hello from step one-inner' >> /test/file"
-									]
-								}
-							},
-							"outputs": {
-								"test": {
-									"packtype": "tar",
-									"from": "/test"
+						},
+						"one-inner": {
+							"protoformula": {
+								"inputs": {
+									"/": "pipe::rootfs",
+									"/test": "pipe:zero-inner:test"
+								},
+								"action": {
+									"exec": {
+										"command": [
+											"/bin/sh",
+											"-c",
+											"cat /test/file && echo 'hello from step one-inner' >> /test/file"
+										]
+									}
+								},
+								"outputs": {
+									"test": {
+										"packtype": "tar",
+										"from": "/test"
+									}
 								}
 							}
+						},
+					},
+					"outputs": {
+						"test": "pipe:one-inner:test"
+					}
+				}
+			},
+			"one-outer": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs",
+						"/test": "pipe:zero-outer:test"
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/sh",
+								"-c",
+								"echo 'in one-outer'; cat /test/file"
+							]
 						}
 					},
-				},
-				"outputs": {
-					"test": "pipe:one-inner:test"
+					"outputs": {}
 				}
 			}
 		},
-		"one-outer": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs",
-					"/test": "pipe:zero-outer:test"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"echo 'in one-outer'; cat /test/file"
-						]
-					}
-				},
-				"outputs": {}
-			}
+		"outputs": {
+			"test": "pipe:zero-outer:test"
 		}
-	},
-	"outputs": {
-		"test": "pipe:zero-outer:test"
 	}
 }
 ```
@@ -269,31 +275,33 @@ the protoformula.
 [testmark]:# (input-types/plot)
 ```json
 {
-	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64",
-		"pwd": "mount:overlay:."
-	},
-	"steps": {
-		"one": {
-			"protoformula": {
-				"inputs": {
-					"/": "pipe::rootfs",
-					"/pwd": "pipe::pwd"
-				},
-				"action": {
-					"exec": {
-						"command": [
-							"/bin/sh",
-							"-c",
-							"ls /pwd"
-						]
-					}
-				},
-				"outputs": {}
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64",
+			"pwd": "mount:overlay:."
+		},
+		"steps": {
+			"one": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs",
+						"/pwd": "pipe::pwd"
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/sh",
+								"-c",
+								"ls /pwd"
+							]
+						}
+					},
+					"outputs": {}
+				}
 			}
-		}
-	},
-	"outputs": {}
+		},
+		"outputs": {}
+	}
 }
 ```
 

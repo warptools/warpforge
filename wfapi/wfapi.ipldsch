@@ -29,6 +29,11 @@ type Packtype string
 # The Layer 1 API consists of the things we need to do execution. This provides
 # the minimal set of features needed to define inputs, an action, and outputs.
 
+# FormulaCapsule wraps the Formula to allow for new versions in the future
+type FormulaCapsule union {
+	| Formula "formula.v1"
+} representation keyed
+
 # Formula describes a single computation. 
 # What exactly the computation is is defined by the action
 # (of which there are several kinds, but typically, it's commands
@@ -179,9 +184,13 @@ type WarehouseAddr string
 # FormulaAndContext is what we actually use as the document root
 # when parsing a formula file.
 type FormulaAndContext struct {
-	formula Formula
-	context optional FormulaContext
+	formula FormulaCapsule
+	context optional FormulaContextCapsule
 }
+
+type FormulaContextCapsule union {
+	| FormulaContext "context.v1"
+} representation keyed
 
 type FormulaContext struct {
 	warehouses {WareID:WarehouseAddr}
@@ -209,6 +218,11 @@ type ApiOutput union {
 
 # Layer 2
 
+type ModuleCapsule union {
+	| Module "module.v1"
+} representation keyed
+
+
 type Module struct {
 	name ModuleName
 	# semantically: "plot optional Plot"... but practically: it's in a sibling file.
@@ -222,6 +236,10 @@ type Module struct {
 # Characters like "/" and "." are allowed, but ":" and whitespace is forbidden
 # and the use of other punctuation characters is Not Recommended.
 type ModuleName string
+
+type PlotCapsule union {
+	| Plot "plot.v1"
+} representation keyed
 
 type Plot struct { # has previously had many names: protoformula, module, etc.
 	inputs {LocalLabel:PlotInput}
@@ -321,6 +339,10 @@ type CatalogRef struct {
 	join ":"
 }
 
+type CatalogModuleCapsule union {
+	| CatalogModule "catalogmodule.v1"
+} representation keyed
+
 type CatalogModule struct {
 	name ModuleName
 	releases {ReleaseName:CatalogReleaseCID}
@@ -328,7 +350,7 @@ type CatalogModule struct {
 }
 
 type CatalogRelease struct {
-	name  String
+	releaseName ReleaseName
 	items {ItemLabel:WareID}
 	metadata {String:String}
 }
@@ -337,13 +359,21 @@ type ItemLabel string
 type ReleaseName string
 type CatalogReleaseCID string
 
-type CatalogMirror union {
-	| CatalogMirrorByWare "byWare"
-	| CatalogMirrorByModule "byModule"
+type CatalogMirrorsCapsule union {
+	| CatalogMirrors "catalogmirrors.v1"
+} representation keyed
+
+type CatalogMirrors union {
+	| CatalogMirrorsByWare "byWare"
+	| CatalogMirrorsByModule "byModule"
 } representation keyed
 
 type WarehouseAddrList [WarehouseAddr]
 
-type CatalogMirrorByWare {WareID:WarehouseAddrList}
-type CatalogMirrorByModule {ModuleName:CatalogMirrorsByPacktype}
+type CatalogMirrorsByWare {WareID:WarehouseAddrList}
+type CatalogMirrorsByModule {ModuleName:CatalogMirrorsByPacktype}
 type CatalogMirrorsByPacktype {Packtype:WarehouseAddrList}
+
+type ReplayCapsule union {
+	| Plot "plot.v1"
+} representation keyed

@@ -71,7 +71,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 			DisableMemoization: c.Bool("force"),
 		},
 	}
-	result, err = plotexec.Exec(wss, plot, config, logger)
+	result, err = plotexec.Exec(wss, wfapi.PlotCapsule{Plot: &plot}, config, logger)
 	cdErr := os.Chdir(pwd)
 	if cdErr != nil {
 		return result, cdErr
@@ -115,43 +115,56 @@ func cmdRun(c *cli.Context) error {
 				return nil
 			})
 	} else {
-		// execute a specific set of formula or module files
+		// a list of individual files or directories has been provided
 		for _, fileName := range c.Args().Slice() {
-			f, err := ioutil.ReadFile(fileName)
+			info, err := os.Stat(fileName)
 			if err != nil {
 				return err
 			}
-
-			t, err := getFileType(fileName)
-			if err != nil {
-				return err
-			}
-
-			switch t {
-			case "formula":
-				// unmarshal FormulaAndContext from file data
-				frmAndCtx := wfapi.FormulaAndContext{}
-				_, err = ipld.Unmarshal([]byte(f), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
+			if info.IsDir() {
+				// directory provided, execute module if it exists
+				_, err := execModule(c, filepath.Join(fileName, "module.wf"))
+				if err != nil {
+					return err
+				}
+			} else {
+				// formula or module file provided
+				f, err := ioutil.ReadFile(fileName)
 				if err != nil {
 					return err
 				}
 
-				var err error
-				ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+				t, err := getFileType(fileName)
+				if err != nil {
+					return err
+				}
 
-				// run formula
-				config := wfapi.FormulaExecConfig{}
-				_, err = formulaexec.Exec(ws, frmAndCtx, config, logger)
-				if err != nil {
-					return err
+				switch t {
+				case "formula":
+					// unmarshal FormulaAndContext from file data
+					frmAndCtx := wfapi.FormulaAndContext{}
+					_, err = ipld.Unmarshal([]byte(f), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
+					if err != nil {
+						return err
+					}
+
+					var err error
+					ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+
+					// run formula
+					config := wfapi.FormulaExecConfig{}
+					_, err = formulaexec.Exec(ws, frmAndCtx, config, logger)
+					if err != nil {
+						return err
+					}
+				case "module":
+					_, err := execModule(c, fileName)
+					if err != nil {
+						return err
+					}
+				default:
+					return fmt.Errorf("unsupported file %s", fileName)
 				}
-			case "module":
-				_, err := execModule(c, fileName)
-				if err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("unsupported file %s", fileName)
 			}
 		}
 	}

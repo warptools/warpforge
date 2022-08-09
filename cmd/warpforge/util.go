@@ -69,13 +69,16 @@ func plotFromFile(filename string) (wfapi.Plot, error) {
 		return wfapi.Plot{}, err
 	}
 
-	plot := wfapi.Plot{}
-	_, err = ipld.Unmarshal(f, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+	plotCapsule := wfapi.PlotCapsule{}
+	_, err = ipld.Unmarshal(f, json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 	if err != nil {
 		return wfapi.Plot{}, err
 	}
+	if plotCapsule.Plot == nil {
+		return wfapi.Plot{}, fmt.Errorf("no v1 Plot in PlotCapsule")
+	}
 
-	return plot, nil
+	return *plotCapsule.Plot, nil
 }
 
 // takes a path to a module file, returns a module
@@ -85,11 +88,14 @@ func moduleFromFile(filename string) (wfapi.Module, error) {
 		return wfapi.Module{}, err
 	}
 
-	module := wfapi.Module{}
-	_, err = ipld.Unmarshal(f, json.Decode, &module, wfapi.TypeSystem.TypeByName("Module"))
+	moduleCapsule := wfapi.ModuleCapsule{}
+	_, err = ipld.Unmarshal(f, json.Decode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
 	if err != nil {
 		return wfapi.Module{}, err
 	}
+	if moduleCapsule.Module == nil {
+		return wfapi.Module{}, fmt.Errorf("no v1 Module in ModuleCapsule")
+	}
 
-	return module, nil
+	return *moduleCapsule.Module, nil
 }

@@ -14,30 +14,34 @@ interpreter (`sh`, `bash`, `zsh`, etc...).
 ```json
 {
 	"formula": {
-		"inputs": {
-			"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-		},
-		"action": {
-			"script": {
-				"interpreter": "/bin/sh",
-				"contents": [
-					"MESSAGE='hello, this is a script action'",
-					"echo $MESSAGE",
-					"mkdir /out && echo $MESSAGE > /out/log"
-					"echo done!"
-				]
-			}
-		},
-		"outputs": {
-			"test": {
-				"from": "/out",
-				"packtype": "tar"
+		"formula.v1": {
+			"inputs": {
+				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
 			},
+			"action": {
+				"script": {
+					"interpreter": "/bin/sh",
+					"contents": [
+						"MESSAGE='hello, this is a script action'",
+						"echo $MESSAGE",
+						"mkdir /out && echo $MESSAGE > /out/log"
+						"echo done!"
+					]
+				}
+			},
+			"outputs": {
+				"test": {
+					"from": "/out",
+					"packtype": "tar"
+				},
+			}
 		}
 	},
 	"context": {
-		"warehouses": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+		"context.v1": {
+			"warehouses": {
+				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			}
 		}
 	}
 }

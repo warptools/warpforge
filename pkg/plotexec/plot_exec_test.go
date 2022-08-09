@@ -56,12 +56,13 @@ func TestFormulaExecFixtures(t *testing.T) {
 				serial := dir.Children["plot"].Hunk.Body
 
 				t.Run("exec-plot", func(t *testing.T) {
-					plot := wfapi.Plot{}
-					_, err := ipld.Unmarshal(serial, json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+					plotCapsule := wfapi.PlotCapsule{}
+					_, err := ipld.Unmarshal(serial, json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 					qt.Assert(t, err, qt.IsNil)
+					qt.Assert(t, plotCapsule.Plot, qt.IsNotNil)
 
 					// determine step ordering and compare to example
-					steps, err := OrderStepsAll(plot)
+					steps, err := OrderStepsAll(*plotCapsule.Plot)
 					qt.Assert(t, err, qt.IsNil)
 					if dir.Children["order"] != nil {
 						qt.Assert(t, string(dir.Children["order"].Hunk.Body), qt.CmpEquals(), fmt.Sprintf("%s\n", steps))
@@ -71,7 +72,7 @@ func TestFormulaExecFixtures(t *testing.T) {
 					config := wfapi.PlotExecConfig{
 						Recursive: true,
 					}
-					results, err := Exec(wss, plot, config, logging.DefaultLogger())
+					results, err := Exec(wss, plotCapsule, config, logging.DefaultLogger())
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file
