@@ -17,6 +17,7 @@ else
 	$(SERUM) -strict ./...
 endif
 	go test ./...
+	@stty sane
 
 all: test install
 
