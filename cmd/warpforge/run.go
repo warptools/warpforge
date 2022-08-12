@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel"
 )
 
 var runCmdDef = cli.Command{
@@ -34,7 +36,7 @@ var runCmdDef = cli.Command{
 	},
 }
 
-func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
+func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
 	result := wfapi.PlotResults{}
 
 	// parse the module, even though it is not currently used
@@ -63,15 +65,7 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 		return result, err
 	}
 
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
-
-	config := wfapi.PlotExecConfig{
-		Recursive: c.Bool("recursive"),
-		FormulaExecConfig: wfapi.FormulaExecConfig{
-			DisableMemoization: c.Bool("force"),
-		},
-	}
-	result, err = plotexec.Exec(wss, wfapi.PlotCapsule{Plot: &plot}, config, logger)
+	result, err = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
 	cdErr := os.Chdir(pwd)
 	if cdErr != nil {
 		return result, cdErr
@@ -85,6 +79,23 @@ func execModule(c *cli.Context, fileName string) (wfapi.PlotResults, error) {
 
 func cmdRun(c *cli.Context) error {
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
+	ctx := logger.WithContext(c.Context)
+
+	traceProvider, err := configTracer(c.String("trace"))
+	if err != nil {
+		return fmt.Errorf("could not initialize tracing: %w", err)
+	}
+	defer traceShutdown(c.Context, traceProvider)
+	tr := otel.Tracer(TRACER_NAME)
+	ctx, span := tr.Start(ctx, c.Command.FullName())
+	defer span.End()
+
+	config := wfapi.PlotExecConfig{
+		Recursive: c.Bool("recursive"),
+		FormulaExecConfig: wfapi.FormulaExecConfig{
+			DisableMemoization: c.Bool("force"),
+		},
+	}
 
 	if !c.Args().Present() {
 		// execute the module in the current directory
@@ -92,7 +103,7 @@ func cmdRun(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not get current directory")
 		}
-		_, err = execModule(c, filepath.Join(pwd, MODULE_FILE_NAME))
+		_, err = execModule(ctx, config, filepath.Join(pwd, MODULE_FILE_NAME))
 		if err != nil {
 			return err
 		}
@@ -107,7 +118,7 @@ func cmdRun(c *cli.Context) error {
 					if c.Bool("verbose") {
 						logger.Debug("executing %q", path)
 					}
-					_, err = execModule(c, path)
+					_, err = execModule(ctx, config, path)
 					if err != nil {
 						return err
 					}
@@ -123,7 +134,7 @@ func cmdRun(c *cli.Context) error {
 			}
 			if info.IsDir() {
 				// directory provided, execute module if it exists
-				_, err := execModule(c, filepath.Join(fileName, "module.wf"))
+				_, err := execModule(ctx, config, filepath.Join(fileName, "module.wf"))
 				if err != nil {
 					return err
 				}
@@ -153,12 +164,12 @@ func cmdRun(c *cli.Context) error {
 
 					// run formula
 					config := wfapi.FormulaExecConfig{}
-					_, err = formulaexec.Exec(ws, frmAndCtx, config, logger)
+					_, err = formulaexec.Exec(ctx, ws, frmAndCtx, config)
 					if err != nil {
 						return err
 					}
 				case "module":
-					_, err := execModule(c, fileName)
+					_, err := execModule(ctx, config, fileName)
 					if err != nil {
 						return err
 					}

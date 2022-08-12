@@ -16,6 +16,7 @@ import (
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel"
 )
 
 const defaultCatalogUrl = "https://github.com/warpsys/mincatalog.git"
@@ -457,6 +458,18 @@ func cmdCatalogUpdate(c *cli.Context) error {
 }
 
 func cmdCatalogRelease(c *cli.Context) error {
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
+	ctx := logger.WithContext(c.Context)
+
+	traceProvider, err := configTracer(c.String("trace"))
+	if err != nil {
+		return fmt.Errorf("could not initialize tracing: %w", err)
+	}
+	defer traceProvider.Shutdown(c.Context)
+	tr := otel.Tracer(TRACER_NAME)
+	ctx, span := tr.Start(ctx, c.Command.FullName())
+	defer span.End()
+
 	if c.Args().Len() != 1 {
 		return fmt.Errorf("invalid input. usage: warpforge catalog release [release name]")
 	}
@@ -497,8 +510,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	config := wfapi.PlotExecConfig{
 		Recursive: false,
 	}
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
-	results, err := plotexec.Exec(wsSet, wfapi.PlotCapsule{Plot: &plot}, config, logger)
+	results, err := plotexec.Exec(ctx, wsSet, wfapi.PlotCapsule{Plot: &plot}, config)
 	if err != nil {
 		return err
 	}

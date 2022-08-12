@@ -1,6 +1,7 @@
 package formulaexec
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 
 	"github.com/warpfork/go-testmark"
-	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -29,6 +29,7 @@ func evaluateDoc(t *testing.T, doc *testmark.Document) {
 	doc.BuildDirIndex()
 	for _, dir := range doc.DirEnt.ChildrenList {
 		t.Run(dir.Name, func(t *testing.T) {
+
 			// Each "directory" should contain at least either "formula" or "runrecord".
 			switch {
 			case dir.Children["formula"] != nil:
@@ -36,11 +37,12 @@ func evaluateDoc(t *testing.T, doc *testmark.Document) {
 				serial := dir.Children["formula"].Hunk.Body
 
 				t.Run("exec-formula", func(t *testing.T) {
+					ctx := context.Background()
 					frmAndCtx := wfapi.FormulaAndContext{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
 					config := wfapi.FormulaExecConfig{}
-					rr, err := Exec(nil, frmAndCtx, config, logging.DefaultLogger())
+					rr, err := Exec(ctx, nil, frmAndCtx, config)
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))

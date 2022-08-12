@@ -2,6 +2,7 @@ package formulaexec
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +26,10 @@ import (
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel"
 )
+
+const TRACER_NAME = "pkg/formulaexec"
 
 const LOG_TAG_START = "│ ┌─ formula"
 const LOG_TAG = "│ │  formula"
@@ -972,8 +976,11 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 //     - warpforge-error-workspace -- when an invalid workspace is provided
 //     - warpforge-error-formula-invalid -- when an invalid formula is provided
 //     - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-func Exec(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
-	rr, err := execFormula(ws, fc, formulaConfig, logger)
+func Exec(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig) (wfapi.RunRecord, wfapi.Error) {
+	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "Exec")
+	defer span.End()
+	logger := logging.Ctx(ctx)
+	rr, err := execFormula(ws, fc, formulaConfig, *logger)
 	if err != nil {
 		switch err.(*wfapi.ErrorVal).Code() {
 		case "warpforge-error-io":

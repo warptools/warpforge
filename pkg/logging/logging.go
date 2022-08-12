@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -52,6 +53,31 @@ func NewLogger(out, err io.Writer, json bool, quiet bool, verbose bool) Logger {
 		json,
 		quiet,
 	}
+}
+
+type ctxKey struct{}
+
+// Ctx returns the logger associated with the context.  If no logger is associated with the context
+// then the default logger will be returned
+func Ctx(ctx context.Context) *Logger {
+	if logger, ok := ctx.Value(ctxKey{}).(*Logger); ok {
+		return logger
+	}
+	logger := DefaultLogger()
+	return &logger
+}
+
+// WithContext returns a copy of ctx with the logger associated. If an instance of logger is already
+// in the context, the context is not updated.
+// This function is following the convention used by zerolog for passing loggers via context.
+func (l Logger) WithContext(ctx context.Context) context.Context {
+	if lp, ok := ctx.Value(ctxKey{}).(*Logger); ok {
+		if lp == &l {
+			// Do not store same logger.
+			return ctx
+		}
+	}
+	return context.WithValue(ctx, ctxKey{}, &l)
 }
 
 func (l *Logger) Out(f string, args ...interface{}) {

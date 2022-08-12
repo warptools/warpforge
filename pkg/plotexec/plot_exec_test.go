@@ -1,6 +1,7 @@
 package plotexec
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/go-testmark"
-	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -56,6 +56,7 @@ func TestFormulaExecFixtures(t *testing.T) {
 				serial := dir.Children["plot"].Hunk.Body
 
 				t.Run("exec-plot", func(t *testing.T) {
+					ctx := context.Background()
 					plotCapsule := wfapi.PlotCapsule{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 					qt.Assert(t, err, qt.IsNil)
@@ -72,7 +73,7 @@ func TestFormulaExecFixtures(t *testing.T) {
 					config := wfapi.PlotExecConfig{
 						Recursive: true,
 					}
-					results, err := Exec(wss, plotCapsule, config, logging.DefaultLogger())
+					results, err := Exec(ctx, wss, plotCapsule, config)
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file
