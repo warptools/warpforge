@@ -30,6 +30,11 @@ var catalogCmdDef = cli.Command{
 			Usage:       "Name of the catalog to operate on",
 			DefaultText: "default",
 		},
+		&cli.BoolFlag{
+			Name:    "force",
+			Aliases: []string{"f"},
+			Usage:   "Force operation, even if it causes data to be overwritten.",
+		},
 	},
 	Subcommands: []*cli.Command{
 		{
@@ -185,7 +190,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 			return fmt.Errorf("scanning %q failed: %s", url, err)
 		}
 
-		err = cat.AddItem(ref, scanWareId)
+		err = cat.AddItem(ref, scanWareId, c.Bool("force"))
 		if err != nil {
 			return fmt.Errorf("failed to add item to catalog: %s", err)
 		}
@@ -227,7 +232,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 			Packtype: "git",
 			Hash:     gitRef.Hash().String(),
 		}
-		err = cat.AddItem(ref, wareId)
+		err = cat.AddItem(ref, wareId, c.Bool("force"))
 		if err != nil {
 			return fmt.Errorf("failed to add item to catalog: %s", err)
 		}
@@ -353,7 +358,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to open catalog: %s", err)
 		}
-		cat.AddItem(ref, *wareId)
+		cat.AddItem(ref, *wareId, c.Bool("force"))
 		if wareAddr != nil {
 			cat.AddByWareMirror(ref, *wareId, *wareAddr)
 		}
@@ -513,10 +518,6 @@ func cmdCatalogRelease(c *cli.Context) error {
 		ReleaseName: wfapi.ReleaseName(releaseName),
 		ItemName:    wfapi.ItemLabel(""), // replay is not item specific
 	}
-	err = cat.AddReplay(ref, plot)
-	if err != nil {
-		return err
-	}
 
 	for itemName, wareId := range results.Values {
 		ref := wfapi.CatalogRef{
@@ -526,10 +527,15 @@ func cmdCatalogRelease(c *cli.Context) error {
 		}
 
 		fmt.Println(ref.String(), "->", wareId)
-		err := cat.AddItem(ref, wareId)
+		err := cat.AddItem(ref, wareId, c.Bool("force"))
 		if err != nil {
 			return err
 		}
+	}
+
+	err = cat.AddReplay(ref, plot, c.Bool("force"))
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -576,7 +582,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 				Packtype: "git",
 				Hash:     ref.Hash().String(),
 			}
-			err = cat.AddItem(catalogRef, wareId)
+			err = cat.AddItem(catalogRef, wareId, c.Bool("force"))
 			if err != nil && err.(*wfapi.ErrorVal).Code() == "warpforge-error-catalog-item-already-exists" {
 				fmt.Printf("catalog already has item %s:%s:%s\n", catalogRef.ModuleName,
 					catalogRef.ReleaseName, catalogRef.ItemName)

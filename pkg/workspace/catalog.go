@@ -326,7 +326,8 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 //    - warpforge-error-catalog-item-already-exists -- when trying to insert an already existing item
 func (cat *Catalog) AddItem(
 	ref wfapi.CatalogRef,
-	wareId wfapi.WareID) wfapi.Error {
+	wareId wfapi.WareID,
+	overwrite bool) wfapi.Error {
 
 	// determine paths for the module, release, and the corresponding files
 	moduleFilePath := filepath.Join("/", cat.moduleFilePath(ref))
@@ -355,13 +356,17 @@ func (cat *Catalog) AddItem(
 		release.Metadata.Values = map[string]string{}
 	}
 
-	// ensure the item does not already exist
+	// check if the item exists
 	_, hasItem := release.Items.Values[ref.ItemName]
-	if hasItem {
+	if hasItem && !overwrite {
+		// item exists but overwrite not requested, error
 		return wfapi.ErrorCatalogAlreadyExists(releaseFilePath, ref.ItemName)
 	}
-
-	release.Items.Keys = append(release.Items.Keys, ref.ItemName)
+	if !hasItem {
+		// item does not exist, add key
+		release.Items.Keys = append(release.Items.Keys, ref.ItemName)
+	}
+	// update the item wareID
 	release.Items.Values[ref.ItemName] = wareId
 
 	// attempt to load the module
@@ -680,35 +685,11 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 //    - warpforge-error-catalog-parse -- when parsing of catalog data fails
 //    - warpforge-error-io -- when an io error occurs while opening the catalog
 //    - warpforge-error-serialization -- when the updated structures fail to serialize
-func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error {
-	// first, write the Plot to the replay file
+func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite bool) wfapi.Error {
+	// first, update the CatalogRelease to add the replay CID
+	// note: this must be done first, since we read this file to determine the replay file name!
 
-	// determine the release and replay paths
 	releasePath := filepath.Join("/", cat.releaseFilePath(ref))
-	replayPath, err := cat.replayFilePath(ref)
-	if err != nil {
-		return err
-	}
-	replayPath = filepath.Join("/", replayPath)
-
-	// determine where the replay should be stored, and create the dir if it does not exist
-	replaysPath := filepath.Dir(replayPath)
-	errRaw := os.MkdirAll(replaysPath, 0755)
-	if errRaw != nil {
-		return wfapi.ErrorIo("failed to create replays directory", &replaysPath, errRaw)
-	}
-
-	// serialize the replay Plot and write the file
-	replaySerial, errRaw := ipld.Marshal(json.Encode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
-	if errRaw != nil {
-		return wfapi.ErrorSerialization("failed to serialize replay", errRaw)
-	}
-	errRaw = os.WriteFile(replayPath, replaySerial, 0644)
-	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write replay file", &replayPath, errRaw)
-	}
-
-	// next, update the CatalogRelease to add the replay CID
 
 	// get the current release contents
 	release, err := cat.GetRelease(ref)
@@ -719,14 +700,16 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error
 		return wfapi.ErrorCatalogInvalid(releasePath, "release does not exist")
 	}
 
-	// check if a replay already exists, if so, fail.
+	// check if a replay already exists
 	_, hasReplay := release.Metadata.Values["replay"]
-	if hasReplay {
+	if hasReplay && !overwrite {
+		// replay exists and we do not want to overwrite it, fail
 		return wfapi.ErrorCatalogInvalid(releasePath, "release already has replay")
+	} else if !hasReplay {
+		// no replay exists, update the metadata to add it
+		release.Metadata.Keys = append(release.Metadata.Keys, "replay")
 	}
-
-	// no replay exists, update the metadata to add it
-	release.Metadata.Keys = append(release.Metadata.Keys, "replay")
+	// update the replay value
 	release.Metadata.Values["replay"] = string(plot.Cid())
 
 	// serialize the CatalogRelease and write the file
@@ -739,7 +722,7 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error
 		return wfapi.ErrorIo("failed to write release file", &releasePath, errRaw)
 	}
 
-	// lastly, we will need to update the CatalogRelease CID in the CatalogModule
+	// next, we will need to update the CatalogRelease CID in the CatalogModule
 
 	// determine the path and flename
 	moduleFilePath := filepath.Join("/", cat.moduleFilePath(ref))
@@ -766,13 +749,39 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot) wfapi.Error
 
 	// serialize the CatalogModule and write the file
 	moduleCapsule := wfapi.CatalogModuleCapsule{CatalogModule: module}
-	moduleSerial, errRaw := ipld.Marshal(json.Encode, moduleCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
+	moduleSerial, errRaw := ipld.Marshal(json.Encode, &moduleCapsule, wfapi.TypeSystem.TypeByName("CatalogModuleCapsule"))
 	if errRaw != nil {
 		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
 	}
 	errRaw = os.WriteFile(moduleFilePath, moduleSerial, 0644)
 	if errRaw != nil {
 		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, errRaw)
+	}
+
+	// finally, write the Plot to the replay file
+
+	replayPath, err := cat.replayFilePath(ref)
+	if err != nil {
+		return err
+	}
+	replayPath = filepath.Join("/", replayPath)
+
+	// determine where the replay should be stored, and create the dir if it does not exist
+	replayDir := filepath.Dir(replayPath)
+	errRaw = os.MkdirAll(replayDir, 0755)
+	if errRaw != nil {
+		return wfapi.ErrorIo("failed to create replays directory", &replayDir, errRaw)
+	}
+
+	// serialize the replay Plot and write the file
+	plotCapsule := wfapi.PlotCapsule{Plot: &plot}
+	replaySerial, errRaw := ipld.Marshal(json.Encode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize replay", errRaw)
+	}
+	errRaw = os.WriteFile(replayPath, replaySerial, 0644)
+	if errRaw != nil {
+		return wfapi.ErrorIo("failed to write replay file", &replayPath, errRaw)
 	}
 
 	return nil
