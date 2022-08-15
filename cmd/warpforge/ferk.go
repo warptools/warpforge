@@ -30,6 +30,10 @@ var ferkCmdDef = cli.Command{
 		&cli.BoolFlag{
 			Name: "no-interactive",
 		},
+		&cli.StringFlag{
+			Name:    "plot",
+			Aliases: []string{"p"},
+		},
 	},
 }
 
@@ -79,24 +83,32 @@ func cmdFerk(c *cli.Context) error {
 		return err
 	}
 
-	// generate the basic default plot from json template
 	plot := wfapi.Plot{}
-	_, err = ipld.Unmarshal([]byte(ferkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
-	if err != nil {
-		return fmt.Errorf("error parsing template plot: %s", err)
-	}
-
-	// convert rootfs input string to PlotInput
-	// this requires additional quoting to be parsed correctly by ipld
-	if c.String("rootfs") != "" {
-		// custom value provided, override default
-		rootfsStr := fmt.Sprintf("\"%s\"", c.String("rootfs"))
-		rootfs := wfapi.PlotInput{}
-		_, err = ipld.Unmarshal([]byte(rootfsStr), json.Decode, &rootfs, wfapi.TypeSystem.TypeByName("PlotInput"))
+	if c.String("plot") != "" {
+		// plot was provided, load from file
+		plot, err = plotFromFile(c.String("plot"))
 		if err != nil {
-			return fmt.Errorf("error parsing rootfs input: %s", err)
+			return fmt.Errorf("error loading plot from file %q: %s", c.String("plot"), err)
 		}
-		plot.Inputs.Values["rootfs"] = rootfs
+	} else {
+		// no plot provided, generate the basic default plot from json template
+		_, err = ipld.Unmarshal([]byte(ferkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+		if err != nil {
+			return fmt.Errorf("error parsing template plot: %s", err)
+		}
+
+		// convert rootfs input string to PlotInput
+		// this requires additional quoting to be parsed correctly by ipld
+		if c.String("rootfs") != "" {
+			// custom value provided, override default
+			rootfsStr := fmt.Sprintf("\"%s\"", c.String("rootfs"))
+			rootfs := wfapi.PlotInput{}
+			_, err = ipld.Unmarshal([]byte(rootfsStr), json.Decode, &rootfs, wfapi.TypeSystem.TypeByName("PlotInput"))
+			if err != nil {
+				return fmt.Errorf("error parsing rootfs input: %s", err)
+			}
+			plot.Inputs.Values["rootfs"] = rootfs
+		}
 	}
 
 	// set command to execute
