@@ -361,7 +361,8 @@ func (cat *Catalog) AddItem(
 	if hasItem && !overwrite {
 		// item exists but overwrite not requested, error
 		return wfapi.ErrorCatalogAlreadyExists(releaseFilePath, ref.ItemName)
-	} else if !hasItem {
+	}
+	if !hasItem {
 		// item does not exist, add key
 		release.Items.Keys = append(release.Items.Keys, ref.ItemName)
 	}
