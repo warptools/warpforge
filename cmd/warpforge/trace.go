@@ -60,16 +60,17 @@ type fileSpanExporter struct {
 }
 
 // Shutdown handles cleaning up the span exporter
+//
 // Errors:
 //
-//     - warpforge-error-unknown -- when an error occurs during tracing shutdown
+//     - warpforge-error-internal -- when an error occurs during tracing shutdown
 func (e *fileSpanExporter) Shutdown(ctx context.Context) error {
 	if e == nil {
 		return nil
 	}
-	defer e.Closer.Close()
+	defer e.Closer.Close() // consume file close errors
 	if err := e.SpanExporter.Shutdown(ctx); err != nil {
-		return wfapi.ErrorUnknown("tracing shutdown failed", err)
+		return wfapi.ErrorInternal("tracing shutdown failed", err)
 	}
 	return nil
 }
