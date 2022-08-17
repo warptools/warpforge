@@ -73,6 +73,21 @@ func ErrorUnknown(msgTmpl string, cause error) Error {
 	}
 }
 
+// ErrorInternal is for miscellaneous errors that should be handled internally.
+// In most cases, prefer to use more specific errors.
+// Can be used when an end user is not expected to have viable intervention strategies.
+//
+// Errors:
+//
+// - warpforge-error-internal --
+func ErrorInternal(msgTmpl string, cause error) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-internal",
+		Message:    msgTmpl,
+		Cause:      wrapErr(cause),
+	}
+}
+
 // ErrorSearchingFilesystem is returned when an error occurs during search
 //
 // Errors:

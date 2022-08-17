@@ -21,6 +21,9 @@ require (
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/warpfork/go-testmark v0.10.0
+	go.opentelemetry.io/otel v1.9.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.9.0
+	go.opentelemetry.io/otel/sdk v1.9.0
 	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/sys v0.0.0-20220708085239-5a0f0661e09d // indirect

@@ -11,6 +11,7 @@ import (
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel"
 )
 
 var ferkCmdDef = cli.Command{
@@ -73,6 +74,16 @@ const ferkPlotTemplate = `
 
 func cmdFerk(c *cli.Context) error {
 	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
+	ctx := logger.WithContext(c.Context)
+
+	traceProvider, err := configTracer(c.String("trace"))
+	if err != nil {
+		return fmt.Errorf("could not initialize tracing: %w", err)
+	}
+	defer traceShutdown(c.Context, traceProvider)
+	tr := otel.Tracer(TRACER_NAME)
+	ctx, span := tr.Start(ctx, c.Command.FullName())
+	defer span.End()
 
 	wss, err := openWorkspaceSet()
 	if err != nil {
@@ -138,7 +149,7 @@ func cmdFerk(c *cli.Context) error {
 			Interactive:        !c.Bool("no-interactive"),
 		},
 	}
-	_, err = plotexec.Exec(wss, wfapi.PlotCapsule{Plot: &plot}, config, logger)
+	_, err = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
 	if err != nil {
 		return err
 	}

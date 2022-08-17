@@ -1,6 +1,7 @@
 package plotexec
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +14,10 @@ import (
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel"
 )
+
+const TRACER_NAME = "pkg/plotexec"
 
 const LOG_TAG_START = "┌─ plot"
 const LOG_TAG = "│  plot"
@@ -59,12 +63,15 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
+func plotInputToFormulaInput(ctx context.Context,
+	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap,
-	logger logging.Logger) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
-	basis, addr, err := plotInputToFormulaInputSimple(wsSet, plotInput, config, pipeCtx, logger)
+	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
+	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "plotInputToFormulaInput")
+	defer span.End()
+
+	basis, addr, err := plotInputToFormulaInputSimple(ctx, wsSet, plotInput, config, pipeCtx)
 	if err != nil {
 		return wfapi.FormulaInput{}, nil, err
 	}
@@ -96,11 +103,15 @@ func plotInputToFormulaInput(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
+func plotInputToFormulaInputSimple(ctx context.Context,
+	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap,
-	logger logging.Logger) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
+	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
+	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "plotInputToFormulaInputSimple")
+	defer span.End()
+	logger := logging.Ctx(ctx)
+
 	var basis wfapi.PlotInputSimple
 
 	switch {
@@ -197,7 +208,7 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 					}
 					logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
 						basis.CatalogRef.ModuleName, basis.CatalogRef.ReleaseName)
-					result, err := execPlot(wsSet, *replay, config, logger)
+					result, err := execPlot(ctx, wsSet, *replay, config)
 					if err != nil {
 						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
 					}
@@ -305,12 +316,15 @@ func plotInputToFormulaInputSimple(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
 //    - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-func execProtoformula(wsSet workspace.WorkspaceSet,
+func execProtoformula(ctx context.Context,
+	wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
-	ctx wfapi.FormulaContext,
+	formulaCtx wfapi.FormulaContext,
 	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap,
-	logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+	pipeCtx pipeMap) (wfapi.RunRecord, wfapi.Error) {
+	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "execProtoformula")
+	defer span.End()
+
 	// create an empty Formula and FormulaContext
 	formula := wfapi.Formula{
 		Action: pf.Action,
@@ -321,15 +335,15 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 	// convert Protoformula inputs (of type PlotInput) to FormulaInputs
 	for sbPort, plotInput := range pf.Inputs.Values {
 		formula.Inputs.Keys = append(formula.Inputs.Keys, sbPort)
-		input, wareAddr, err := plotInputToFormulaInput(wsSet, plotInput, config, pipeCtx, logger)
+		input, wareAddr, err := plotInputToFormulaInput(ctx, wsSet, plotInput, config, pipeCtx)
 		if err != nil {
 			return wfapi.RunRecord{}, err
 		}
 		formula.Inputs.Values[sbPort] = input
 		if wareAddr != nil {
 			// input specifies a WarehouseAddr, add it to the formula's context
-			ctx.Warehouses.Keys = append(ctx.Warehouses.Keys, *input.Basis().WareID)
-			ctx.Warehouses.Values[*input.Basis().WareID] = *wareAddr
+			formulaCtx.Warehouses.Keys = append(formulaCtx.Warehouses.Keys, *input.Basis().WareID)
+			formulaCtx.Warehouses.Values[*input.Basis().WareID] = *wareAddr
 		}
 	}
 
@@ -341,13 +355,12 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 	}
 
 	// execute the derived formula
-	rr, err := formulaexec.Exec(wsSet.Root,
+	rr, err := formulaexec.Exec(ctx, wsSet.Root,
 		wfapi.FormulaAndContext{
 			Formula: wfapi.FormulaCapsule{Formula: &formula},
-			Context: &wfapi.FormulaContextCapsule{FormulaContext: &ctx},
+			Context: &wfapi.FormulaContextCapsule{FormulaContext: &formulaCtx},
 		},
-		config.FormulaExecConfig,
-		logger)
+		config.FormulaExecConfig)
 	return rr, err
 }
 
@@ -363,10 +376,12 @@ func execProtoformula(wsSet workspace.WorkspaceSet,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-func execPlot(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig, logger logging.Logger) (wfapi.PlotResults, error) {
+func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
+	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "execPlot")
+	defer span.End()
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
-
+	logger := logging.Ctx(ctx)
 	logger.Info(LOG_TAG_START, "")
 
 	// collect the plot inputs
@@ -376,7 +391,7 @@ func execPlot(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotEx
 	inputContext := wfapi.FormulaContext{}
 	inputContext.Warehouses.Values = make(map[wfapi.WareID]wfapi.WarehouseAddr)
 	for name, input := range plot.Inputs.Values {
-		input, wareAddr, err := plotInputToFormulaInput(wsSet, input, config, pipeCtx, logger)
+		input, wareAddr, err := plotInputToFormulaInput(ctx, wsSet, input, config, pipeCtx)
 		if err != nil {
 			return results, err
 		}
@@ -404,7 +419,7 @@ func execPlot(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotEx
 				color.HiCyanString(string(name)),
 				color.WhiteString("evaluating protoformula"),
 			)
-			rr, err := execProtoformula(wsSet, *step.Protoformula, inputContext, config, pipeCtx, logger)
+			rr, err := execProtoformula(ctx, wsSet, *step.Protoformula, inputContext, config, pipeCtx)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
@@ -431,7 +446,7 @@ func execPlot(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotEx
 				color.WhiteString("evaluating subplot"),
 			)
 
-			stepResults, err := execPlot(wsSet, *step.Plot, config, logger)
+			stepResults, err := execPlot(ctx, wsSet, *step.Plot, config)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
@@ -489,9 +504,12 @@ func execPlot(wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotEx
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-func Exec(wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig, logger logging.Logger) (wfapi.PlotResults, error) {
+func Exec(ctx context.Context, wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
+	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "Exec")
+	defer span.End()
+
 	if plotCapsule.Plot == nil {
 		return wfapi.PlotResults{}, wfapi.ErrorPlotInvalid("PlotCapsule does not contain a v1 plot")
 	}
-	return execPlot(wsSet, *plotCapsule.Plot, config, logger)
+	return execPlot(ctx, wsSet, *plotCapsule.Plot, config)
 }

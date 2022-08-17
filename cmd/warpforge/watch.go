@@ -9,7 +9,9 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
+	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel"
 )
 
 var watchCmdDef = cli.Command{
@@ -22,6 +24,18 @@ func cmdWatch(c *cli.Context) error {
 	if c.Args().Len() != 1 {
 		return fmt.Errorf("invalid args")
 	}
+
+	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
+	ctx := logger.WithContext(c.Context)
+
+	traceProvider, err := configTracer(c.String("trace"))
+	if err != nil {
+		return fmt.Errorf("could not initialize tracing: %w", err)
+	}
+	defer traceProvider.Shutdown(c.Context)
+	tr := otel.Tracer(TRACER_NAME)
+	ctx, span := tr.Start(ctx, c.Command.FullName())
+	defer span.End()
 
 	path := c.Args().First()
 
@@ -55,6 +69,13 @@ func cmdWatch(c *cli.Context) error {
 		ingestCache[k] = v
 	}
 
+	config := wfapi.PlotExecConfig{
+		Recursive: c.Bool("recursive"),
+		FormulaExecConfig: wfapi.FormulaExecConfig{
+			DisableMemoization: c.Bool("force"),
+		},
+	}
+
 	for {
 		for path, rev := range ingests {
 			r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
@@ -73,7 +94,7 @@ func cmdWatch(c *cli.Context) error {
 			if ingestCache[path] != hash {
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
-				_, err := execModule(c, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
+				_, err := execModule(ctx, config, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
 				if err != nil {
 					fmt.Printf("exec failed: %s\n", err)
 				}
