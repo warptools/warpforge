@@ -471,7 +471,7 @@ func (cat *Catalog) AddByWareMirror(
 			},
 		}
 	} else if err == nil {
-		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorCapsule"))
+		_, err = ipld.Unmarshal(mirrorsBytes, json.Decode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 		if err != nil {
 			return wfapi.ErrorCatalogParse(mirrorsPath, err)
 		}
