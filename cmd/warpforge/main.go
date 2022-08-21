@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const VERSION = "v0.2"
+const VERSION = "v0.2.0"
 
 // The module name used for unique strings, such as tracing identifiers
 // Grab it via `go list -m` or manually. It's not available at runtime and
