@@ -32,7 +32,7 @@ func cmdWatch(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not initialize tracing: %w", err)
 	}
-	defer traceProvider.Shutdown(c.Context)
+	defer traceShutdown(c.Context, traceProvider)
 	tr := otel.Tracer(TRACER_NAME)
 	ctx, span := tr.Start(ctx, c.Command.FullName())
 	defer span.End()
