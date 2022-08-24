@@ -24,12 +24,13 @@ import (
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/warpfork/warpforge/pkg/logging"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
-
-const TRACER_NAME = "pkg/formulaexec"
 
 const LOG_TAG_START = "│ ┌─ formula"
 const LOG_TAG = "│ │  formula"
@@ -273,7 +274,8 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 //     - warpforge-error-io -- when IO error occurs during setup
 //     - warpforge-error-executor-failed -- when runc execution of `rio unpack` fails
 //     - warpforge-error-ware-unpack -- when `rio unpack` operation fails
-func makeWareMount(config runConfig,
+func makeWareMount(ctx context.Context,
+	config runConfig,
 	wareId wfapi.WareID,
 	dest string,
 	context *wfapi.FormulaContext,
@@ -294,7 +296,7 @@ func makeWareMount(config runConfig,
 				// this is a local file or directory, we will need to mount it to the container for unpacking
 				// we will mount it at CONTAINER_BASE_PATH/tmp
 				src = filepath.Join(CONTAINER_BASE_PATH, "tmp")
-				mnt, err := makeBindPathMount(config, hostPath, src, true)
+				mnt, err := makeBindPathMount(ctx, config, hostPath, src, true)
 				if err != nil {
 					return mnt, err
 				}
@@ -349,7 +351,7 @@ func makeWareMount(config runConfig,
 		wareId.String()[4:7], wareId.String()[7:10], wareId.String()[4:])
 	if _, errRaw := os.Stat(filepath.Join(config.wsPath, expectCachePath)); os.IsNotExist(errRaw) {
 		// no cached ware, run the unpack
-		outStr, err := invokeRunc(config, nil)
+		outStr, err := invokeRunc(ctx, config, nil)
 		if err != nil {
 			// TODO: currently, this will return an ExecutorFailed error
 			// it would be better to determine if runc or rio failed, and return
@@ -409,7 +411,7 @@ func makeWareMount(config runConfig,
 // Errors:
 //
 //     - warpforge-error-io -- when creation of dirs fails
-func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mount, wfapi.Error) {
+func makeOverlayPathMount(ctx context.Context, config runConfig, path string, dest string) (specs.Mount, wfapi.Error) {
 	mountId := strings.Replace(path, "/", "-", -1)
 	mountId = strings.Replace(mountId, ".", "-", -1)
 	upperdirPath := filepath.Join(config.runPath, "overlays/upper-", mountId)
@@ -440,7 +442,7 @@ func makeOverlayPathMount(config runConfig, path string, dest string) (specs.Mou
 // Creates an overlay mount for a path on the host filesystem
 //
 // Errors: none -- this function only adds an entry to the runc config and cannot fail
-func makeBindPathMount(config runConfig, path string, dest string, readOnly bool) (specs.Mount, wfapi.Error) {
+func makeBindPathMount(ctx context.Context, config runConfig, path string, dest string, readOnly bool) (specs.Mount, wfapi.Error) {
 	options := []string{"rbind"}
 	if readOnly {
 		options = append(options, "ro")
@@ -459,7 +461,10 @@ func makeBindPathMount(config runConfig, path string, dest string, readOnly bool
 //
 //    - warpforge-error-executor-failed -- invocation of runc caused an error
 //    - warpforge-error-io -- i/o error occurred during setup of runc invocation
-func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
+func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (string, wfapi.Error) {
+	ctx, span := tracing.Start(ctx, "invokeRunc")
+	defer span.End()
+
 	configBytes, err := json.Marshal(config.spec)
 	if err != nil {
 		return "", wfapi.ErrorExecutorFailed("runc", wfapi.ErrorSerialization("failed to serialize runc config", err))
@@ -498,6 +503,7 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 	}
 	err = cmd.Run()
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return "", wfapi.ErrorExecutorFailed("runc", fmt.Errorf("%s %s", stdoutBuf.String(), stderrBuf.String()))
 	}
 	// TODO what exitcode do we care about?
@@ -510,7 +516,9 @@ func invokeRunc(config runConfig, logWriter io.Writer) (string, wfapi.Error) {
 //
 //    - warpforge-error-executor-failed -- if runc execution fails
 //    - warpforge-error-ware-pack -- if rio pack of ware fails
-func rioPack(config runConfig, path string) (wfapi.WareID, error) {
+func rioPack(ctx context.Context, config runConfig, path string) (wfapi.WareID, error) {
+	ctx, span := tracing.Start(ctx, "rioPack")
+	defer span.End()
 	config.spec.Process.Args = []string{
 		filepath.Join(containerBinPath(), "rio"),
 		"pack",
@@ -521,7 +529,7 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 		path,
 	}
 
-	outStr, err := invokeRunc(config, nil)
+	outStr, err := invokeRunc(ctx, config, nil)
 	if err != nil {
 		// TODO: this should figure out of the rio op failed, or if runc failed and throw different errors
 		return wfapi.WareID{}, wfapi.ErrorExecutorFailed(fmt.Sprintf("invoke runc for rio pack of %s failed", path), err)
@@ -536,13 +544,13 @@ func rioPack(config runConfig, path string) (wfapi.WareID, error) {
 		}
 		if out.Result.WareId != "" {
 			// found wareId
+			span.AddEvent("Found ware ID", trace.WithAttributes(attribute.String(tracing.SpanAttrWarpforgePackId, out.Result.WareId)))
 			break
 		}
 	}
 	if out.Result.WareId == "" {
 		return wfapi.WareID{}, wfapi.ErrorWarePack(path, fmt.Errorf("empty WareID value from rio pack"))
 	}
-
 	wareId := wfapi.WareID{}
 	wareId.Packtype = wfapi.Packtype(strings.Split(out.Result.WareId, ":")[0])
 	wareId.Hash = strings.Split(out.Result.WareId, ":")[1]
@@ -581,7 +589,9 @@ func GetBinPath() (string, wfapi.Error) {
 // - warpforge-error-workspace -- when an invalid workspace is provided
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
 // - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+	ctx, span := tracing.Start(ctx, "execFormula")
+	defer span.End()
 	rr := wfapi.RunRecord{}
 
 	if fc.Formula.Formula == nil {
@@ -616,7 +626,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		panic(fmt.Sprintf("Fatal IPLD Error: failed to encode CID for Formula: %s", errRaw))
 	}
 	rr.FormulaID = fid
-
+	span.SetAttributes(attribute.String(tracing.SpanAttrWarpforgeFormulaId, fid))
 	logger.Info(LOG_TAG_START, "")
 
 	// check if a memoized RunRecord already exists
@@ -755,7 +765,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 					color.WhiteString(hostPath),
 					color.HiBlueString("destPath"),
 					color.WhiteString(destPath))
-				mnt, err = makeOverlayPathMount(config, hostPath, destPath)
+				mnt, err = makeOverlayPathMount(ctx, config, hostPath, destPath)
 				if err != nil {
 					return rr, err
 				}
@@ -767,7 +777,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 					color.WhiteString(hostPath),
 					color.HiBlueString("destPath"),
 					color.WhiteString(destPath))
-				mnt, err = makeBindPathMount(config, hostPath, destPath, true)
+				mnt, err = makeBindPathMount(ctx, config, hostPath, destPath, true)
 				if err != nil {
 					return rr, err
 				}
@@ -779,7 +789,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 					color.WhiteString(hostPath),
 					color.HiBlueString("destPath"),
 					color.WhiteString(destPath))
-				mnt, err = makeBindPathMount(config, hostPath, destPath, false)
+				mnt, err = makeBindPathMount(ctx, config, hostPath, destPath, false)
 				if err != nil {
 					return rr, err
 				}
@@ -793,7 +803,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 					color.WhiteString(inputSimple.WareID.String()),
 					color.HiBlueString("destPath"),
 					color.WhiteString(destPath))
-				mnt, err = makeWareMount(config, *inputSimple.WareID, destPath, &context, filters, logger)
+				mnt, err = makeWareMount(ctx, config, *inputSimple.WareID, destPath, &context, filters, logger)
 				if err != nil {
 					return rr, err
 				}
@@ -893,7 +903,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		}
 
 		// create a mount for the script file
-		scriptMount, err := makeBindPathMount(execConfig, scriptPath, containerScriptPath(), false)
+		scriptMount, err := makeBindPathMount(ctx, execConfig, scriptPath, containerScriptPath(), false)
 		if err != nil {
 			return rr, err
 		}
@@ -918,7 +928,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 
 	// run the action
 	logger.Output(LOG_TAG_OUTPUT_START, "")
-	_, err = invokeRunc(execConfig, runcWriter)
+	_, err = invokeRunc(ctx, execConfig, runcWriter)
 	logger.Output(LOG_TAG_OUTPUT_END, "")
 	if err != nil {
 		return rr, err
@@ -932,7 +942,7 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 		switch {
 		case gather.From.SandboxPath != nil:
 			path := string(*gather.From.SandboxPath)
-			wareId, err := rioPack(execConfig, path)
+			wareId, err := rioPack(ctx, execConfig, path)
 			if err != nil {
 				return rr, wfapi.ErrorWarePack(path, err)
 			}
@@ -977,15 +987,18 @@ func execFormula(ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaCon
 //     - warpforge-error-formula-invalid -- when an invalid formula is provided
 //     - warpforge-error-serialization -- when serialization or deserialization of a memo fails
 func Exec(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig) (wfapi.RunRecord, wfapi.Error) {
-	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "Exec")
+	ctx, span := tracing.Start(ctx, "Exec")
 	defer span.End()
 	logger := logging.Ctx(ctx)
-	rr, err := execFormula(ws, fc, formulaConfig, *logger)
+	rr, err := execFormula(ctx, ws, fc, formulaConfig, *logger)
 	if err != nil {
 		switch err.(*wfapi.ErrorVal).Code() {
 		case "warpforge-error-io":
-			return rr, wfapi.ErrorFormulaExecutionFailed(err)
+			err := wfapi.ErrorFormulaExecutionFailed(err)
+			tracing.SetSpanError(ctx, err)
+			return rr, err
 		default:
+			tracing.SetSpanError(ctx, err)
 			// Error Codes -= warpforge-error-io
 			return rr, err
 		}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -98,4 +99,19 @@ func moduleFromFile(filename string) (wfapi.Module, error) {
 	}
 
 	return *moduleCapsule.Module, nil
+}
+
+// chainCmdMiddleware returns a cli ActionFunc that is wrapped by the given middleware.
+// Middleware is executed in order. E.G. `middleware[0](middleware[1](cmd))`
+func chainCmdMiddleware(cmd cli.ActionFunc, middlewares ...func(cli.ActionFunc) cli.ActionFunc) cli.ActionFunc {
+	if len(middlewares) < 1 {
+		return cmd
+	}
+	wrapped := cmd
+	// loop in reverse to preserve middleware order
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		wrapped = middlewares[i](wrapped)
+	}
+
+	return wrapped
 }

@@ -44,9 +44,31 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 			Usage: "Enable JSON API output",
 		},
 		&cli.StringFlag{
-			Name:      "trace",
+			Name:      "trace.file",
 			Usage:     "Enable tracing and emit output to file",
 			TakesFile: true,
+		},
+		&cli.BoolFlag{
+			Name:   "trace.grpc.enable",
+			Usage:  "Enable remote tracing",
+			Hidden: true, // not implemented yet
+		},
+		&cli.StringFlag{
+			Name:   "trace.grpc.endpoint",
+			Usage:  "Sets an endpoint for remote open-telemetry tracing collection",
+			Hidden: true, // not implemented yet
+		},
+		&cli.BoolFlag{
+			Name:  "trace.http.enable",
+			Usage: "Enable remote tracing over http",
+		},
+		&cli.BoolFlag{
+			Name:  "trace.http.insecure",
+			Usage: "Allows insecure http",
+		},
+		&cli.StringFlag{
+			Name:  "trace.http.endpoint",
+			Usage: "Sets an endpoint for remote open-telemetry tracing collection",
 		},
 	}
 	app.ExitErrHandler = exitErrHandler

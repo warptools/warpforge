@@ -1,10 +1,14 @@
 package plotexec
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Return the ordered list of steps for a plot, recursing into nested plots.
@@ -12,9 +16,11 @@ import (
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot is malformed
-func OrderStepsAll(plot wfapi.Plot) ([]wfapi.StepName, error) {
+func OrderStepsAll(ctx context.Context, plot wfapi.Plot) ([]wfapi.StepName, error) {
+	ctx, span := tracing.Start(ctx, "OrderStepsAll")
+	defer span.End()
 	var result []wfapi.StepName
-	ordered, err := OrderSteps(plot)
+	ordered, err := OrderSteps(ctx, plot)
 	if err != nil {
 		return result, err
 	}
@@ -24,7 +30,7 @@ func OrderStepsAll(plot wfapi.Plot) ([]wfapi.StepName, error) {
 		result = append(result, step)
 		if plot.Steps.Values[step].Plot != nil {
 			// recurse into subplot
-			subOrdered, err := OrderStepsAll(*plot.Steps.Values[step].Plot)
+			subOrdered, err := OrderStepsAll(ctx, *plot.Steps.Values[step].Plot)
 			if err != nil {
 				return result, err
 			}
@@ -39,7 +45,9 @@ func OrderStepsAll(plot wfapi.Plot) ([]wfapi.StepName, error) {
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the plot is not a DAG
-func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
+func OrderSteps(ctx context.Context, plot wfapi.Plot) ([]wfapi.StepName, error) {
+	ctx, span := tracing.Start(ctx, "OrderSteps")
+	defer span.End()
 	// initialize results accumulator
 	result := make([]wfapi.StepName, 0, len(plot.Steps.Keys))
 	// initialize todo list, shrinks as steps are processed
@@ -59,7 +67,7 @@ func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 
 	// visit each step
 	for _, name := range stepsOrdered {
-		err := orderSteps_visit(name, plot.Steps.Values[name], todo, map[wfapi.StepName]struct{}{}, &result, plot, &outputPipes)
+		err := orderSteps_visit(ctx, name, plot.Steps.Values[name], todo, map[wfapi.StepName]struct{}{}, &result, plot, &outputPipes)
 		if err != nil {
 			return []wfapi.StepName{}, err
 		}
@@ -93,6 +101,7 @@ func OrderSteps(plot wfapi.Plot) ([]wfapi.StepName, error) {
 //
 //    - warpforge-error-plot-invalid -- when the plot is not a DAG
 func orderSteps_visit(
+	ctx context.Context,
 	name wfapi.StepName,
 	step wfapi.Step,
 	todo map[wfapi.StepName]struct{},
@@ -101,7 +110,8 @@ func orderSteps_visit(
 	plot wfapi.Plot,
 	outputPipes *map[wfapi.StepName][]wfapi.LocalLabel,
 ) error {
-
+	ctx, span := tracing.Start(ctx, "OrderSteps_visit", trace.WithAttributes(attribute.String("warpforge.step.name", string(name))))
+	defer span.End()
 	// if step has already been visited, we're done
 	if _, ok := todo[name]; !ok {
 		return nil
@@ -170,11 +180,11 @@ func orderSteps_visit(
 	stepOutputs := []wfapi.LocalLabel{}
 	switch {
 	case step.Protoformula != nil:
-		for label, _ := range step.Protoformula.Outputs.Values {
+		for label := range step.Protoformula.Outputs.Values {
 			stepOutputs = append(stepOutputs, label)
 		}
 	case step.Plot != nil:
-		for label, _ := range step.Plot.Outputs.Values {
+		for label := range step.Plot.Outputs.Values {
 			stepOutputs = append(stepOutputs, label)
 		}
 	default:
@@ -194,7 +204,7 @@ func orderSteps_visit(
 			// top level input, nothing to do
 		case false:
 			// recurse the referenced step
-			if err := orderSteps_visit(pipe.StepName, plot.Steps.Values[pipe.StepName], todo, loopDetector, result, plot, outputPipes); err != nil {
+			if err := orderSteps_visit(ctx, pipe.StepName, plot.Steps.Values[pipe.StepName], todo, loopDetector, result, plot, outputPipes); err != nil {
 				return err
 			}
 		}
