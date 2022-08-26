@@ -119,7 +119,8 @@ func cmdFnWorkspaceInspect(c *cli.Context) error {
 		_checksDone:
 
 			// Tell me about it.
-			fmt.Fprintf(c.App.Writer, "Module found: %q -- at path %q", modName, modPathWithinWs)
+			// FUTURE: perhaps a workspace configuration option for defaults for these padding sizes.
+			fmt.Fprintf(c.App.Writer, "Module found: %-40q -- at path %-26q", modName, modPathWithinWs)
 			if c.Bool("gohard") {
 				fmt.Fprintf(c.App.Writer, " -- %v %v %v %v %v %v %v",
 					glyphCheckOrKlaxon(everythingParses),
