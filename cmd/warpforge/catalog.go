@@ -24,10 +24,10 @@ var catalogCmdDef = cli.Command{
 	Usage: "Subcommands that operate on catalogs",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:        "name",
-			Aliases:     []string{"n"},
-			Usage:       "Name of the catalog to operate on",
-			DefaultText: "default",
+			Name:    "name",
+			Aliases: []string{"n"},
+			Usage:   "Name of the catalog to operate on",
+			Value:   "default",
 		},
 		&cli.BoolFlag{
 			Name:    "force",
