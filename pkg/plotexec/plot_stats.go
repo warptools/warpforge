@@ -23,23 +23,28 @@ func ComputeStats(plot wfapi.Plot, wsSet workspace.WorkspaceSet) (PlotStats, err
 		ResolvedCatalogInputs:   make(map[wfapi.CatalogRef]wfapi.WareID),
 		UnresolvedCatalogInputs: make(map[wfapi.CatalogRef]struct{}),
 	}
-	for _, input := range plot.Inputs.Values {
+	return v, v.computeStats(plot, wsSet)
+}
+
+func (v *PlotStats) computeStats(plot wfapi.Plot, wsSet workspace.WorkspaceSet) error {
+	accountForInput := func(input wfapi.PlotInput) error {
 		inputBasis := input.Basis() // unwrap if it's a complex filtered thing.
 		switch {
 		// This switch should be exhaustive on the possible members of PlotInputSimple.
 		case inputBasis.WareID != nil:
-			// not interesting :)
+			return nil // not interesting :)
 		case inputBasis.Mount != nil:
 			v.InputsUsingMount++
+			return nil
 		case inputBasis.Literal != nil:
-			// not interesting :)
+			return nil // not interesting :)
 		case inputBasis.Pipe != nil:
-			// not interesting :)
+			return nil // not interesting :)
 		case inputBasis.CatalogRef != nil:
 			v.InputsUsingCatalog++
 			ware, _, err := wsSet.GetCatalogWare(*inputBasis.CatalogRef)
 			if err != nil {
-				return v, err // These mean catalog read failed entirely, so we're in deep water.
+				return err // These mean catalog read failed entirely, so we're in deep water.
 			}
 			if ware == nil {
 				v.UnresolvedCatalogInputs[*inputBasis.CatalogRef] = struct{}{}
@@ -47,11 +52,34 @@ func ComputeStats(plot wfapi.Plot, wsSet workspace.WorkspaceSet) (PlotStats, err
 				v.ResolvableCatalogInputs++
 				v.ResolvedCatalogInputs[*inputBasis.CatalogRef] = *ware
 			}
+			return nil
 		case inputBasis.Ingest != nil:
 			v.InputsUsingIngest++
+			return nil
 		default:
 			panic("unreachable")
 		}
 	}
-	return v, nil
+	for _, input := range plot.Inputs.Values {
+		if err := accountForInput(input); err != nil {
+			return err
+		}
+	}
+	for _, step := range plot.Steps.Values {
+		switch {
+		case step.Plot != nil:
+			if err := v.computeStats(*step.Plot, wsSet); err != nil {
+				return err
+			}
+		case step.Protoformula != nil:
+			for _, input := range step.Protoformula.Inputs.Values {
+				if err := accountForInput(input); err != nil {
+					return err
+				}
+			}
+		default:
+			panic("unreachable")
+		}
+	}
+	return nil
 }
