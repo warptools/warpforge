@@ -74,34 +74,43 @@ func cmdFnWorkspaceInspect(c *cli.Context) error {
 				modName = "!!Unknown!!"
 			}
 
-			everythingParses := false
-			importsResolve := false
-			noticeIngestUsage := false
-			noticeMountUsage := false
-			havePacksCached := false // maybe should have a variant for "or we have a replay we're hopeful about"?
-			haveRunrecord := false
-			haveHappyExit := false
+			// 0 = idk; 1 = yes; 2 = no.  (0 generally doesn't get rendered.)
+			everythingParses := 0
+			importsResolve := 0
+			noticeIngestUsage := 0
+			noticeMountUsage := 0
+			havePacksCached := 0 // maybe should have a variant for "or we have a replay we're hopeful about"?
+			haveRunrecord := 0
+			haveHappyExit := 0
 			if c.Bool("gohard") {
 				if err != nil {
+					everythingParses = 2
 					goto _checksDone
 				}
 				plot, err := dab.PlotFromFile(wsFs, filepath.Join(filepath.Dir(path), dab.MagicFilename_Plot))
 				if err != nil {
+					everythingParses = 2
 					goto _checksDone
 				}
-				everythingParses = true
+				everythingParses = 1
 				plotStats, err := plotexec.ComputeStats(plot, wss)
 				if err != nil {
 					return err // if it's hardcore catalog errors, rather than just unresolvables, I'm out
 				}
 				if plotStats.ResolvableCatalogInputs == plotStats.InputsUsingCatalog {
-					importsResolve = true
+					importsResolve = 1
+				} else {
+					importsResolve = 2
 				}
 				if plotStats.InputsUsingIngest > 0 {
-					noticeIngestUsage = true
+					noticeIngestUsage = 1
+				} else {
+					noticeIngestUsage = 2
 				}
 				if plotStats.InputsUsingMount > 0 {
-					noticeMountUsage = true
+					noticeMountUsage = 1
+				} else {
+					noticeMountUsage = 2
 				}
 				// TODO: havePacksCached is not supported right now :(
 				// TODO: haveRunrecord needs to both do resolve, and go peek at memos, and yet (obviously) not actually run.
@@ -113,11 +122,83 @@ func cmdFnWorkspaceInspect(c *cli.Context) error {
 			fmt.Fprintf(c.App.Writer, "Module found: %q -- at path %q", modName, modPathWithinWs)
 			if c.Bool("gohard") {
 				fmt.Fprintf(c.App.Writer, " -- %v %v %v %v %v %v %v",
-					everythingParses, importsResolve, noticeIngestUsage, noticeMountUsage, havePacksCached, haveRunrecord, haveHappyExit)
+					glyphCheckOrKlaxon(everythingParses),
+					glyphCheckOrX(importsResolve),
+					glyphCautionary(noticeIngestUsage),
+					glyphCautionary(noticeMountUsage),
+					glyphCheckOrYellow(havePacksCached),
+					glyphCheckOrNada(haveRunrecord),
+					glyphCheckOrKlaxon(haveHappyExit),
+				)
 			}
 			fmt.Fprintf(c.App.Writer, "\n")
 		}
 
 		return nil
 	})
+}
+
+func glyphCheckOrX(state int) string {
+	switch state {
+	case 0:
+		return " "
+	case 1:
+		return "✔"
+	case 2:
+		return "✘"
+	default:
+		panic("unreachable")
+	}
+}
+
+func glyphCheckOrKlaxon(state int) string {
+	switch state {
+	case 0:
+		return " "
+	case 1:
+		return "✔"
+	case 2:
+		return "!"
+	default:
+		panic("unreachable")
+	}
+}
+
+func glyphCheckOrYellow(state int) string {
+	switch state {
+	case 0:
+		return " "
+	case 1:
+		return "✔"
+	case 2:
+		return "å"
+	default:
+		panic("unreachable")
+	}
+}
+
+func glyphCheckOrNada(state int) string {
+	switch state {
+	case 0:
+		return " "
+	case 1:
+		return "✔"
+	case 2:
+		return "_"
+	default:
+		panic("unreachable")
+	}
+}
+
+func glyphCautionary(state int) string {
+	switch state {
+	case 0:
+		return " "
+	case 1:
+		return "⚠"
+	case 2:
+		return "_"
+	default:
+		panic("unreachable")
+	}
 }
