@@ -13,10 +13,12 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel"
+
+	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
 )
 
 const defaultCatalogUrl = "https://github.com/warpsys/mincatalog.git"
@@ -108,9 +110,10 @@ func cmdCatalogInit(c *cli.Context) error {
 		return fmt.Errorf("no catalog name provided")
 	}
 	catalogName := c.Args().First()
+	fsys := os.DirFS("/")
 
 	// open the workspace set and get the catalog path
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}
@@ -145,8 +148,10 @@ func cmdCatalogAdd(c *cli.Context) error {
 	catalogRefStr := c.Args().Get(1)
 	url := c.Args().Get(2)
 
+	fsys := os.DirFS("/")
+
 	// open the workspace set
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}
@@ -255,7 +260,9 @@ func cmdCatalogAdd(c *cli.Context) error {
 }
 
 func cmdCatalogLs(c *cli.Context) error {
-	wsSet, err := openWorkspaceSet()
+	fsys := os.DirFS("/")
+
+	wsSet, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}
@@ -311,7 +318,9 @@ func gatherCatalogRefs(plot wfapi.Plot) []wfapi.CatalogRef {
 }
 
 func cmdCatalogBundle(c *cli.Context) error {
-	wsSet, err := openWorkspaceSet()
+	fsys := os.DirFS("/")
+
+	wsSet, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}
@@ -321,7 +330,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 		return fmt.Errorf("failed to get pwd: %s", err)
 	}
 
-	plot, err := plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
+	plot, err := dab.PlotFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Plot))
 	if err != nil {
 		return err
 	}
@@ -337,7 +346,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 		}
 
 		// we need to reopen the workspace set after creating the directory
-		wsSet, err = openWorkspaceSet()
+		wsSet, err = openWorkspaceSet(fsys)
 		if err != nil {
 			return err
 		}
@@ -397,7 +406,9 @@ func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 }
 
 func cmdCatalogUpdate(c *cli.Context) error {
-	wss, err := openWorkspaceSet()
+	fsys := os.DirFS("/")
+
+	wss, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return fmt.Errorf("failed to open workspace set: %s", err)
 	}
@@ -480,8 +491,10 @@ func cmdCatalogRelease(c *cli.Context) error {
 	}
 	catalogName := c.String("name")
 
+	fsys := os.DirFS("/")
+
 	// open the workspace set
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}
@@ -499,7 +512,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	}
 
 	// get the module, release, and item values (in format `module:release:item`)
-	module, err := moduleFromFile("module.wf")
+	module, err := dab.ModuleFromFile(fsys, "module.wf")
 	if err != nil {
 		return err
 	}
@@ -507,7 +520,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	releaseName := c.Args().Get(0)
 
 	fmt.Printf("building replay for module = %q, release = %q, executing plot...\n", module.Name, releaseName)
-	plot, err := plotFromFile(PLOT_FILE_NAME)
+	plot, err := dab.PlotFromFile(fsys, dab.MagicFilename_Plot)
 	if err != nil {
 		return err
 	}
@@ -561,6 +574,8 @@ func cmdIngestGitTags(c *cli.Context) error {
 	url := c.Args().Get(1)
 	itemName := c.Args().Get(2)
 
+	fsys := os.DirFS("/")
+
 	// open the remote and list all references
 	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
@@ -573,7 +588,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 
 	// open the workspace set and catalog
 	catalogName := c.String("name")
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}

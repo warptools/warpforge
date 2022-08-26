@@ -3,19 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel"
+
+	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
 )
 
 var runCmdDef = cli.Command{
@@ -36,16 +38,16 @@ var runCmdDef = cli.Command{
 	},
 }
 
-func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
+func execModule(ctx context.Context, fsys fs.FS, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
 	result := wfapi.PlotResults{}
 
 	// parse the module, even though it is not currently used
-	_, err := moduleFromFile(fileName)
+	_, err := dab.ModuleFromFile(fsys, fileName)
 	if err != nil {
 		return result, err
 	}
 
-	plot, err := plotFromFile(filepath.Join(filepath.Dir(fileName), PLOT_FILE_NAME))
+	plot, err := dab.PlotFromFile(fsys, filepath.Join(filepath.Dir(fileName), dab.MagicFilename_Plot))
 	if err != nil {
 		return result, err
 	}
@@ -55,7 +57,7 @@ func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName strin
 		return result, err
 	}
 
-	wss, err := openWorkspaceSet()
+	wss, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return result, err
 	}
@@ -97,13 +99,15 @@ func cmdRun(c *cli.Context) error {
 		},
 	}
 
+	fsys := os.DirFS("/")
+
 	if !c.Args().Present() {
 		// execute the module in the current directory
 		pwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("could not get current directory")
 		}
-		_, err = execModule(ctx, config, filepath.Join(pwd, MODULE_FILE_NAME))
+		_, err = execModule(ctx, fsys, config, filepath.Join(pwd, dab.MagicFilename_Module))
 		if err != nil {
 			return err
 		}
@@ -114,11 +118,11 @@ func cmdRun(c *cli.Context) error {
 				if err != nil {
 					return err
 				}
-				if filepath.Base(path) == MODULE_FILE_NAME {
+				if filepath.Base(path) == dab.MagicFilename_Module {
 					if c.Bool("verbose") {
 						logger.Debug("executing %q", path)
 					}
-					_, err = execModule(ctx, config, path)
+					_, err = execModule(ctx, fsys, config, path)
 					if err != nil {
 						return err
 					}
@@ -134,13 +138,13 @@ func cmdRun(c *cli.Context) error {
 			}
 			if info.IsDir() {
 				// directory provided, execute module if it exists
-				_, err := execModule(ctx, config, filepath.Join(fileName, "module.wf"))
+				_, err := execModule(ctx, fsys, config, filepath.Join(fileName, "module.wf"))
 				if err != nil {
 					return err
 				}
 			} else {
 				// formula or module file provided
-				f, err := ioutil.ReadFile(fileName)
+				f, err := fs.ReadFile(fsys, fileName)
 				if err != nil {
 					return err
 				}
@@ -169,7 +173,7 @@ func cmdRun(c *cli.Context) error {
 						return err
 					}
 				case "module":
-					_, err := execModule(ctx, config, fileName)
+					_, err := execModule(ctx, fsys, config, fileName)
 					if err != nil {
 						return err
 					}

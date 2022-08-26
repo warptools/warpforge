@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
+
+	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -25,6 +28,7 @@ func cmdStatus(c *cli.Context) error {
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
 	verbose := c.Bool("verbose")
 
+	fsys := os.DirFS("/")
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("could not get current directory")
@@ -85,9 +89,9 @@ func cmdStatus(c *cli.Context) error {
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(pwd, MODULE_FILE_NAME)); err == nil {
+	if _, err := fs.Stat(fsys, filepath.Join(pwd, dab.MagicFilename_Module)); err == nil {
 		isModule = true
-		module, err = moduleFromFile(filepath.Join(pwd, MODULE_FILE_NAME))
+		module, err = dab.ModuleFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Module))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -102,11 +106,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(pwd, PLOT_FILE_NAME))
+	_, err = fs.Stat(fsys, filepath.Join(pwd, dab.MagicFilename_Plot))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
+		plot, err = dab.PlotFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Plot))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
@@ -119,7 +123,7 @@ func cmdStatus(c *cli.Context) error {
 			len(plot.Outputs.Keys))
 
 		// check for missing catalog refs
-		wss, err := openWorkspaceSet()
+		wss, err := openWorkspaceSet(fsys)
 		if err != nil {
 			return fmt.Errorf("failed to open workspace: %s", err)
 		}
@@ -163,7 +167,7 @@ func cmdStatus(c *cli.Context) error {
 
 	// display workspace info
 	fmt.Fprintf(c.App.Writer, "\nWorkspace:\n")
-	wss, err := openWorkspaceSet()
+	wss, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return fmt.Errorf("failed to open workspace set: %s", err)
 	}

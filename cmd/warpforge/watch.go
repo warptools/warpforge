@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -9,9 +10,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel"
+
+	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
 )
 
 var watchCmdDef = cli.Command{
@@ -38,10 +41,12 @@ func cmdWatch(c *cli.Context) error {
 	defer span.End()
 
 	path := c.Args().First()
+	fsys := os.DirFS("/")
 
 	// TODO: currently we read the module/plot from the provided path.
 	// instead, we should read it from the git cache dir
-	plot, err := plotFromFile(filepath.Join(path, PLOT_FILE_NAME))
+	// FIXME: though it's rare, this can be considerably divergent
+	plot, err := dab.PlotFromFile(fsys, filepath.Join(path, dab.MagicFilename_Plot))
 	if err != nil {
 		return err
 	}
@@ -94,7 +99,9 @@ func cmdWatch(c *cli.Context) error {
 			if ingestCache[path] != hash {
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
-				_, err := execModule(ctx, config, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
+				// FIXME: this is also reading off the working tree filesystem instead of out of the git index, which is wrong
+				// Perhaps ideally we'd like to give this thing a whole fsys that just keeps reading out of the git index.
+				_, err := execModule(ctx, fsys, config, filepath.Join(c.Args().First(), dab.MagicFilename_Module))
 				if err != nil {
 					fmt.Printf("exec failed: %s\n", err)
 				}

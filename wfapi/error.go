@@ -175,6 +175,24 @@ func ErrorSerialization(context string, cause error) Error {
 	}
 }
 
+// ErrorDataTooNew is returned when some data was (partially) deserialized,
+// but only enough that we could recognize it as being a newer version of message
+// than this application supports.
+//
+// Errors:
+//
+//    - warpforge-error-datatoonew -- if some data is too new to parse completely.
+func ErrorDataTooNew(context string, cause error) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-datatoonew",
+		Message:    fmt.Sprintf("while %s, encountered data from an unknown version: %s", context, cause),
+		Details: [][2]string{
+			{"context", context},
+		},
+		Cause: wrapErr(cause),
+	}
+}
+
 // ErrorWareUnpack is returned when the unpacking of a ware fails
 //
 // Errors:

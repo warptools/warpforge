@@ -7,6 +7,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
+
+	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -59,13 +61,13 @@ func cmdQuickstart(c *cli.Context) error {
 		return fmt.Errorf("no module name provided")
 	}
 
-	_, err := os.Stat(MODULE_FILE_NAME)
+	_, err := os.Stat(dab.MagicFilename_Module)
 	if !os.IsNotExist(err) {
-		return fmt.Errorf("%s file already exists", MODULE_FILE_NAME)
+		return fmt.Errorf("%s file already exists", dab.MagicFilename_Module)
 	}
-	_, err = os.Stat(PLOT_FILE_NAME)
+	_, err = os.Stat(dab.MagicFilename_Plot)
 	if !os.IsNotExist(err) {
-		return fmt.Errorf("%s file already exists", PLOT_FILE_NAME)
+		return fmt.Errorf("%s file already exists", dab.MagicFilename_Plot)
 	}
 
 	moduleName := c.Args().First()
@@ -79,7 +81,7 @@ func cmdQuickstart(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to serialize module")
 	}
-	err = os.WriteFile(MODULE_FILE_NAME, moduleSerial, 0644)
+	err = os.WriteFile(dab.MagicFilename_Module, moduleSerial, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write module.json file: %s", err)
 	}
@@ -94,17 +96,17 @@ func cmdQuickstart(c *cli.Context) error {
 		return fmt.Errorf("failed to serialize plot")
 	}
 
-	err = os.WriteFile(PLOT_FILE_NAME, plotSerial, 0644)
+	err = os.WriteFile(dab.MagicFilename_Plot, plotSerial, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write %s: %s", PLOT_FILE_NAME, err)
+		return fmt.Errorf("failed to write %s: %s", dab.MagicFilename_Plot, err)
 	}
 
 	if !c.Bool("quiet") {
-		fmt.Fprintf(c.App.Writer, "Successfully created %s and %s for module %q.\n", MODULE_FILE_NAME, PLOT_FILE_NAME, moduleName)
+		fmt.Fprintf(c.App.Writer, "Successfully created %s and %s for module %q.\n", dab.MagicFilename_Module, dab.MagicFilename_Plot, moduleName)
 		fmt.Fprintf(c.App.Writer, "Ensure your catalogs are up to date by running `%s catalog update.`.\n", os.Args[0])
 		fmt.Fprintf(c.App.Writer, "You can check status of this module with `%s status`.\n", os.Args[0])
 		fmt.Fprintf(c.App.Writer, "You can run this module with `%s run`.\n", os.Args[0])
-		fmt.Fprintf(c.App.Writer, "Once you've run the Hello World example, edit the 'script' section of %s to customize what happens.\n", PLOT_FILE_NAME)
+		fmt.Fprintf(c.App.Writer, "Once you've run the Hello World example, edit the 'script' section of %s to customize what happens.\n", dab.MagicFilename_Plot)
 	}
 
 	return nil

@@ -8,10 +8,12 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel"
+
+	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
 )
 
 var ferkCmdDef = cli.Command{
@@ -89,7 +91,9 @@ func cmdFerk(c *cli.Context) error {
 	ctx, span := tr.Start(ctx, c.Command.FullName())
 	defer span.End()
 
-	wss, err := openWorkspaceSet()
+	fsys := os.DirFS("/")
+
+	wss, err := openWorkspaceSet(fsys)
 	if err != nil {
 		return err
 	}
@@ -97,7 +101,7 @@ func cmdFerk(c *cli.Context) error {
 	plot := wfapi.Plot{}
 	if c.String("plot") != "" {
 		// plot was provided, load from file
-		plot, err = plotFromFile(c.String("plot"))
+		plot, err = dab.PlotFromFile(fsys, c.String("plot"))
 		if err != nil {
 			return fmt.Errorf("error loading plot from file %q: %s", c.String("plot"), err)
 		}
