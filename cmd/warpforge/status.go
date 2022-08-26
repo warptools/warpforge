@@ -13,6 +13,7 @@ import (
 
 	"github.com/warpfork/warpforge/pkg/dab"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
+	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -127,42 +128,27 @@ func cmdStatus(c *cli.Context) error {
 			len(plot.Steps.Keys),
 			len(plot.Outputs.Keys))
 
-		// check for missing catalog refs
+		// Load up workspaces; we'll need to read them to check for missing catalog refs.
 		wss, err := openWorkspaceSet(fsys)
 		if err != nil {
 			return fmt.Errorf("failed to open workspace: %s", err)
 		}
-		catalogRefCount := 0
-		resolvedCatalogRefCount := 0
-		ingestCount := 0
-		mountCount := 0
-		for _, input := range plot.Inputs.Values {
-			if input.Basis().Mount != nil {
-				mountCount++
-			} else if input.Basis().Ingest != nil {
-				ingestCount++
-			} else if input.Basis().CatalogRef != nil {
-				catalogRefCount++
-				ware, _, err := wss.GetCatalogWare(*input.PlotInputSimple.CatalogRef)
-				if err != nil {
-					return fmt.Errorf("failed to lookup catalog ref: %s", err)
-				}
-				if ware == nil {
-					fmt.Fprintf(c.App.Writer, "\tMissing catalog item: %q.\n", input.Basis().CatalogRef.String())
-				} else if err == nil {
-					resolvedCatalogRefCount++
-				}
-			}
+
+		// Compute stats on the plot and report on them (especially any problematic ones).
+		plotStats, err := plotexec.ComputeStats(plot, wss)
+
+		fmt.Fprintf(c.App.Writer, "\tPlot contains %d catalog inputs. %d/%d catalog inputs resolved successfully.\n", plotStats.InputsUsingCatalog, plotStats.ResolvableCatalogInputs, plotStats.InputsUsingCatalog)
+		if plotStats.ResolvableCatalogInputs < plotStats.InputsUsingCatalog {
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d unresolved catalog inputs!\n", (plotStats.InputsUsingCatalog - plotStats.ResolvableCatalogInputs))
 		}
-		fmt.Fprintf(c.App.Writer, "\tPlot contains %d catalog inputs. %d/%d catalog inputs resolved successfully.\n", catalogRefCount, resolvedCatalogRefCount, catalogRefCount)
-		if resolvedCatalogRefCount < catalogRefCount {
-			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d unresolved catalog inputs!\n", (catalogRefCount - resolvedCatalogRefCount))
+		for k, _ := range plotStats.UnresolvedCatalogInputs {
+			fmt.Fprintf(c.App.Writer, "\tMissing catalog item: %q.\n", k.String())
 		}
-		if ingestCount > 0 {
-			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d ingest inputs and is not hermetic!\n", ingestCount)
+		if plotStats.InputsUsingIngest > 0 {
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d ingest inputs and is not hermetic!\n", plotStats.InputsUsingIngest)
 		}
-		if mountCount > 0 {
-			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount inputs and is not hermetic!\n", mountCount)
+		if plotStats.InputsUsingMount > 0 {
+			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount inputs and is not hermetic!\n", plotStats.InputsUsingMount)
 		}
 
 	} else if isModule {
