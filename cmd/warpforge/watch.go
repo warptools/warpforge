@@ -9,33 +9,26 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
-	"github.com/warpfork/warpforge/pkg/logging"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var watchCmdDef = cli.Command{
-	Name:   "watch",
-	Usage:  "Watch a directory for git commits, executing plot on each new commit",
-	Action: cmdWatch,
+	Name:  "watch",
+	Usage: "Watch a directory for git commits, executing plot on each new commit",
+	Action: chainCmdMiddleware(cmdWatch,
+		cmdMiddlewareLogging,
+		cmdMiddlewareTracingConfig,
+	),
 }
 
 func cmdWatch(c *cli.Context) error {
 	if c.Args().Len() != 1 {
 		return fmt.Errorf("invalid args")
 	}
-
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
-	ctx := logger.WithContext(c.Context)
-
-	traceProvider, err := configTracer(c.String("trace"))
-	if err != nil {
-		return fmt.Errorf("could not initialize tracing: %w", err)
-	}
-	defer traceShutdown(c.Context, traceProvider)
-	tr := otel.Tracer(TRACER_NAME)
-	ctx, span := tr.Start(ctx, c.Command.FullName())
-	defer span.End()
+	ctx := c.Context
 
 	path := c.Args().First()
 
@@ -77,7 +70,9 @@ func cmdWatch(c *cli.Context) error {
 	}
 
 	for {
+		outerCtx, outerSpan := tracing.Start(ctx, "watch-loop")
 		for path, rev := range ingests {
+			innerCtx, innerSpan := tracing.Start(outerCtx, "watch-loop-ingest", trace.WithAttributes(attribute.String("warpforge.ingest.path", path), attribute.String("warpforge.ingest.rev", rev)))
 			r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 				URL: "file://" + path,
 			})
@@ -92,14 +87,17 @@ func cmdWatch(c *cli.Context) error {
 			hash := hashBytes.String()
 
 			if ingestCache[path] != hash {
+				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String("warpforge.ingest.hash", hash)))
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
-				_, err := execModule(ctx, config, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
+				_, err := execModule(innerCtx, config, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
 				if err != nil {
 					fmt.Printf("exec failed: %s\n", err)
 				}
 			}
+			innerSpan.End()
 		}
+		outerSpan.End()
 		time.Sleep(time.Millisecond * 100)
 	}
 }

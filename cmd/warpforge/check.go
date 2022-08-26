@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
@@ -12,9 +13,13 @@ import (
 )
 
 var checkCmdDef = cli.Command{
-	Name:   "check",
-	Usage:  "Check file(s) for syntax and sanity",
-	Action: cmdCheck,
+	Name:  "check",
+	Usage: "Check file(s) for syntax and sanity",
+	Action: chainCmdMiddleware(cmdCheck,
+		cmdMiddlewareLogging,
+		cmdMiddlewareTracingConfig,
+		cmdMiddlewareTracingSpan,
+	),
 }
 
 func checkModule(fileName string) (*ipld.Node, error) {
@@ -28,7 +33,7 @@ func checkModule(fileName string) (*ipld.Node, error) {
 	return &n, err
 }
 
-func checkPlot(fileName string) (*ipld.Node, error) {
+func checkPlot(ctx context.Context, fileName string) (*ipld.Node, error) {
 	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return nil, err
@@ -42,7 +47,7 @@ func checkPlot(fileName string) (*ipld.Node, error) {
 	}
 
 	// ensure Plot order can be resolved
-	_, err = plotexec.OrderSteps(plot)
+	_, err = plotexec.OrderSteps(ctx, plot)
 
 	return &n, err
 }
@@ -62,6 +67,7 @@ func cmdCheck(c *cli.Context) error {
 	if !c.Args().Present() {
 		return fmt.Errorf("no input files provided")
 	}
+	ctx := c.Context
 
 	for _, filename := range c.Args().Slice() {
 		t, err := getFileType(filename)
@@ -77,7 +83,7 @@ func cmdCheck(c *cli.Context) error {
 				return fmt.Errorf("%s: %s", filename, err)
 			}
 		case "plot":
-			n, err = checkPlot(filename)
+			n, err = checkPlot(ctx, filename)
 			if err != nil {
 				return fmt.Errorf("%s: %s", filename, err)
 			}

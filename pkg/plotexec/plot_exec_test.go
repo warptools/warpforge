@@ -63,7 +63,7 @@ func TestFormulaExecFixtures(t *testing.T) {
 					qt.Assert(t, plotCapsule.Plot, qt.IsNotNil)
 
 					// determine step ordering and compare to example
-					steps, err := OrderStepsAll(*plotCapsule.Plot)
+					steps, err := OrderStepsAll(ctx, *plotCapsule.Plot)
 					qt.Assert(t, err, qt.IsNil)
 					if dir.Children["order"] != nil {
 						qt.Assert(t, string(dir.Children["order"].Hunk.Body), qt.CmpEquals(), fmt.Sprintf("%s\n", steps))
@@ -147,12 +147,12 @@ func TestCycleFails(t *testing.T) {
 	"outputs": {}
 }
 `
-
+	ctx := context.Background()
 	p := wfapi.Plot{}
 	_, err := ipld.Unmarshal([]byte(serial), json.Decode, &p, wfapi.TypeSystem.TypeByName("Plot"))
 	qt.Assert(t, err, qt.IsNil)
 
 	// this will fail due to a dependency cycle between steps zero and one
-	_, err = OrderSteps(p)
+	_, err = OrderSteps(ctx, p)
 	qt.Assert(t, err, qt.IsNotNil)
 }

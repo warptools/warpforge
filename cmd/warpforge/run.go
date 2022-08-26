@@ -13,15 +13,19 @@ import (
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
 )
 
 var runCmdDef = cli.Command{
-	Name:   "run",
-	Usage:  "Run a module or formula",
-	Action: cmdRun,
+	Name:  "run",
+	Usage: "Run a module or formula",
+	Action: chainCmdMiddleware(cmdRun,
+		cmdMiddlewareLogging,
+		cmdMiddlewareTracingConfig,
+		cmdMiddlewareTracingSpan,
+	),
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "recursive",
@@ -37,6 +41,8 @@ var runCmdDef = cli.Command{
 }
 
 func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
+	ctx, span := tracing.Start(ctx, "execModule")
+	defer span.End()
 	result := wfapi.PlotResults{}
 
 	// parse the module, even though it is not currently used
@@ -78,18 +84,8 @@ func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName strin
 }
 
 func cmdRun(c *cli.Context) error {
-	logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
-	ctx := logger.WithContext(c.Context)
-
-	traceProvider, err := configTracer(c.String("trace"))
-	if err != nil {
-		return fmt.Errorf("could not initialize tracing: %w", err)
-	}
-	defer traceShutdown(c.Context, traceProvider)
-	tr := otel.Tracer(TRACER_NAME)
-	ctx, span := tr.Start(ctx, c.Command.FullName())
-	defer span.End()
-
+	ctx := c.Context
+	logger := logging.Ctx(ctx)
 	config := wfapi.PlotExecConfig{
 		Recursive: c.Bool("recursive"),
 		FormulaExecConfig: wfapi.FormulaExecConfig{

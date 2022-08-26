@@ -12,12 +12,10 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/logging"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel"
 )
-
-const TRACER_NAME = "pkg/plotexec"
 
 const LOG_TAG_START = "┌─ plot"
 const LOG_TAG = "│  plot"
@@ -68,7 +66,7 @@ func plotInputToFormulaInput(ctx context.Context,
 	plotInput wfapi.PlotInput,
 	config wfapi.PlotExecConfig,
 	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
-	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "plotInputToFormulaInput")
+	ctx, span := tracing.Start(ctx, "plotInputToFormulaInput")
 	defer span.End()
 
 	basis, addr, err := plotInputToFormulaInputSimple(ctx, wsSet, plotInput, config, pipeCtx)
@@ -108,7 +106,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 	plotInput wfapi.PlotInput,
 	config wfapi.PlotExecConfig,
 	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
-	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "plotInputToFormulaInputSimple")
+	ctx, span := tracing.Start(ctx, "plotInputToFormulaInputSimple")
 	defer span.End()
 	logger := logging.Ctx(ctx)
 
@@ -322,7 +320,7 @@ func execProtoformula(ctx context.Context,
 	formulaCtx wfapi.FormulaContext,
 	config wfapi.PlotExecConfig,
 	pipeCtx pipeMap) (wfapi.RunRecord, wfapi.Error) {
-	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "execProtoformula")
+	ctx, span := tracing.Start(ctx, "execProtoformula")
 	defer span.End()
 
 	// create an empty Formula and FormulaContext
@@ -377,7 +375,7 @@ func execProtoformula(ctx context.Context,
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
 func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
-	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "execPlot")
+	ctx, span := tracing.Start(ctx, "execPlot")
 	defer span.End()
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
@@ -404,7 +402,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 	}
 
 	// determine step execution order
-	stepsOrdered, err := OrderSteps(plot)
+	stepsOrdered, err := OrderSteps(ctx, plot)
 	if err != nil {
 		return results, err
 	}
@@ -505,7 +503,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
 func Exec(ctx context.Context, wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
-	ctx, span := otel.Tracer(TRACER_NAME).Start(ctx, "Exec")
+	ctx, span := tracing.Start(ctx, "Exec")
 	defer span.End()
 
 	if plotCapsule.Plot == nil {
