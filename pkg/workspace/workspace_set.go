@@ -14,7 +14,7 @@ import (
 type WorkspaceSet struct {
 	Home  *Workspace
 	Root  *Workspace
-	Stack []*Workspace
+	Stack []*Workspace // the 0'th index is the closest workspace; the next is its parent, and so on.
 }
 
 // Opens a full WorkspaceSet

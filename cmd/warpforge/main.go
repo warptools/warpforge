@@ -59,6 +59,13 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&statusCmdDef,
 		&quickstartCmdDef,
 		&ferkCmdDef,
+		&cli.Command{
+			Name:  "workspace",
+			Usage: "Grouping for subcommands that inspect or affect a whole workspace.",
+			Subcommands: []*cli.Command{
+				&cmdDefWorkspaceInspect,
+			},
+		},
 	}
 	return app
 }
