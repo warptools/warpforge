@@ -42,7 +42,7 @@ func binPath(bin string) (string, error) {
 // root workspace: the first marked root workspace in the stack, or the home workspace if none are marked,
 // home workspace: the workspace at the user's homedir
 func openWorkspaceSet(fsys fs.FS) (workspace.WorkspaceSet, error) {
-	pwd, err := os.Getwd()
+	pwd, err := os.Getwd() // FIXME why are you doing this again?  you almost certainly already did it moments ago.
 	if err != nil {
 		return workspace.WorkspaceSet{}, fmt.Errorf("failed to get working directory: %s", err)
 	}

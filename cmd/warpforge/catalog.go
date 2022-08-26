@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -329,6 +330,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get pwd: %s", err)
 	}
+	pwd = pwd[1:] // Drop leading slash, for use with fs package.
 
 	plot, err := dab.PlotFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Plot))
 	if err != nil {
@@ -339,8 +341,8 @@ func cmdCatalogBundle(c *cli.Context) error {
 
 	catalogPath := filepath.Join(pwd, ".warpforge", "catalog")
 	// create a catalog if it does not exist
-	if _, err = os.Stat(catalogPath); os.IsNotExist(err) {
-		err = os.MkdirAll(catalogPath, 0755)
+	if _, err = fs.Stat(fsys, catalogPath); os.IsNotExist(err) {
+		err = os.MkdirAll("/"+catalogPath, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to create catalog directory: %s", err)
 		}

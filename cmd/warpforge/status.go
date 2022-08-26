@@ -33,6 +33,7 @@ func cmdStatus(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not get current directory")
 	}
+	pwd = pwd[1:] // Drop leading slash, for use with fs package.
 
 	// display version
 	if verbose {
@@ -95,6 +96,10 @@ func cmdStatus(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
+	} else if os.IsNotExist(err) {
+		// fine; it can just not exist.
+	} else {
+		return err
 	}
 
 	if isModule {
@@ -173,20 +178,20 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	// handle special case for pwd
-	fmt.Fprintf(c.App.Writer, "\t%s (pwd", pwd)
+	fmt.Fprintf(c.App.Writer, "\t/%s (pwd", pwd)
 	if isModule {
 		fmt.Fprintf(c.App.Writer, ", module")
 	}
 	// check if it's a workspace
-	if _, err := os.Stat(filepath.Join(pwd, ".warpforge")); !os.IsNotExist(err) {
+	if _, err := fs.Stat(fsys, filepath.Join(pwd, ".warpforge")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", workspace")
 	}
 	// check if it's a root workspace
-	if _, err := os.Stat(filepath.Join(pwd, ".warpforge/root")); !os.IsNotExist(err) {
+	if _, err := fs.Stat(fsys, filepath.Join(pwd, ".warpforge/root")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", root workspace")
 	}
 	// check if it's a git repo
-	if _, err := os.Stat(filepath.Join(pwd, ".git")); !os.IsNotExist(err) {
+	if _, err := fs.Stat(fsys, filepath.Join(pwd, ".git")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", git repo")
 	}
 
@@ -197,7 +202,7 @@ func cmdStatus(c *cli.Context) error {
 		fs, subPath := ws.Path()
 		path := fmt.Sprintf("%s%s", fs, subPath)
 
-		if path == pwd {
+		if path == "/"+pwd {
 			// we handle pwd earlier, ignore
 			continue
 		}

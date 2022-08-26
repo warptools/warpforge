@@ -107,6 +107,7 @@ func cmdRun(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not get current directory")
 		}
+		pwd = pwd[1:] // Drop leading slash, for use with fs package.
 		_, err = execModule(ctx, fsys, config, filepath.Join(pwd, dab.MagicFilename_Module))
 		if err != nil {
 			return err
