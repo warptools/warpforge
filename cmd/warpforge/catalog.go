@@ -661,9 +661,17 @@ func cmdCatalogShow(c *cli.Context) error {
 
 		for ni, itemName := range release.Items.Keys {
 			if ni+1 < len(release.Items.Keys) {
-				fmt.Printf(" %s   ├─ %s:%s:%s\n", chr, mod.Name, releaseName, itemName)
+				if c.Bool("verbose") {
+					fmt.Printf(" %s   ├─ %s:%s:%s (%s)\n", chr, mod.Name, releaseName, itemName, release.Items.Values[itemName].String())
+				} else {
+					fmt.Printf(" %s   ├─ %s:%s:%s\n", chr, mod.Name, releaseName, itemName)
+				}
 			} else {
-				fmt.Printf(" %s   └─ %s:%s:%s\n", chr, mod.Name, releaseName, itemName)
+				if c.Bool("verbose") {
+					fmt.Printf(" %s   └─ %s:%s:%s (%s)\n", chr, mod.Name, releaseName, itemName, release.Items.Values[itemName].String())
+				} else {
+					fmt.Printf(" %s   └─ %s:%s:%s\n", chr, mod.Name, releaseName, itemName)
+				}
 			}
 		}
 	}
