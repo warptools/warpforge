@@ -1,0 +1,9 @@
+{
+	"catalogmirrors.v1": {
+		"byWare": {
+			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": [
+				"https://example.com/this/is/not/a/real/mirror.tgz"
+			]
+		}
+	}
+}

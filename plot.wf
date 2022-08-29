@@ -1,0 +1,10 @@
+{
+	"plot.v1": {
+		"inputs": {
+			"busybox": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
+		},
+		"steps": {
+		},
+		"outputs": {}
+	}
+}
