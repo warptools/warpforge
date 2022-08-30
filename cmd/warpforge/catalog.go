@@ -61,6 +61,11 @@ var catalogCmdDef = cli.Command{
 			Action: cmdCatalogLs,
 		},
 		{
+			Name:   "show",
+			Usage:  "Show the contents of a module",
+			Action: cmdCatalogShow,
+		},
+		{
 			Name:   "bundle",
 			Usage:  "Bundle required catalog items into this project's catalog",
 			Action: cmdCatalogBundle,
@@ -601,6 +606,73 @@ func cmdIngestGitTags(c *cli.Context) error {
 			fmt.Printf("adding item %s:%s:%s \t-> %s\n", catalogRef.ModuleName,
 				catalogRef.ReleaseName, catalogRef.ItemName, wareId)
 
+		}
+	}
+
+	return nil
+}
+
+func cmdCatalogShow(c *cli.Context) error {
+	if c.Args().Len() != 1 {
+		return fmt.Errorf("invalid input. usage: warpforge catalog show [module name]")
+	}
+
+	wsSet, err := openWorkspaceSet()
+	if err != nil {
+		return err
+	}
+
+	catalogName := c.String("name")
+	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
+	}
+
+	searchStr := c.Args().First()
+
+	ref := wfapi.CatalogRef{
+		ModuleName:  wfapi.ModuleName(searchStr),
+		ReleaseName: wfapi.ReleaseName(""),
+		ItemName:    wfapi.ItemLabel(""),
+	}
+
+	mod, err := cat.GetModule(ref)
+	if err != nil {
+		return fmt.Errorf("failed to get module %q: %s", ref.ModuleName, err)
+	}
+
+	if mod == nil {
+		fmt.Printf("module %q not found\n", ref.ModuleName)
+		return nil
+	}
+
+	fmt.Println(mod.Name)
+	for nr, releaseName := range mod.Releases.Keys {
+		var chr string
+		if nr+1 < len(mod.Releases.Keys) {
+			fmt.Printf(" ├─ %s:%s\n", mod.Name, releaseName)
+			chr = "│"
+		} else {
+			fmt.Printf(" └─ %s:%s\n", mod.Name, releaseName)
+			chr = " "
+		}
+		ref.ReleaseName = releaseName
+		release, _ := cat.GetRelease(ref)
+
+		for ni, itemName := range release.Items.Keys {
+			if ni+1 < len(release.Items.Keys) {
+				if c.Bool("verbose") {
+					fmt.Printf(" %s   ├─ %s:%s:%s (%s)\n", chr, mod.Name, releaseName, itemName, release.Items.Values[itemName].String())
+				} else {
+					fmt.Printf(" %s   ├─ %s:%s:%s\n", chr, mod.Name, releaseName, itemName)
+				}
+			} else {
+				if c.Bool("verbose") {
+					fmt.Printf(" %s   └─ %s:%s:%s (%s)\n", chr, mod.Name, releaseName, itemName, release.Items.Values[itemName].String())
+				} else {
+					fmt.Printf(" %s   └─ %s:%s:%s\n", chr, mod.Name, releaseName, itemName)
+				}
+			}
 		}
 	}
 
