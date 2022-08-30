@@ -176,7 +176,7 @@ We'll run this in a filesystem that contains a `formula.json`
     "formula": {
 		"formula.v1": {
 			"inputs": {
-				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+				"/": "ware:tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			},
 			"action": {
 				"exec": {
@@ -205,7 +205,7 @@ The result of this will be a `RunRecord` object printed to stdout:
 
 [testmark]:# (runformula/stdout)
 ```
-{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3WpphQToL6ERGu7aFofXfzn4XW1ASrSkwMmna8GGqSY2n8YqDp432JjVaRBSPQrbUj2", "exitcode": 0, "results": {} } }
+{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3Zz8R3ioVVWZ6o6GocxPKvubAJfv4iQmDH3GCq9UjtDjHtRWrry4DRoEBPvfUEYFx1D", "exitcode": 0, "results": {} } } 
 ```
 
 (Note that we've normalized some of the values in this object for testing purposes.
@@ -508,19 +508,6 @@ Check that `ferk` ran successfully, no outputs are expected.
 ```
 { "runrecord": { "guid": "055a7ca6-4ea8-49d1-8053-e01e05202495", "time": 1648067779, "formulaID": "bafyrgqa3vklfqcqd6pjj6roc6vzny4p2rx4cqnptgo3rgze3qvemajrlpraiutycb2bebfk2lobgcmvaqpdnoip6zsfwooaulqqoraweyln6k", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
 { "plotresults": { "out": "tar:-" } } 
-```
-
-# Catalog Update
-
-The `catalog update` command updates the catalogs from Git. If the default `warpsys.org` catalog is not installed, this command will install it.
-
-[testmark]:# (catalog/then-update/sequence)
-```
-warpforge --quiet catalog update
-```
-
-[testmark]:# (catalog/then-update/stdout)
-```
 ```
 
 # Quickstart
