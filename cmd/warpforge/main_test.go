@@ -80,14 +80,15 @@ func cleanRunRecord(str string) string {
 
 func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+		// override the path to required binaries
+		err := os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
+		err = os.Setenv("HOME", projPath)
+
+		// set up a root workspace in the testmark run directory
 		testmarkWd, err := os.Getwd()
 		if err != nil {
 			return 1, fmt.Errorf("failed to get testmark pwd: %s", err)
 		}
-
-		// override the path to required binaries
-		err = os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
-
 		os.MkdirAll(filepath.Join(testmarkWd, ".warpforge/catalogs/default"), 0755)
 		copyCmd := exec.Command("cp", "--recursive", filepath.Join(projPath, ".warpforge", "catalog"), filepath.Join(testmarkWd, ".warpforge", "catalogs"))
 		copyCmd.Run()
