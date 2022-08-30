@@ -1,0 +1,6 @@
+cache
+catalogs
+runc-root
+memos
+warehouse/*
+!warehouse/4z9/

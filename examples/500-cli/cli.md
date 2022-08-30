@@ -52,7 +52,7 @@ We'll run this in a filesystem that contains a `formula.json`:
     "formula": {
 		"formula.v1": {
 			"inputs": {
-				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+				"/": "ware:tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			},
 			"action": {
 				"exec": {
@@ -69,7 +69,6 @@ We'll run this in a filesystem that contains a `formula.json`:
     "context": {
 		"context.v1": {
 			"warehouses": {
-				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 			}
 		}
     }
@@ -84,7 +83,7 @@ Together with the verbosity and output formatting flags used above, this will al
 	"formula": {
 		"formula.v1": {
 			"inputs": {
-				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+				"/": "ware:tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			},
 			"action": {
 				"exec": {
@@ -100,9 +99,7 @@ Together with the verbosity and output formatting flags used above, this will al
 	},
 	"context": {
 		"context.v1": {
-			"warehouses": {
-				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
-			}
+			"warehouses": {}
 		}
 	}
 }
@@ -196,7 +193,6 @@ We'll run this in a filesystem that contains a `formula.json`
     "context": {
 		"context.v1": {
 			"warehouses": {
-				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
 			}
 		}
     }
@@ -249,13 +245,13 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 {
 	"plot.v1": {
 		"inputs": {
-			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+			"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 		},
 		"steps": {
 			"zero-outer": {
 				"plot": {
 					"inputs": {
-						"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+						"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 					},
 					"steps": {
 						"zero-inner": {
@@ -338,41 +334,42 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 (That's not the smallest plot you could have -- it's actually quite complex,
 and demonstrates multiple steps, including subplots, and how to wire them all up!)
 
-This will also require a catalog entry for the referenced input (`catalog:alpinelinux.org/alpine:v3.15.0:x86_64`).
+This will also require a catalog entry for the referenced input (`catalog:warpsys.org/busybox:v1.35.0:amd64-static`).
 This consists of a `module.json` file at the path of the module name, a `releases/[release name].json` file, and a
 a `mirrors.json` file to show where the ware can be fetched.
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_module.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/warpsys.org/busybox/_module.json)
 ```json
 {
-	"catalogmodule.v1": {
-			"name": "alpinelinux.org/alpine",
-			"releases": {
-					"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
-			},
-			"metadata": {}
-	}
+        "catalogmodule.v1": {
+                "name": "warpsys.org/busybox",
+                "releases": {
+                        "v1.35.0": "zM5K3XDQrBjGiewvGYS5f4pNHfGNM7P6dWJKYeVFq9vtYqzp5GicARaqsS27BCrTEyDT7qb"
+                },
+                "metadata": {}
+        }
 }
 ```
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_releases/v3.15.0.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/warpsys.org/busybox/_releases/v3.15.0.json)
 ```json
 {
-        "releaseName": "v3.15.0",
+        "releaseName": "v1.35.0",
         "items": {
-                "x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+                "amd64-static": "tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
         },
-        "metadata": {}
+        "metadata": {
+        }
 }
 ```
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_mirrors.json)
+[testmark]:# (runmodule/fs/.warpforge/catalog/warpsys.org/busybox/_mirrors.json)
 ```json
 {
 	"catalogmirrors.v1": {
 		"byWare": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
-				"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": [
+				"https://example.com/this/is/not/a/real/mirror.tgz"
 			]
 		}
 	}
@@ -387,10 +384,10 @@ there's only one record in this map.
 
 [testmark]:# (runmodule/stdout)
 ```
-{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "zM5K3WmBs5w8a8gd1NjjPWRg89kNrmj62KFTJrHFfAf7KgEF9vY5q3uRJGekwDP4jNZQw8D", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
-{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "zM5K3Rzuq8RxLBrS6aKdfZaBxXegeDsd8Cb7tRUAvX6N489GCC7ySP3easLccH2v6Fk1jnT", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
+{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "zM5K3RvfmKy9zLfHk1T6kPafmvzAGt9Ls1QYFS4BvWTaCBgxYoJLDkkqP7SD7QWuoRTYw3j", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
+{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "zM5K3Rqj146W38bBjgU8yeJ4i37YtydoZGvpsqaHbNE2akLWfDYp8vi2KAh7vvU3XdUoy12", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
-{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "zM5K3TQvghyrGZf3ptqHEUvcEmmaAPB1cjQYZaoFrESuhLDwp5CfLUaiiuCbW99JAMHeqXG", "exitcode": 0, "results": {} } } 
+{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "zM5K3T8946y1A7Z4ZEuoCizPdDuneUQMqXqyfxXSh93CtK3n6gzgJgz9PMTUzJiexPErUqM", "exitcode": 0, "results": {} } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
@@ -421,91 +418,44 @@ warpforge catalog ls
 
 [testmark]:# (catalog/then-add-tar/sequence)
 ```
-warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.15.0:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
+warpforge catalog --name my-catalog add tar warpsys.org/busybox:v1.35.0:amd64-static file://.warpforge/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
 ```
 
 [testmark]:# (catalog/then-add-tar/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_module.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_releases/v3.15.0.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_mirrors.json
+cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_module.json
+cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_releases/v1.35.0.json
+cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 ```
 
 [testmark]:# (catalog/then-add-tar/then-check/output)
 ```
 {
 	"catalogmodule.v1": {
-		"name": "alpinelinux.org/alpine",
+		"name": "warpsys.org/busybox",
 		"releases": {
-			"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
+			"v1.35.0": "zM5K3Z62CY9X6QkccuptyiC3a1tC32Fh2n1ujF8KH5Fz1BvKqppWJZgQJxEgypvF3pqzhdE"
 		},
 		"metadata": {}
 	}
 }
 {
-	"releaseName": "v3.15.0",
+	"releaseName": "v1.35.0",
 	"items": {
-		"x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+		"amd64-static": "tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 	},
 	"metadata": {}
 }
 {
 	"catalogmirrors.v1": {
 		"byWare": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
-				"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": [
+				"file://.warpforge/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			]
 		}
 	}
 }
 ```
-
-#### git
-
-[testmark]:# (catalog/then-add-git/sequence)
-```
-warpforge catalog --name my-catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
-```
-
-[testmark]:# (catalog/then-add-git/then-check/script)
-```
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_module.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_releases/v1.0.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mirrors.json
-```
-
-[testmark]:# (catalog/then-add-git/then-check/output)
-```
-{
-	"catalogmodule.v1": {
-		"name": "github.com/githubtraining/training-manual",
-		"releases": {
-			"v1.0": "zM5K3W15SFfQZ5uJVdcEDgeHCoGhxLYLHKsMXvmUad4MUZ9raT2ropMsE66FqaeHDsaVWc7"
-		},
-		"metadata": {}
-	}
-}
-{
-	"releaseName": "v1.0",
-	"items": {
-		"src": "git:d5af19cebecb2a162bffcf1994cb87f8c9041ae1"
-	},
-	"metadata": {}
-}
-{
-	"catalogmirrors.v1": {
-		"byModule": {
-			"github.com/githubtraining/training-manual": {
-				"git": [
-					"https://github.com/githubtraining/training-manual"
-				]
-			}
-		}
-	}
-}
-```
-
-
 
 ### Bundle Catalog
 
@@ -522,7 +472,7 @@ Test module that uses a catalog input:
 ```
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 	},
 	"steps": {},
 	"outputs": {}
@@ -537,7 +487,7 @@ warpforge -v catalog bundle module.wf
 
 [testmark]:# (catalog/then-add/then-bundle/stdout)
 ```
-bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
+bundled "warpsys.org/busybox:v1.35.0:amd64-static"
 ```
 
 # Ferk
@@ -545,11 +495,11 @@ bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
 The `ferk` command rapidly spawns a container in interactive mode. If the directory 
 `/out` is created, its contents will be packed into a ware on exit.
 
-Run `ferk` using Alpine Linux as the rootfs and invoke `/bin/echo`.
+Run `ferk` using Busybox as the rootfs and invoke `/bin/echo`.
 
 [testmark]:# (catalog/then-add/then-ferk/sequence)
 ```
-warpforge --json --quiet ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/echo --no-interactive
+warpforge --json --quiet ferk --rootfs catalog:warpsys.org/busybox:v1.35.0:amd64-static --cmd /bin/echo --no-interactive
 ```
 
 Check that `ferk` ran successfully, no outputs are expected.
@@ -562,7 +512,7 @@ Check that `ferk` ran successfully, no outputs are expected.
 
 # Catalog Update
 
-The `catalog update` command updates the catalogs from Git. If the default `min.warpforge.io` catalog is not installed, this command will install it.
+The `catalog update` command updates the catalogs from Git. If the default `warpsys.org` catalog is not installed, this command will install it.
 
 [testmark]:# (catalog/then-update/sequence)
 ```
@@ -597,13 +547,13 @@ warpforge --json run
 [testmark]:# (catalog/then-update/then-quickstart/then-run/stdout)
 ```
 { "log": { "Msg": "inputs:" } } 
-{ "log": { "Msg": "type = catalog ref = catalog:min.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64" } } 
-{ "log": { "Msg": "wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.4-x86_64.tar.gz" } } 
+{ "log": { "Msg": "type = catalog ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static" } } 
+{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = none" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
-{ "log": { "Msg": "ware mount: wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP destPath = /" } } 
+{ "log": { "Msg": "ware mount: wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
 { "log": { "Msg": "packed \"out\": path = /output wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
-{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "zM5K3ZvkKNbGHfn6zGpo7BiKj4Zxy1u3UjG2NQWfDeNiuQtffeeCMJwc2q5snCPTYLFPzXW", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
+{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "zM5K3ZMzLiBwQB93yZ4nFUsVSSgVtNPjpY72hKHxDjc9FRk9KnJSoCvkHFEPWfxARdjaguZ", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
 { "log": { "Msg": "(hello-world) collected output hello-world:out" } } 
 { "log": { "Msg": "(hello-world) complete" } } 
 { "plotresults": { "output": "tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 

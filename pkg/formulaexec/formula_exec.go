@@ -657,10 +657,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 
 	// get the root workspace location
 	var wsPath string
-	path, override := os.LookupEnv("WARPFORGE_HOME")
-	if override {
-		wsPath = path
-	} else if ws != nil {
+	if ws != nil {
 		_, wsPath = ws.Path()
 	} else {
 		return rr, wfapi.ErrorWorkspace("", fmt.Errorf("no root workspace path was provided for formula exec"))

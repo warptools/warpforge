@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -37,8 +39,9 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	qt.Assert(t, err, qt.IsNil)
 	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
 	qt.Assert(t, err, qt.IsNil)
-	// override the home workspace
-	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
+
+	// build an exec function with a pointer to this project's git root
+	execFn := buildExecFn(filepath.Join(pwd, "../../"))
 	qt.Assert(t, err, qt.IsNil)
 
 	if workDir != nil {
@@ -64,10 +67,6 @@ func TestExecFixtures(t *testing.T) {
 	testFile(t, "../../examples/500-cli/cli.md", nil)
 }
 
-func TestQuickStart(t *testing.T) {
-	testFile(t, "../../examples/quick-start.md", nil)
-}
-
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
 func cleanRunRecord(str string) string {
 	// replace guid
@@ -82,12 +81,26 @@ func cleanRunRecord(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func execFn(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
-	err := makeApp(stdin, stdout, stderr).Run(args)
-	if err != nil {
-		return 1, err
+func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
+	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+		testmarkWd, err := os.Getwd()
+		if err != nil {
+			return 1, fmt.Errorf("failed to get testmark pwd: %s", err)
+		}
+
+		os.MkdirAll(filepath.Join(testmarkWd, ".warpforge/catalogs/default"), 0755)
+		copyCmd := exec.Command("cp", "--recursive", filepath.Join(projPath, ".warpforge", "catalog"), filepath.Join(testmarkWd, ".warpforge", "catalogs"))
+		copyCmd.Run()
+		copyCmd = exec.Command("cp", "--recursive", filepath.Join(projPath, ".warpforge", "warehouse"), filepath.Join(testmarkWd, ".warpforge"))
+		copyCmd.Run()
+		os.Create(filepath.Join(testmarkWd, ".warpforge", "root"))
+
+		err = makeApp(stdin, stdout, stderr).Run(args)
+		if err != nil {
+			return 1, err
+		}
+		return 0, nil
 	}
-	return 0, nil
 }
 
 func assertFn(t *testing.T, actual, expect string) {

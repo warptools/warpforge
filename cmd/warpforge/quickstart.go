@@ -19,7 +19,7 @@ var quickstartCmdDef = cli.Command{
 const defaultPlotJson = `{
 	"plot.v1": {
 		"inputs": {
-			"rootfs": "catalog:min.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64"
+			"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 		},
 		"steps": {
 			"hello-world": {
