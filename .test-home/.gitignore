@@ -1,5 +1,0 @@
-.warpforge/warehouse/*
-.warpforge/cache
-.warpforge/catalogs
-.warpforge/runc-root
-!.warpforge/warehouse/4z9/
