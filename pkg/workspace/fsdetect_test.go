@@ -6,6 +6,7 @@ import (
 	"testing/fstest"
 
 	qt "github.com/frankban/quicktest"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 )
 
 // projects out just the paths from a list of workspaces; makes convenient diffables for test results.

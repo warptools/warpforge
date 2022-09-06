@@ -12,6 +12,7 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 
 	"github.com/warpfork/go-testmark"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )

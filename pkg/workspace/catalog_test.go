@@ -5,6 +5,7 @@ import (
 	"testing/fstest"
 
 	qt "github.com/frankban/quicktest"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/wfapi"
 )
 

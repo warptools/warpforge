@@ -13,6 +13,9 @@ Some of the code blocks below are config files and content,
 and each scenario also has one code block which is a script,
 which is exactly what you would execute in a normal shell.
 
+Some of these examples require network connectivity. To run without network,
+use the `-testutil.offline` flag.
+
 ---
 
 FUTURE: this might be a little more readable (and less redundant on fixtures)
@@ -165,15 +168,15 @@ Because it was successfully checked, the output is nothing:
 Excuting a formula is done with the `warpforge run` command.
 When given a formula file, it knows what to do:
 
-[testmark]:# (runformula/sequence)
+[testmark]:# (runformula/net/sequence)
 ```
 warpforge --json --quiet run formula.json
 ```
 
 We'll run this in a filesystem that contains a `formula.json`
-(the same one we used in the check example earlier). However, we've omitted the warehouse here to avoid needing network connectivity for tests. The input will be provided by the test harness:
+(the same one we used in the check example earlier).
 
-[testmark]:# (runformula/fs/formula.json)
+[testmark]:# (runformula/net/fs/formula.json)
 ```
 {
     "formula": {
@@ -196,6 +199,7 @@ We'll run this in a filesystem that contains a `formula.json`
     "context": {
 		"context.v1": {
 			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
     }
@@ -206,7 +210,7 @@ We'll run this in a filesystem that contains a `formula.json`
 
 The result of this will be a `RunRecord` object printed to stdout:
 
-[testmark]:# (runformula/stdout)
+[testmark]:# (runformula/net/stdout)
 ```
 { "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3Zz8R3ioVVWZ6o6GocxPKvubAJfv4iQmDH3GCq9UjtDjHtRWrry4DRoEBPvfUEYFx1D", "exitcode": 0, "results": {} } } 
 ```
@@ -461,16 +465,20 @@ cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 ```
 
 #### git
+
+[testmark]:# (catalog-git/net/sequence)
 ```
-warpforge catalog --name my-catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
+warpforge catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
 ```
 
+[testmark]:# (catalog-git/net/then-check/script)
 ```
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_module.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_releases/v1.0.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mirrors.json
+cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_module.json
+cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_releases/v1.0.json
+cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_mirrors.json
 ```
 
+[testmark]:# (catalog-git/net/then-check/output)
 ```
 {
 	"catalogmodule.v1": {

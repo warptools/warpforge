@@ -13,6 +13,7 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
+	"github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/pkg/workspace"
 )
 
@@ -49,6 +50,21 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
 	for _, dir := range doc.DirEnt.ChildrenList {
+		if _, hasNetTests := dir.Children["net"]; hasNetTests {
+			if *testutil.FlagOffline {
+				t.Log("skipping test", dir.Name, "due to offline flag")
+				continue
+			}
+			// we want to run the contents of the `/net` dir
+			t.Run(dir.Name, func(t *testing.T) {
+				test := testexec.Tester{
+					ExecFn:   execFn,
+					Patches:  &patches,
+					AssertFn: assertFn,
+				}
+				test.Test(t, *dir.Children["net"])
+			})
+		}
 		t.Run(dir.Name, func(t *testing.T) {
 			test := testexec.Tester{
 				ExecFn:   execFn,
@@ -82,7 +98,6 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
 		// override the path to required binaries
 		err := os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
-		err = os.Setenv("HOME", projPath)
 
 		// set up a root workspace in the testmark run directory
 		testmarkWd, err := os.Getwd()

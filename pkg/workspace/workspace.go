@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
