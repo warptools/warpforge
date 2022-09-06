@@ -162,10 +162,10 @@ All tests can be executed using:
 make test
 ```
 
-To skip tests that require network access, use the `-testutil.offline` flag:
+To skip tests that require network access, use the `-offline` flag:
 
 ```
-go test ./... -testutil.offline
+go test ./... -offline
 ```
 
 License

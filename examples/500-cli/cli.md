@@ -14,7 +14,7 @@ and each scenario also has one code block which is a script,
 which is exactly what you would execute in a normal shell.
 
 Some of these examples require network connectivity. To run without network,
-use the `-testutil.offline` flag.
+use the `-offline` flag when running tests.
 
 ---
 
