@@ -40,6 +40,7 @@ interpreter (`sh`, `bash`, `zsh`, etc...).
 	"context": {
 		"context.v1": {
 			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
 	}

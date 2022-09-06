@@ -39,7 +39,9 @@ This formula echos a value to stdout.
 	},
 	"context": {
 		"context.v1": {
-			"warehouses": {}
+			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+			}
 		}
 	}
 }
@@ -87,7 +89,9 @@ Note the RunRecord now contains a `results` value which includes the output.
 	},
 	"context": {
 		"context.v1": {
-			"warehouses": {}
+			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+			}
 		}
 	}
 }
@@ -135,7 +139,9 @@ TODO: the mount type is set to `type` here, since mount types currently have no 
 	},
 	"context": {
 		"context.v1": {
-			"warehouses": {}
+			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+			}
 		}
 	}
 }
@@ -184,6 +190,7 @@ This formula uses an input with filters.
 	"context": {
 		"context.v1": {
 			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
 	}
@@ -227,6 +234,7 @@ This formula uses an input with filters.
 	"context": {
 		"context.v1": {
 			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
 	}

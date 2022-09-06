@@ -69,6 +69,7 @@ We'll run this in a filesystem that contains a `formula.json`:
     "context": {
 		"context.v1": {
 			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
     }
@@ -99,7 +100,9 @@ Together with the verbosity and output formatting flags used above, this will al
 	},
 	"context": {
 		"context.v1": {
-			"warehouses": {}
+			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+			}
 		}
 	}
 }
@@ -193,6 +196,7 @@ We'll run this in a filesystem that contains a `formula.json`
     "context": {
 		"context.v1": {
 			"warehouses": {
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
     }
