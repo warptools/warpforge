@@ -457,6 +457,47 @@ cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 }
 ```
 
+#### git
+```
+warpforge catalog --name my-catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
+```
+
+```
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_module.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_releases/v1.0.json
+cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mirrors.json
+```
+
+```
+{
+	"catalogmodule.v1": {
+		"name": "github.com/githubtraining/training-manual",
+		"releases": {
+			"v1.0": "zM5K3W15SFfQZ5uJVdcEDgeHCoGhxLYLHKsMXvmUad4MUZ9raT2ropMsE66FqaeHDsaVWc7"
+		},
+		"metadata": {}
+	}
+}
+{
+	"releaseName": "v1.0",
+	"items": {
+		"src": "git:d5af19cebecb2a162bffcf1994cb87f8c9041ae1"
+	},
+	"metadata": {}
+}
+{
+	"catalogmirrors.v1": {
+		"byModule": {
+			"github.com/githubtraining/training-manual": {
+				"git": [
+					"https://github.com/githubtraining/training-manual"
+				]
+			}
+		}
+	}
+}
+```
+
 ### Bundle Catalog
 
 Test module that uses a catalog input:
