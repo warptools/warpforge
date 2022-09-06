@@ -171,7 +171,7 @@ warpforge --json --quiet run formula.json
 ```
 
 We'll run this in a filesystem that contains a `formula.json`
-(the same one we used in the check example earlier):
+(the same one we used in the check example earlier). However, we've omitted the warehouse here to avoid needing network connectivity for tests. The input will be provided by the test harness:
 
 [testmark]:# (runformula/fs/formula.json)
 ```
@@ -196,7 +196,6 @@ We'll run this in a filesystem that contains a `formula.json`
     "context": {
 		"context.v1": {
 			"warehouses": {
-				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
     }
