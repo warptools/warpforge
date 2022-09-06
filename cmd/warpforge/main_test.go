@@ -50,28 +50,24 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
 	for _, dir := range doc.DirEnt.ChildrenList {
+		testName := dir.Name
+		testDir := dir
 		if _, hasNetTests := dir.Children["net"]; hasNetTests {
 			if *testutil.FlagOffline {
 				t.Log("skipping test", dir.Name, "due to offline flag")
 				continue
 			}
 			// we want to run the contents of the `/net` dir
-			t.Run(dir.Name, func(t *testing.T) {
-				test := testexec.Tester{
-					ExecFn:   execFn,
-					Patches:  &patches,
-					AssertFn: assertFn,
-				}
-				test.Test(t, *dir.Children["net"])
-			})
+			testName = dir.Name
+			testDir = *dir.Children["net"]
 		}
-		t.Run(dir.Name, func(t *testing.T) {
+		t.Run(testName, func(t *testing.T) {
 			test := testexec.Tester{
 				ExecFn:   execFn,
 				Patches:  &patches,
 				AssertFn: assertFn,
 			}
-			test.Test(t, dir)
+			test.Test(t, testDir)
 		})
 	}
 }
