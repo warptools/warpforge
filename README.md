@@ -125,22 +125,22 @@ warpforge run
 ┌─ plot  
 │  plot  inputs:
 │  plot         type = catalog
-│  plot                 ref = catalog:alpinelinux.org/alpine:v3.15.0:x86_64
-│  plot                 wareId = tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN
-│  plot                 wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
+│  plot                 ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static
+│  plot                 wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
+│  plot                 wareAddr = https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
 ├─ plot  (hello-world) evaluating protoformula
 │ ┌─ formula  
-│ │  formula  ware mount:       wareId = tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN destPath = /
+│ │  formula  ware mount:       wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /
 │ │  formula  executing script  interpreter = /bin/sh
 │ │ ┌─ output   
 │ │ │  output   hello world
 │ │ └─ output   
 │ │  formula  packed "out":     path = /output  wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
 │ │  formula  RunRecord:
-│ │  formula    GUID = 4f09fa04-cf02-4ad6-a2db-c0cb8b1aaf1d
-│ │  formula    FormulaID = bafyrgqb55m6gejlpmbta3wyfvdqtxco3k7ajzyjrnoytqgxhxsj4gvgz33b6bqrhv6f4mbejnsdhekx6wvus6rrv4hmblu5r2nrt5jtlygvg6
+│ │  formula    GUID = 67439882-1411-4d4d-8510-9d73cd72b38e
+│ │  formula    FormulaID = zM5K3ZMzLiBwQB93yZ4nFUsVSSgVtNPjpY72hKHxDjc9FRk9KnJSoCvkHFEPWfxARdjaguZ
 │ │  formula    Exitcode = 0
-│ │  formula    Time = 1642008026
+│ │  formula    Time = 1662490569
 │ │  formula    Results:
 │ │  formula            out: tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
 │ └─ formula  
@@ -148,8 +148,8 @@ warpforge run
 ├─ plot  (hello-world) complete
 │  plot  
 │  plot  outputs:
-│  plot         output -> tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
-└─ plot  
+│  plot         output: tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA
+└─ plot
 ```
 
 
@@ -162,6 +162,11 @@ All tests can be executed using:
 make test
 ```
 
+To skip tests that require network access, use the `-testutil.offline` flag:
+
+```
+go test ./... -testutil.offline
+```
 
 License
 -------
