@@ -223,14 +223,14 @@ When you run this command yourself, the time recorded in the runrecord will of c
 Excuting a module or a plot looks almost exactly the same as executing a formula --
 it's still just the `warpforge run` command, which will figure out what to do with whatever you give it:
 
-[testmark]:# (runmodule/sequence)
+[testmark]:# (base-workspace/then-runmodule/sequence)
 ```
 warpforge --json --quiet run module.wf
 ```
 
 A module is declared with two files.  One is the `module.wf` file:
 
-[testmark]:# (runmodule/fs/module.wf)
+[testmark]:# (base-workspace/then-runmodule/fs/module.wf)
 ```
 {
 	"module.v1": {
@@ -247,7 +247,7 @@ Most of the data is in the plot, which is another file.
 
 Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 
-[testmark]:# (runmodule/fs/plot.wf)
+[testmark]:# (base-workspace/then-runmodule/fs/plot.wf)
 ```
 {
 	"plot.v1": {
@@ -345,43 +345,7 @@ This will also require a catalog entry for the referenced input (`catalog:warpsy
 This consists of a `module.json` file at the path of the module name, a `releases/[release name].json` file, and a
 a `mirrors.json` file to show where the ware can be fetched.
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/warpsys.org/busybox/_module.json)
-```json
-{
-        "catalogmodule.v1": {
-                "name": "warpsys.org/busybox",
-                "releases": {
-                        "v1.35.0": "zM5K3XDQrBjGiewvGYS5f4pNHfGNM7P6dWJKYeVFq9vtYqzp5GicARaqsS27BCrTEyDT7qb"
-                },
-                "metadata": {}
-        }
-}
-```
-
-[testmark]:# (runmodule/fs/.warpforge/catalog/warpsys.org/busybox/_releases/v3.15.0.json)
-```json
-{
-        "releaseName": "v1.35.0",
-        "items": {
-                "amd64-static": "tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
-        },
-        "metadata": {
-        }
-}
-```
-
-[testmark]:# (runmodule/fs/.warpforge/catalog/warpsys.org/busybox/_mirrors.json)
-```json
-{
-	"catalogmirrors.v1": {
-		"byWare": {
-			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": [
-				"https://example.com/this/is/not/a/real/mirror.tgz"
-			]
-		}
-	}
-}
-```
+These items are setup at the end of this file.
 
 The output for evaluating a module is a bit terser: it only emits the results object,
 which has keys matching the outputs that the plot labels for extraction.
@@ -389,7 +353,7 @@ Because we only had one output named for export at the end of the module,
 there's only one record in this map.
 (Future: this will probably change :) and we might expect to see more progress details here as well.)
 
-[testmark]:# (runmodule/stdout)
+[testmark]:# (base-workspace/then-runmodule/stdout)
 ```
 { "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "zM5K3RvfmKy9zLfHk1T6kPafmvzAGt9Ls1QYFS4BvWTaCBgxYoJLDkkqP7SD7QWuoRTYw3j", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
 { "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "zM5K3Rqj146W38bBjgU8yeJ4i37YtydoZGvpsqaHbNE2akLWfDYp8vi2KAh7vvU3XdUoy12", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
@@ -423,19 +387,19 @@ warpforge catalog ls
 
 #### tar
 
-[testmark]:# (catalog/then-add-tar/sequence)
+[testmark]:# (catalog/net/then-add-tar/sequence)
 ```
-warpforge catalog --name my-catalog add tar warpsys.org/busybox:v1.35.0:amd64-static file://.warpforge/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
+warpforge catalog --name my-catalog add tar warpsys.org/busybox:v1.35.0:amd64-static https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
 ```
 
-[testmark]:# (catalog/then-add-tar/then-check/script)
+[testmark]:# (catalog/net/then-add-tar/then-check/script)
 ```
 cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_module.json
 cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_releases/v1.35.0.json
 cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 ```
 
-[testmark]:# (catalog/then-add-tar/then-check/output)
+[testmark]:# (catalog/net/then-add-tar/then-check/output)
 ```
 {
 	"catalogmodule.v1": {
@@ -465,6 +429,11 @@ cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 ```
 
 #### git
+
+[testmark]:# (catalog-git/net/fs/.warpforge/root)
+```
+this file marks the workspace as a root workspace
+```
 
 [testmark]:# (catalog-git/net/sequence)
 ```
@@ -596,4 +565,57 @@ warpforge --json run
 { "log": { "Msg": "(hello-world) collected output hello-world:out" } } 
 { "log": { "Msg": "(hello-world) complete" } } 
 { "plotresults": { "output": "tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
+```
+
+## Catalog
+
+These tests require a workspace with a catalog entry,  which is setup here:
+[testmark]:# (base-workspace/fs/.warpforge/catalogs/test/warpsys.org/busybox/_module.json)
+```
+{
+	"catalogmodule.v1": {
+		"name": "warpsys.org/busybox",
+		"releases": {
+			"v1.35.0": "zM5K3Z62CY9X6QkccuptyiC3a1tC32Fh2n1ujF8KH5Fz1BvKqppWJZgQJxEgypvF3pqzhdE"
+		},
+		"metadata": {}
+	}
+}
+```
+
+[testmark]:# (base-workspace/fs/.warpforge/catalogs/test/warpsys.org/busybox/_mirrors.json)
+```json
+{
+	"catalogmirrors.v1": {
+		"byWare": {
+		}
+	}
+}
+```
+
+[testmark]:# (base-workspace/fs/.warpforge/catalogs/test/warpsys.org/busybox/_releases/v1.35.0.json)
+```
+{
+	"releaseName": "v1.35.0",
+	"items": {
+		"amd64-static": "tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+	},
+	"metadata": {}
+}
+```
+
+[testmark]:# (base-workspace/fs/.warpforge/root)
+```
+this file marks the workspace as a root workspace
+```
+
+
+
+[testmark]:# (base-workspace/script)
+```
+# no-op -- this is required to ensure the tests actually run.
+```
+
+[testmark]:# (base-workspace/stdout)
+```
 ```

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -94,18 +92,14 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
 		// override the path to required binaries
 		err := os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
-
-		// set up a root workspace in the testmark run directory
-		testmarkWd, err := os.Getwd()
 		if err != nil {
-			return 1, fmt.Errorf("failed to get testmark pwd: %s", err)
+			panic("failed to set WARPFORGE_PATH")
 		}
-		os.MkdirAll(filepath.Join(testmarkWd, ".warpforge/catalogs/default"), 0755)
-		copyCmd := exec.Command("cp", "--recursive", filepath.Join(projPath, ".warpforge", "catalog"), filepath.Join(testmarkWd, ".warpforge", "catalogs"))
-		copyCmd.Run()
-		copyCmd = exec.Command("cp", "--recursive", filepath.Join(projPath, ".warpforge", "warehouse"), filepath.Join(testmarkWd, ".warpforge"))
-		copyCmd.Run()
-		os.Create(filepath.Join(testmarkWd, ".warpforge", "root"))
+		// use this project's warehouse as the warehouse for tests
+		err = os.Setenv("WARPFORGE_WAREHOUSE", filepath.Join(projPath, ".warpforge", "warehouse"))
+		if err != nil {
+			panic("failed to set WARPFORGE_WAREHOUSE")
+		}
 
 		err = makeApp(stdin, stdout, stderr).Run(args)
 		if err != nil {

@@ -227,6 +227,19 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 		Options:     []string{"rbind"},
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfMount)
+
+	// check if the rio warehouse location has been overridden
+	// if so, mount it to the expected warehouse path
+	warehouseOverridePath := os.Getenv("WARPFORGE_WAREHOUSE")
+	if warehouseOverridePath != "" {
+		wfWarehouseMount := specs.Mount{
+			Source:      warehouseOverridePath,
+			Destination: containerWarehousePath(),
+			Type:        "none",
+			Options:     []string{"rbind"},
+		}
+		rc.spec.Mounts = append(rc.spec.Mounts, wfWarehouseMount)
+	}
 	wfBinMount := specs.Mount{
 		Source:      binPath,
 		Destination: containerBinPath(),
