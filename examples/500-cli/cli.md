@@ -13,6 +13,9 @@ Some of the code blocks below are config files and content,
 and each scenario also has one code block which is a script,
 which is exactly what you would execute in a normal shell.
 
+Some of these examples require network connectivity. To run without network,
+use the `-offline` flag when running tests.
+
 ---
 
 FUTURE: this might be a little more readable (and less redundant on fixtures)
@@ -52,7 +55,7 @@ We'll run this in a filesystem that contains a `formula.json`:
     "formula": {
 		"formula.v1": {
 			"inputs": {
-				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+				"/": "ware:tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			},
 			"action": {
 				"exec": {
@@ -69,7 +72,7 @@ We'll run this in a filesystem that contains a `formula.json`:
     "context": {
 		"context.v1": {
 			"warehouses": {
-				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
     }
@@ -84,7 +87,7 @@ Together with the verbosity and output formatting flags used above, this will al
 	"formula": {
 		"formula.v1": {
 			"inputs": {
-				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+				"/": "ware:tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			},
 			"action": {
 				"exec": {
@@ -101,7 +104,7 @@ Together with the verbosity and output formatting flags used above, this will al
 	"context": {
 		"context.v1": {
 			"warehouses": {
-				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
 	}
@@ -165,21 +168,21 @@ Because it was successfully checked, the output is nothing:
 Excuting a formula is done with the `warpforge run` command.
 When given a formula file, it knows what to do:
 
-[testmark]:# (runformula/sequence)
+[testmark]:# (runformula/net/sequence)
 ```
 warpforge --json --quiet run formula.json
 ```
 
 We'll run this in a filesystem that contains a `formula.json`
-(the same one we used in the check example earlier):
+(the same one we used in the check example earlier).
 
-[testmark]:# (runformula/fs/formula.json)
+[testmark]:# (runformula/net/fs/formula.json)
 ```
 {
     "formula": {
 		"formula.v1": {
 			"inputs": {
-				"/": "ware:tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+				"/": "ware:tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			},
 			"action": {
 				"exec": {
@@ -196,7 +199,7 @@ We'll run this in a filesystem that contains a `formula.json`
     "context": {
 		"context.v1": {
 			"warehouses": {
-				"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+				"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": "https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			}
 		}
     }
@@ -207,9 +210,9 @@ We'll run this in a filesystem that contains a `formula.json`
 
 The result of this will be a `RunRecord` object printed to stdout:
 
-[testmark]:# (runformula/stdout)
+[testmark]:# (runformula/net/stdout)
 ```
-{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3WpphQToL6ERGu7aFofXfzn4XW1ASrSkwMmna8GGqSY2n8YqDp432JjVaRBSPQrbUj2", "exitcode": 0, "results": {} } }
+{ "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3Zz8R3ioVVWZ6o6GocxPKvubAJfv4iQmDH3GCq9UjtDjHtRWrry4DRoEBPvfUEYFx1D", "exitcode": 0, "results": {} } } 
 ```
 
 (Note that we've normalized some of the values in this object for testing purposes.
@@ -220,14 +223,14 @@ When you run this command yourself, the time recorded in the runrecord will of c
 Excuting a module or a plot looks almost exactly the same as executing a formula --
 it's still just the `warpforge run` command, which will figure out what to do with whatever you give it:
 
-[testmark]:# (runmodule/sequence)
+[testmark]:# (base-workspace/then-runmodule/sequence)
 ```
 warpforge --json --quiet run module.wf
 ```
 
 A module is declared with two files.  One is the `module.wf` file:
 
-[testmark]:# (runmodule/fs/module.wf)
+[testmark]:# (base-workspace/then-runmodule/fs/module.wf)
 ```
 {
 	"module.v1": {
@@ -244,18 +247,18 @@ Most of the data is in the plot, which is another file.
 
 Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 
-[testmark]:# (runmodule/fs/plot.wf)
+[testmark]:# (base-workspace/then-runmodule/fs/plot.wf)
 ```
 {
 	"plot.v1": {
 		"inputs": {
-			"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+			"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 		},
 		"steps": {
 			"zero-outer": {
 				"plot": {
 					"inputs": {
-						"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+						"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 					},
 					"steps": {
 						"zero-inner": {
@@ -338,46 +341,11 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 (That's not the smallest plot you could have -- it's actually quite complex,
 and demonstrates multiple steps, including subplots, and how to wire them all up!)
 
-This will also require a catalog entry for the referenced input (`catalog:alpinelinux.org/alpine:v3.15.0:x86_64`).
+This will also require a catalog entry for the referenced input (`catalog:warpsys.org/busybox:v1.35.0:amd64-static`).
 This consists of a `module.json` file at the path of the module name, a `releases/[release name].json` file, and a
 a `mirrors.json` file to show where the ware can be fetched.
 
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_module.json)
-```json
-{
-	"catalogmodule.v1": {
-			"name": "alpinelinux.org/alpine",
-			"releases": {
-					"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
-			},
-			"metadata": {}
-	}
-}
-```
-
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_releases/v3.15.0.json)
-```json
-{
-        "releaseName": "v3.15.0",
-        "items": {
-                "x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
-        },
-        "metadata": {}
-}
-```
-
-[testmark]:# (runmodule/fs/.warpforge/catalog/alpinelinux.org/alpine/_mirrors.json)
-```json
-{
-	"catalogmirrors.v1": {
-		"byWare": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
-				"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
-			]
-		}
-	}
-}
-```
+These items are setup at the end of this file.
 
 The output for evaluating a module is a bit terser: it only emits the results object,
 which has keys matching the outputs that the plot labels for extraction.
@@ -385,12 +353,12 @@ Because we only had one output named for export at the end of the module,
 there's only one record in this map.
 (Future: this will probably change :) and we might expect to see more progress details here as well.)
 
-[testmark]:# (runmodule/stdout)
+[testmark]:# (base-workspace/then-runmodule/stdout)
 ```
-{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "zM5K3WmBs5w8a8gd1NjjPWRg89kNrmj62KFTJrHFfAf7KgEF9vY5q3uRJGekwDP4jNZQw8D", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
-{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "zM5K3Rzuq8RxLBrS6aKdfZaBxXegeDsd8Cb7tRUAvX6N489GCC7ySP3easLccH2v6Fk1jnT", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
+{ "runrecord": { "guid": "fb16d767-266a-4fc2-a4a2-b59105c1b3e7", "time": 1648067390, "formulaID": "zM5K3RvfmKy9zLfHk1T6kPafmvzAGt9Ls1QYFS4BvWTaCBgxYoJLDkkqP7SD7QWuoRTYw3j", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
+{ "runrecord": { "guid": "16531b2e-6087-4ecb-b48d-a377d4dace90", "time": 1648067390, "formulaID": "zM5K3Rqj146W38bBjgU8yeJ4i37YtydoZGvpsqaHbNE2akLWfDYp8vi2KAh7vvU3XdUoy12", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
-{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "zM5K3TQvghyrGZf3ptqHEUvcEmmaAPB1cjQYZaoFrESuhLDwp5CfLUaiiuCbW99JAMHeqXG", "exitcode": 0, "results": {} } } 
+{ "runrecord": { "guid": "10941145-2d3e-44f9-ac0c-3dd2f6b6773c", "time": 1648067391, "formulaID": "zM5K3T8946y1A7Z4ZEuoCizPdDuneUQMqXqyfxXSh93CtK3n6gzgJgz9PMTUzJiexPErUqM", "exitcode": 0, "results": {} } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
@@ -419,41 +387,41 @@ warpforge catalog ls
 
 #### tar
 
-[testmark]:# (catalog/then-add-tar/sequence)
+[testmark]:# (catalog/net/then-add-tar/sequence)
 ```
-warpforge catalog --name my-catalog add tar alpinelinux.org/alpine:v3.15.0:x86_64 https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
-```
-
-[testmark]:# (catalog/then-add-tar/then-check/script)
-```
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_module.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_releases/v3.15.0.json
-cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_mirrors.json
+warpforge catalog --name my-catalog add tar warpsys.org/busybox:v1.35.0:amd64-static https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
 ```
 
-[testmark]:# (catalog/then-add-tar/then-check/output)
+[testmark]:# (catalog/net/then-add-tar/then-check/script)
+```
+cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_module.json
+cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_releases/v1.35.0.json
+cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
+```
+
+[testmark]:# (catalog/net/then-add-tar/then-check/output)
 ```
 {
 	"catalogmodule.v1": {
-		"name": "alpinelinux.org/alpine",
+		"name": "warpsys.org/busybox",
 		"releases": {
-			"v3.15.0": "zM5K3Skrij8UUcQM7jGuwk35okUEg3qpc8CT38zrdQP7xTesb6we5VThECimvJMt5qwd6gc"
+			"v1.35.0": "zM5K3Z62CY9X6QkccuptyiC3a1tC32Fh2n1ujF8KH5Fz1BvKqppWJZgQJxEgypvF3pqzhdE"
 		},
 		"metadata": {}
 	}
 }
 {
-	"releaseName": "v3.15.0",
+	"releaseName": "v1.35.0",
 	"items": {
-		"x86_64": "tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN"
+		"amd64-static": "tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 	},
 	"metadata": {}
 }
 {
 	"catalogmirrors.v1": {
 		"byWare": {
-			"tar:57j2Ee9HEtDxRLE6uHA1xvmNB2LgqL3HeT5pCXr7EcXkjcoYiGHSBkFyKqQuHFyGPN": [
-				"https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz"
+			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": [
+				"file://.warpforge/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			]
 		}
 	}
@@ -462,19 +430,24 @@ cat .warpforge/catalogs/my-catalog/alpinelinux.org/alpine/_mirrors.json
 
 #### git
 
-[testmark]:# (catalog/then-add-git/sequence)
+[testmark]:# (catalog-git/net/fs/.warpforge/root)
 ```
-warpforge catalog --name my-catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
-```
-
-[testmark]:# (catalog/then-add-git/then-check/script)
-```
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_module.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_releases/v1.0.json
-cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mirrors.json
+this file marks the workspace as a root workspace
 ```
 
-[testmark]:# (catalog/then-add-git/then-check/output)
+[testmark]:# (catalog-git/net/sequence)
+```
+warpforge catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
+```
+
+[testmark]:# (catalog-git/net/then-check/script)
+```
+cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_module.json
+cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_releases/v1.0.json
+cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_mirrors.json
+```
+
+[testmark]:# (catalog-git/net/then-check/output)
 ```
 {
 	"catalogmodule.v1": {
@@ -505,8 +478,6 @@ cat .warpforge/catalogs/my-catalog/github.com/githubtraining/training-manual/_mi
 }
 ```
 
-
-
 ### Bundle Catalog
 
 Test module that uses a catalog input:
@@ -522,7 +493,7 @@ Test module that uses a catalog input:
 ```
 {
 	"inputs": {
-		"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+		"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 	},
 	"steps": {},
 	"outputs": {}
@@ -537,7 +508,7 @@ warpforge -v catalog bundle module.wf
 
 [testmark]:# (catalog/then-add/then-bundle/stdout)
 ```
-bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
+bundled "warpsys.org/busybox:v1.35.0:amd64-static"
 ```
 
 # Ferk
@@ -545,11 +516,11 @@ bundled "alpinelinux.org/alpine:v3.15.0:x86_64"
 The `ferk` command rapidly spawns a container in interactive mode. If the directory 
 `/out` is created, its contents will be packed into a ware on exit.
 
-Run `ferk` using Alpine Linux as the rootfs and invoke `/bin/echo`.
+Run `ferk` using Busybox as the rootfs and invoke `/bin/echo`.
 
 [testmark]:# (catalog/then-add/then-ferk/sequence)
 ```
-warpforge --json --quiet ferk --rootfs catalog:alpinelinux.org/alpine:v3.15.0:x86_64 --cmd /bin/echo --no-interactive
+warpforge --json --quiet ferk --rootfs catalog:warpsys.org/busybox:v1.35.0:amd64-static --cmd /bin/echo --no-interactive
 ```
 
 Check that `ferk` ran successfully, no outputs are expected.
@@ -558,19 +529,6 @@ Check that `ferk` ran successfully, no outputs are expected.
 ```
 { "runrecord": { "guid": "055a7ca6-4ea8-49d1-8053-e01e05202495", "time": 1648067779, "formulaID": "bafyrgqa3vklfqcqd6pjj6roc6vzny4p2rx4cqnptgo3rgze3qvemajrlpraiutycb2bebfk2lobgcmvaqpdnoip6zsfwooaulqqoraweyln6k", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
 { "plotresults": { "out": "tar:-" } } 
-```
-
-# Catalog Update
-
-The `catalog update` command updates the catalogs from Git. If the default `min.warpforge.io` catalog is not installed, this command will install it.
-
-[testmark]:# (catalog/then-update/sequence)
-```
-warpforge --quiet catalog update
-```
-
-[testmark]:# (catalog/then-update/stdout)
-```
 ```
 
 # Quickstart
@@ -597,14 +555,67 @@ warpforge --json run
 [testmark]:# (catalog/then-update/then-quickstart/then-run/stdout)
 ```
 { "log": { "Msg": "inputs:" } } 
-{ "log": { "Msg": "type = catalog ref = catalog:min.warpforge.io/alpinelinux/rootfs:v3.15.4:amd64" } } 
-{ "log": { "Msg": "wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP wareAddr = https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.4-x86_64.tar.gz" } } 
+{ "log": { "Msg": "type = catalog ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static" } } 
+{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = none" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
-{ "log": { "Msg": "ware mount: wareId = tar:5tYLAQmLw9K5Q1puyxrkyKF4FAVNTGgZqWTPSZXC3oxrzqsKRKtDi3q17E7XwbmnkP destPath = /" } } 
+{ "log": { "Msg": "ware mount: wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
 { "log": { "Msg": "packed \"out\": path = /output wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
-{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "zM5K3ZvkKNbGHfn6zGpo7BiKj4Zxy1u3UjG2NQWfDeNiuQtffeeCMJwc2q5snCPTYLFPzXW", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
+{ "runrecord": { "guid": "755c9be7-ca53-4d92-a600-8bcb25fee985", "time": 1651158797, "formulaID": "zM5K3ZMzLiBwQB93yZ4nFUsVSSgVtNPjpY72hKHxDjc9FRk9KnJSoCvkHFEPWfxARdjaguZ", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
 { "log": { "Msg": "(hello-world) collected output hello-world:out" } } 
 { "log": { "Msg": "(hello-world) complete" } } 
 { "plotresults": { "output": "tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
+```
+
+## Catalog
+
+These tests require a workspace with a catalog entry,  which is setup here:
+[testmark]:# (base-workspace/fs/.warpforge/catalogs/test/warpsys.org/busybox/_module.json)
+```
+{
+	"catalogmodule.v1": {
+		"name": "warpsys.org/busybox",
+		"releases": {
+			"v1.35.0": "zM5K3Z62CY9X6QkccuptyiC3a1tC32Fh2n1ujF8KH5Fz1BvKqppWJZgQJxEgypvF3pqzhdE"
+		},
+		"metadata": {}
+	}
+}
+```
+
+[testmark]:# (base-workspace/fs/.warpforge/catalogs/test/warpsys.org/busybox/_mirrors.json)
+```json
+{
+	"catalogmirrors.v1": {
+		"byWare": {
+		}
+	}
+}
+```
+
+[testmark]:# (base-workspace/fs/.warpforge/catalogs/test/warpsys.org/busybox/_releases/v1.35.0.json)
+```
+{
+	"releaseName": "v1.35.0",
+	"items": {
+		"amd64-static": "tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+	},
+	"metadata": {}
+}
+```
+
+[testmark]:# (base-workspace/fs/.warpforge/root)
+```
+this file marks the workspace as a root workspace
+```
+
+
+
+[testmark]:# (base-workspace/script)
+```
+# no-op -- this is required to ensure the tests actually run.
+```
+
+[testmark]:# (base-workspace/stdout)
+```
 ```

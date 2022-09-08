@@ -227,6 +227,19 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 		Options:     []string{"rbind"},
 	}
 	rc.spec.Mounts = append(rc.spec.Mounts, wfMount)
+
+	// check if the rio warehouse location has been overridden
+	// if so, mount it to the expected warehouse path
+	warehouseOverridePath := os.Getenv("WARPFORGE_WAREHOUSE")
+	if warehouseOverridePath != "" {
+		wfWarehouseMount := specs.Mount{
+			Source:      warehouseOverridePath,
+			Destination: containerWarehousePath(),
+			Type:        "none",
+			Options:     []string{"rbind"},
+		}
+		rc.spec.Mounts = append(rc.spec.Mounts, wfWarehouseMount)
+	}
 	wfBinMount := specs.Mount{
 		Source:      binPath,
 		Destination: containerBinPath(),
@@ -657,10 +670,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 
 	// get the root workspace location
 	var wsPath string
-	path, override := os.LookupEnv("WARPFORGE_HOME")
-	if override {
-		wsPath = path
-	} else if ws != nil {
+	if ws != nil {
 		_, wsPath = ws.Path()
 	} else {
 		return rr, wfapi.ErrorWorkspace("", fmt.Errorf("no root workspace path was provided for formula exec"))

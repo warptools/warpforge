@@ -9,6 +9,7 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/warpfork/go-testmark"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 )
 
 func TestPlotParseFixtures(t *testing.T) {

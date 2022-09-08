@@ -1,3 +1,4 @@
 .gopath/*
 .vscode/*
-.warpforge/memos
+.warpforge/*
+!.warpforge/catalog

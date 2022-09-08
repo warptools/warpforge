@@ -5,6 +5,7 @@ import (
 	"testing/fstest"
 
 	qt "github.com/frankban/quicktest"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -15,7 +16,7 @@ func TestCatalogLookup(t *testing.T) {
 		"name": "example.com/module",
 		"metadata": {},
 		"releases": {
-			"v1.0": "zM5K3Yhny4Ku6RrwiwqU79rHn1SYb1ePwLA8zT4uEPV51vg2FdAJoBBfDYp7ocY5EHF1K8W"
+			"v1.0": "zM5K3awreLPFS2jSHVkdWZvST3AqJqapCTpZNJbtZjjfFbTiZdFSExhjFoDrkk4bGGQY8M3"
 		}
 	}
 }
@@ -23,7 +24,7 @@ func TestCatalogLookup(t *testing.T) {
 		releaseData := `{
 	"releaseName": "v1.0",
 	"metadata": {
-		"replay": "zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7"
+		"replay": "zM5K3aX2vbXSjAMaFVBAAYccoNpf3h2mQkDZLFmD7pEZdUUWtsx1qk9Dh4KoPq7zmEdR1cQ"
 	},
 	"items": {
 		"x86_64": "tar:abcd"
@@ -43,7 +44,7 @@ func TestCatalogLookup(t *testing.T) {
 		replayData := `{
 	"plot.v1": {
 		"inputs": {
-				"rootfs": "catalog:alpinelinux.org/alpine:v3.15.0:x86_64"
+				"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
 		},
 		"steps": {
 				"hello-world": {
@@ -164,7 +165,7 @@ func TestCatalogLookup(t *testing.T) {
 					Mode: 0644,
 					Data: []byte(releaseData),
 				},
-				"home/user/.warpforge/catalog/example.com/module/_replays/zM5K3YuaVZAyaNzXnof5ixD5DW68WjuZYdgMduZJz75p9kxvgk8Mb3Hq8e6GMozwuSn7VF7.json": &fstest.MapFile{
+				"home/user/.warpforge/catalog/example.com/module/_replays/zM5K3aX2vbXSjAMaFVBAAYccoNpf3h2mQkDZLFmD7pEZdUUWtsx1qk9Dh4KoPq7zmEdR1cQ.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(replayData),
 				},

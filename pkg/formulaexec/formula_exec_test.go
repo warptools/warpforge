@@ -12,15 +12,34 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 
 	"github.com/warpfork/go-testmark"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
+	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
+
+// constructs a custom workspace set containing only this project's .warpforge dir (contains catalog)
+func getTestWorkspaceStack(t *testing.T) workspace.WorkspaceSet {
+	pwd, err := os.Getwd()
+	qt.Assert(t, err, qt.IsNil)
+	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
+	qt.Assert(t, err, qt.IsNil)
+
+	wss := workspace.WorkspaceSet{
+		Home: projWs,
+		Root: projWs,
+		Stack: []*workspace.Workspace{
+			projWs,
+		},
+	}
+	return wss
+}
 
 func configureEnvironment(t *testing.T) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
 	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
 	qt.Assert(t, err, qt.IsNil)
-	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
+	err = os.Setenv("HOME", filepath.Join(pwd, "../../"))
 	qt.Assert(t, err, qt.IsNil)
 }
 
@@ -41,8 +60,15 @@ func evaluateDoc(t *testing.T, doc *testmark.Document) {
 					frmAndCtx := wfapi.FormulaAndContext{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
+
 					config := wfapi.FormulaExecConfig{}
-					rr, err := Exec(ctx, nil, frmAndCtx, config)
+
+					pwd, err := os.Getwd()
+					qt.Assert(t, err, qt.IsNil)
+					projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
+					qt.Assert(t, err, qt.IsNil)
+
+					rr, err := Exec(ctx, projWs, frmAndCtx, config)
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))

@@ -11,6 +11,7 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
+	"github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/pkg/workspace"
 )
 
@@ -32,13 +33,11 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
 
-	// override the path to required binaries
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
-	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
-	qt.Assert(t, err, qt.IsNil)
-	// override the home workspace
-	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
+
+	// build an exec function with a pointer to this project's git root
+	execFn := buildExecFn(filepath.Join(pwd, "../../"))
 	qt.Assert(t, err, qt.IsNil)
 
 	if workDir != nil {
@@ -49,23 +48,30 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
 	for _, dir := range doc.DirEnt.ChildrenList {
-		t.Run(dir.Name, func(t *testing.T) {
+		testName := dir.Name
+		testDir := dir
+		if _, hasNetTests := dir.Children["net"]; hasNetTests {
+			if *testutil.FlagOffline {
+				t.Log("skipping test", dir.Name, "due to offline flag")
+				continue
+			}
+			// we want to run the contents of the `/net` dir
+			testName = dir.Name + "/net"
+			testDir = *dir.Children["net"]
+		}
+		t.Run(testName, func(t *testing.T) {
 			test := testexec.Tester{
 				ExecFn:   execFn,
 				Patches:  &patches,
 				AssertFn: assertFn,
 			}
-			test.Test(t, dir)
+			test.Test(t, testDir)
 		})
 	}
 }
 
 func TestExecFixtures(t *testing.T) {
 	testFile(t, "../../examples/500-cli/cli.md", nil)
-}
-
-func TestQuickStart(t *testing.T) {
-	testFile(t, "../../examples/quick-start.md", nil)
 }
 
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
@@ -82,12 +88,25 @@ func cleanRunRecord(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func execFn(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
-	err := makeApp(stdin, stdout, stderr).Run(args)
-	if err != nil {
-		return 1, err
+func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
+	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+		// override the path to required binaries
+		err := os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
+		if err != nil {
+			panic("failed to set WARPFORGE_PATH")
+		}
+		// use this project's warehouse as the warehouse for tests
+		err = os.Setenv("WARPFORGE_WAREHOUSE", filepath.Join(projPath, ".warpforge", "warehouse"))
+		if err != nil {
+			panic("failed to set WARPFORGE_WAREHOUSE")
+		}
+
+		err = makeApp(stdin, stdout, stderr).Run(args)
+		if err != nil {
+			return 1, err
+		}
+		return 0, nil
 	}
-	return 0, nil
 }
 
 func assertFn(t *testing.T, actual, expect string) {

@@ -14,7 +14,6 @@ import (
 	"github.com/warpfork/warpforge/pkg/logging"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -155,12 +154,14 @@ func cmdRun(c *cli.Context) error {
 						return err
 					}
 
-					var err error
-					ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+					wsSet, err := openWorkspaceSet()
+					if err != nil {
+						return fmt.Errorf("failed to open workspace set: %s", err)
+					}
 
 					// run formula
 					config := wfapi.FormulaExecConfig{}
-					_, err = formulaexec.Exec(ctx, ws, frmAndCtx, config)
+					_, err = formulaexec.Exec(ctx, wsSet.Root, frmAndCtx, config)
 					if err != nil {
 						return err
 					}

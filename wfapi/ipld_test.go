@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 )
 
 // Critical lament with this testing style: this validation doesn't happen before other tests.

@@ -11,6 +11,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/go-testmark"
+	_ "github.com/warpfork/warpforge/pkg/testutil"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -21,6 +22,7 @@ func getTestWorkspaceStack(t *testing.T) workspace.WorkspaceSet {
 	qt.Assert(t, err, qt.IsNil)
 	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
 	qt.Assert(t, err, qt.IsNil)
+
 	wss := workspace.WorkspaceSet{
 		Home: projWs,
 		Root: projWs,
@@ -42,8 +44,6 @@ func TestFormulaExecFixtures(t *testing.T) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
 	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
-	qt.Assert(t, err, qt.IsNil)
-	err = os.Setenv("WARPFORGE_HOME", filepath.Join(pwd, "../../.test-home"))
 	qt.Assert(t, err, qt.IsNil)
 
 	// Data hunk in this spec file are in "directories" of a test scenario each.
