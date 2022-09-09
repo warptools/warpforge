@@ -10,14 +10,11 @@ import (
 )
 
 func TestWhee(t *testing.T) {
-	// t.Skip("incomplete")
-	homedir, err := os.UserHomeDir()
+	cwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-	// This is a very sketchy "live" "test" that assumes you've run `warpforge catalog update` before,
-	// and operates (readonly!) on that real data.
-	cat_dab, err := workspace.OpenCatalog(os.DirFS("/"), filepath.Join(homedir, ".warpforge/catalogs/warpsys")[1:])
+	cat_dab, err := workspace.OpenCatalog(os.DirFS("/"), filepath.Join(cwd, "../../.warpforge/catalog")[1:])
 	if err != nil {
 		panic(err)
 	}
