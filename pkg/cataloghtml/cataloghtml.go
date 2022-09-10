@@ -98,7 +98,7 @@ func (cfg SiteConfig) CatalogToHtml() error {
 	<h2>modules</h2>
 	<ul>
 	{{- range $moduleName := . }}
-		<li><a href="{{ (url (string $moduleName) "index.html") }}">{{ $moduleName }}</a></li>
+		<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
 	{{- end }}
 	</ul>
 	</html>
@@ -146,7 +146,7 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 	if err := os.MkdirAll(filepath.Join(cfg.OutputPath, string(catMod.Name)), 0775); err != nil {
 		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
 	}
-	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, string(catMod.Name), "index.html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
+	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, string(catMod.Name), "_module.html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
 	if err != nil {
 		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
 	}
@@ -163,7 +163,7 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 	<ul>
 	{{- $dot := . -}}
 	{{- range $releaseKey := .Releases.Keys }}
-		<li><a href="{{ (url (string $dot.Name) (string $releaseKey) "index.html") }}">{{ $releaseKey }}</a> <small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small></li>
+		<li><a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html")) }}">{{ $releaseKey }}</a> <small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small></li>
 	{{- end }}
 	</ul>
 	<h2>metadata</h2>
@@ -191,10 +191,10 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 // 	- warpforge-error-io -- in case of errors writing out the new html content.
 // 	- warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.CatalogRelease) error {
-	if err := os.MkdirAll(filepath.Join(cfg.OutputPath, string(catMod.Name), string(rel.ReleaseName)), 0775); err != nil {
+	if err := os.MkdirAll(filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases"), 0775); err != nil {
 		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
 	}
-	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, string(catMod.Name), string(rel.ReleaseName), "index.html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
+	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases", string(rel.ReleaseName)+".html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
 	if err != nil {
 		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
 	}
@@ -208,7 +208,7 @@ func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalo
 		<i>release:</i>
 		<h1 style="display:inline">{{ .Release.ReleaseName }}</h1>
 	</div>
-	(<a href="{{ (url "index.html") }}">back to root</a>; <a href="{{ (url (string .Module.Name) "index.html") }}">back to module index</a>)
+	(<a href="{{ (url "index.html") }}">back to root</a>; <a href="{{ (url (string .Module.Name) "_module.html") }}">back to module index</a>)
 	<h2>items</h2>
 	<ul>
 	{{- $dot := .Release -}}
