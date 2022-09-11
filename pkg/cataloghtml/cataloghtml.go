@@ -82,6 +82,30 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	return nil
 }
 
+// doTemplate does the common bits of making files, processing the template,
+// and getting the output where it needs to go.
+//
+// Errors:
+//
+// 	- warpforge-error-io -- in case of errors writing out the new html content.
+// 	- warpforge-error-internal -- in case of templating errors.
+func (cfg SiteConfig) doTemplate(outputPath string, tmpl string, data interface{}) error {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0775); err != nil {
+		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
+	}
+	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
+	if err != nil {
+		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
+	}
+	defer f.Close()
+
+	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(tmpl))
+	if err := t.Execute(f, data); err != nil {
+		return wfapi.ErrorInternal("templating failed", err)
+	}
+	return nil
+}
+
 // CatalogToHtml generates a root page that links to all the modules.
 //
 // This function has no parameters because it uses the DAB in the SiteConfig entirely.
@@ -92,20 +116,11 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 // 	- warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) CatalogToHtml() error {
 	// Future: It's perhaps a bit odd that this uses the workspace.Catalog object instead of the API object.  We probably haven't hammered out appropriate data access helpers yet.
-	if err := os.MkdirAll(cfg.OutputPath, 0775); err != nil {
-		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
-	}
-	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, "index.html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
-	if err != nil {
-		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
-	}
-	defer f.Close()
-
-	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(catalogIndexTemplate))
-	if err := t.Execute(f, cfg.Cat_dab.Modules()); err != nil {
-		return wfapi.ErrorInternal("templating failed", err)
-	}
-	return nil
+	return cfg.doTemplate(
+		filepath.Join(cfg.OutputPath, "index.html"),
+		catalogIndexTemplate,
+		cfg.Cat_dab.Modules(),
+	)
 }
 
 // CatalogModuleAndChildrenToHtml performs CatalogModuleToHtml, and also
@@ -142,20 +157,11 @@ func (cfg SiteConfig) CatalogModuleAndChildrenToHtml(catMod wfapi.CatalogModule)
 // 	- warpforge-error-io -- in case of errors writing out the new html content.
 // 	- warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
-	if err := os.MkdirAll(filepath.Join(cfg.OutputPath, string(catMod.Name)), 0775); err != nil {
-		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
-	}
-	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, string(catMod.Name), "_module.html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
-	if err != nil {
-		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
-	}
-	defer f.Close()
-
-	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(catalogModuleTemplate))
-	if err := t.Execute(f, catMod); err != nil {
-		return wfapi.ErrorInternal("templating failed", err)
-	}
-	return nil
+	return cfg.doTemplate(
+		filepath.Join(cfg.OutputPath, string(catMod.Name), "_module.html"),
+		catalogModuleTemplate,
+		catMod,
+	)
 }
 
 // CatalogModuleToHtml generates a page for a release within a catalog module
@@ -171,21 +177,12 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 // 	- warpforge-error-io -- in case of errors writing out the new html content.
 // 	- warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.CatalogRelease) error {
-	if err := os.MkdirAll(filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases"), 0775); err != nil {
-		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
-	}
-	f, err := os.OpenFile(filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases", string(rel.ReleaseName)+".html"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
-	if err != nil {
-		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
-	}
-	defer f.Close()
-
-	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(catalogReleaseTemplate))
-	if err := t.Execute(f, map[string]interface{}{
-		"Module":  catMod,
-		"Release": rel,
-	}); err != nil {
-		return wfapi.ErrorInternal("templating failed", err)
-	}
-	return nil
+	return cfg.doTemplate(
+		filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases", string(rel.ReleaseName)+".html"),
+		catalogReleaseTemplate,
+		map[string]interface{}{
+			"Module":  catMod,
+			"Release": rel,
+		},
+	)
 }
