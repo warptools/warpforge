@@ -44,8 +44,10 @@ type SiteConfig struct {
 
 func (cfg SiteConfig) tfuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"string": func(x interface{}) string { // golang would you please shut the fuck up and let me be productive, honestly
-			// this is for things that are literally typedefs of string but the template package isn't smart enough to be calm about unboxing it.
+		"string": func(x interface{}) string {
+			// Very small helper function to stringify things.
+			// This is useful for things that are literally typedefs of string but the template package isn't smart enough to be calm about unboxing it.
+			// (It also does return something for values of non-string types, but not something very useful.)
 			return reflect.ValueOf(x).String()
 		},
 		"url": func(parts ...string) string {
