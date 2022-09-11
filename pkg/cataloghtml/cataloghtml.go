@@ -2,6 +2,7 @@ package cataloghtml
 
 import (
 	"context"
+	_ "embed"
 	"html/template"
 	"os"
 	"path"
@@ -10,6 +11,17 @@ import (
 
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+)
+
+var (
+	//go:embed catalogIndex.tmpl.html
+	catalogIndexTemplate string
+
+	//go:embed catalogModule.tmpl.html
+	catalogModuleTemplate string
+
+	//go:embed catalogRelease.tmpl.html
+	catalogReleaseTemplate string
 )
 
 type SiteConfig struct {
@@ -87,22 +99,7 @@ func (cfg SiteConfig) CatalogToHtml() error {
 	}
 	defer f.Close()
 
-	// TODO: it's completely bork that we don't have access to the CIDs here.  workspace.Catalog is Not Good right now.
-	// TODO: this probably needs sorting to be stable.
-	// Future: we should have a CID of the entire catalog tree root snapshot somewhere, too.  (It should probably use prolly trees or something, though, which is not available as a convenient library yet.)
-	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(`
-	<html>
-	<div style="border: 1px solid; padding 0.5em;">
-		<h1 style="display:inline">catalog</h1>
-	</div>
-	<h2>modules</h2>
-	<ul>
-	{{- range $moduleName := . }}
-		<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
-	{{- end }}
-	</ul>
-	</html>
-	`))
+	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(catalogIndexTemplate))
 	if err := t.Execute(f, cfg.Cat_dab.Modules()); err != nil {
 		return wfapi.ErrorInternal("templating failed", err)
 	}
@@ -152,26 +149,7 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 	}
 	defer f.Close()
 
-	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(`
-	<html>
-	<div style="border: 1px solid; padding 0.5em;">
-		<i>module:</i>
-		<h1 style="display:inline">{{ .Name }}</h1>
-	</div>
-	(<a href="{{ (url "index.html") }}">back to root</a>)
-	<h2>releases</h2>
-	<ul>
-	{{- $dot := . -}}
-	{{- range $releaseKey := .Releases.Keys }}
-		<li><a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html")) }}">{{ $releaseKey }}</a> <small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small></li>
-	{{- end }}
-	</ul>
-	<h2>metadata</h2>
-	{{- range $metadataKey := .Metadata.Keys }}
-		<dt>{{ $metadataKey }}</dt><dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
-	{{- end }}
-	</html>
-	`))
+	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(catalogModuleTemplate))
 	if err := t.Execute(f, catMod); err != nil {
 		return wfapi.ErrorInternal("templating failed", err)
 	}
@@ -200,28 +178,7 @@ func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalo
 	}
 	defer f.Close()
 
-	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(`
-	<html>
-	<div style="border: 1px solid; padding 0.5em;">
-		<i>module:</i>
-		<h1 style="display:inline">{{ .Module.Name }}</h1>
-		<i>release:</i>
-		<h1 style="display:inline">{{ .Release.ReleaseName }}</h1>
-	</div>
-	(<a href="{{ (url "index.html") }}">back to root</a>; <a href="{{ (url (string .Module.Name) "_module.html") }}">back to module index</a>)
-	<h2>items</h2>
-	<ul>
-	{{- $dot := .Release -}}
-	{{- range $itemKey := .Release.Items.Keys }}
-		<li>{{ $itemKey }} : {{ index $dot.Items.Values $itemKey }}</li>
-	{{- end }}
-	</ul>
-	<h2>metadata</h2>
-	{{- range $metadataKey := .Release.Metadata.Keys }}
-		<dt>{{ $metadataKey }}</dt><dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
-	{{- end }}
-	</html>
-	`))
+	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(catalogReleaseTemplate))
 	if err := t.Execute(f, map[string]interface{}{
 		"Module":  catMod,
 		"Release": rel,

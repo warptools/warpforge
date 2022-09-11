@@ -1,0 +1,18 @@
+<html>
+	<div style="border: 1px solid; padding 0.5em;">
+		<i>module:</i>
+		<h1 style="display:inline">{{ .Name }}</h1>
+	</div>
+	(<a href="{{ (url "index.html") }}">back to root</a>)
+	<h2>releases</h2>
+	<ul>
+	{{- $dot := . -}}
+	{{- range $releaseKey := .Releases.Keys }}
+		<li><a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html")) }}">{{ $releaseKey }}</a> <small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small></li>
+	{{- end }}
+	</ul>
+	<h2>metadata</h2>
+	{{- range $metadataKey := .Metadata.Keys }}
+		<dt>{{ $metadataKey }}</dt><dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
+	{{- end }}
+</html>

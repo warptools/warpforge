@@ -1,0 +1,22 @@
+{{- /*
+	This template is for the index page made at the root of the catalog html view.
+	It just lists and links to all the modules in the catalog.
+
+	A couple of todos for this document:
+		- We should print CIDs of the modules!
+			... But we don't right now because the our accessor functions don't make it easy to get.  (Work needed on workspace.Catalog.)
+		- Farther future: we should have a CID of the entire catalog tree root snapshot somewhere, too.
+			... But we don't right now, because that should probably use prolly trees (or some other scalable hash tree thing), which is not available and rigged up as a convenient library yet.
+
+*/ -}}
+<html>
+	<div style="border: 1px solid; padding 0.5em;">
+		<h1 style="display:inline">catalog</h1>
+	</div>
+	<h2>modules</h2>
+	<ul>
+	{{- range $moduleName := . }}
+		<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
+	{{- end }}
+	</ul>
+</html>
