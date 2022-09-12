@@ -22,6 +22,9 @@ var (
 
 	//go:embed catalogRelease.tmpl.html
 	catalogReleaseTemplate string
+
+	// FUTURE: consider the use of `embed.FS` and `template.ParseFS()`, if there grow to be many files here.
+	// It has slightly less compile-time safety checks on filenames, though.
 )
 
 type SiteConfig struct {
