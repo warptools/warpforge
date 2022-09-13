@@ -10,6 +10,10 @@
 
 */ -}}
 <html>
+<head>
+	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+</head>
+<body>
 	<div style="border: 1px solid; padding 0.5em;">
 		<h1 style="display:inline">catalog</h1>
 	</div>
@@ -19,4 +23,5 @@
 		<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
 	{{- end }}
 	</ul>
+</body>
 </html>

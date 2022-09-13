@@ -1,4 +1,8 @@
 <html>
+<head>
+	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+</head>
+<body>
 	<div style="border: 1px solid; padding 0.5em;">
 		<i>module:</i>
 		<h1 style="display:inline">{{ .Module.Name }}</h1>
@@ -17,4 +21,5 @@
 	{{- range $metadataKey := .Release.Metadata.Keys }}
 		<dt>{{ $metadataKey }}</dt><dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
 	{{- end }}
+</body>
 </html>

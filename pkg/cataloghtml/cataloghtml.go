@@ -23,6 +23,9 @@ var (
 	//go:embed catalogRelease.tmpl.html
 	catalogReleaseTemplate string
 
+	//go:embed css.css
+	cssBody []byte
+
 	// FUTURE: consider the use of `embed.FS` and `template.ParseFS()`, if there grow to be many files here.
 	// It has slightly less compile-time safety checks on filenames, though.
 )
@@ -61,6 +64,8 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 
 // CatalogAndChildrenToHtml performs CatalogToHtml, and also
 // procedes to invoke the html'ing of all modules within.
+// Additionally, it does all the other "once" things
+// (namely, outputs a copy of the css).
 //
 // Errors:
 //
@@ -69,9 +74,15 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 // 	- warpforge-error-catalog-invalid -- in case the catalog data is invalid.
 // 	- warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
 func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
+	// Emit catalog index.
 	if err := cfg.CatalogToHtml(); err != nil {
 		return err
 	}
+	// Emit the "once" stuff.
+	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "css.css"), cssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
+	}
+	// Emit all modules within.
 	modNames := cfg.Cat_dab.Modules()
 	for _, modName := range modNames {
 		catMod, err := cfg.Cat_dab.GetModule(wfapi.CatalogRef{modName, "", ""})
