@@ -1,0 +1,25 @@
+<html>
+<head>
+	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+</head>
+<body>
+	<div style="border: 1px solid; padding 0.5em;">
+		<i>module:</i>
+		<h1 style="display:inline">{{ .Module.Name }}</h1>
+		<i>release:</i>
+		<h1 style="display:inline">{{ .Release.ReleaseName }}</h1>
+	</div>
+	(<a href="{{ (url "index.html") }}">back to root</a>; <a href="{{ (url (string .Module.Name) "_module.html") }}">back to module index</a>)
+	<h2>items</h2>
+	<ul>
+	{{- $dot := .Release -}}
+	{{- range $itemKey := .Release.Items.Keys }}
+		<li>{{ $itemKey }} : {{ index $dot.Items.Values $itemKey }}</li>
+	{{- end }}
+	</ul>
+	<h2>metadata</h2>
+	{{- range $metadataKey := .Release.Metadata.Keys }}
+		<dt>{{ $metadataKey }}</dt><dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
+	{{- end }}
+</body>
+</html>
