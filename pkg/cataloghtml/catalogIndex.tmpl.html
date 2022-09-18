@@ -1,27 +1,46 @@
 {{- /*
-	This template is for the index page made at the root of the catalog html view.
-	It just lists and links to all the modules in the catalog.
+This template is for the index page made at the root of the catalog html view.
+It just lists and links to all the modules in the catalog.
 
-	A couple of todos for this document:
-		- We should print CIDs of the modules!
-			... But we don't right now because the our accessor functions don't make it easy to get.  (Work needed on workspace.Catalog.)
-		- Farther future: we should have a CID of the entire catalog tree root snapshot somewhere, too.
-			... But we don't right now, because that should probably use prolly trees (or some other scalable hash tree thing), which is not available and rigged up as a convenient library yet.
+A couple of todos for this document:
+- We should print CIDs of the modules!
+... But we don't right now because the our accessor functions don't make it easy to get. (Work needed on
+workspace.Catalog.)
+- Farther future: we should have a CID of the entire catalog tree root snapshot somewhere, too.
+... But we don't right now, because that should probably use prolly trees (or some other scalable hash tree thing),
+which is not available and rigged up as a convenient library yet.
 
 */ -}}
 <html>
+
 <head>
 	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+	<script src="{{ (url "js.js") }}"></script>
 </head>
-<body>
-	<div style="border: 1px solid; padding 0.5em;">
-		<h1 style="display:inline">catalog</h1>
+
+<input type="checkbox" id="dark-mode-checkbox" />
+<div class="container">
+	<div class="header">
+		<h1 style="display:inline">Catalog</h1>
+		<div class="theme-switch-wrapper">
+			<label class="theme-switch" for="dark-mode-checkbox">
+				<div class="slider round">
+					<div class="sun-ray-1"></div>
+					<div class="sun-ray-2"></div>
+				</div>
+			</label>
+		</div>
 	</div>
-	<h2>modules</h2>
-	<ul>
-	{{- range $moduleName := . }}
-		<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
-	{{- end }}
-	</ul>
-</body>
+	<div class="content-wrapper">
+		<div class="content">
+			<h2>Modules</h2>
+			<ul>
+				{{- range $moduleName := . }}
+				<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
+				{{- end }}
+			</ul>
+		</div>
+	</div>
+	</body>
+
 </html>
