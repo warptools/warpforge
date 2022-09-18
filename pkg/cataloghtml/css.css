@@ -20,13 +20,13 @@
 	--dark-heading-color: #818cab;
 
 	/* Color variables */
-	--primary-color: #302ae6;
-	--secondary-color: #536390;
-	--font-color: #424242;
-	--bg-color: #fff;
-	--code-bg-color: #ddddddff;
-	--heading-color: #292922;
-	--black: #333333ff;
+	--primary-color: var(--light-primary-color);
+	--secondary-color: var(--light-secondary-color);
+	--font-color: var(--light-font-color);
+	--bg-color: var(--light-bg-color);
+	--code-bg-color: var(--light-code-bg-color);
+	--heading-color: var(--light-heading-color);
+	--black: var(--light-black);
 
 	/* Space */
 	--space-xs: 4px;
@@ -71,6 +71,8 @@
 	--black: var(--dark-black);
 }
 
+
+/* Global fonts and styles */
 * {
 	box-sizing: border-box;
 	margin: 0;
@@ -100,6 +102,8 @@ body > input {
 	min-height: 100%;
 	transition: .4s all;
 }
+
+/* Structural classes */
 
 .header {
 	width: 100%;
@@ -151,7 +155,7 @@ li {
 	margin-bottom: var(--space-sm);
 }
 
-/* Toggle-styling */
+/* Styling toggle */
 .theme-switch-wrapper {
 	display: flex;
 	align-items: center;
