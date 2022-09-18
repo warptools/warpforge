@@ -71,7 +71,6 @@
 	--black: var(--dark-black);
 }
 
-
 /* Global fonts and styles */
 * {
 	box-sizing: border-box;
@@ -100,7 +99,7 @@ body > input {
 	flex-direction: column;
 	align-items: center;
 	min-height: 100%;
-	transition: .4s all;
+	transition: 0.3s all;
 }
 
 /* Structural classes */
@@ -181,7 +180,7 @@ li {
 	right: 0;
 	top: 0;
 	transform: rotateZ(-225deg);
-	transition: 0.4s;
+	transition: 0.3s;
 }
 
 .slider:before {

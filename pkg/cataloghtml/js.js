@@ -1,7 +1,7 @@
 // store dark-mode selection
 const onLoad = () => {
 	const toggleSwitch = document.querySelector(
-		'.theme-switch input[type="checkbox"]'
+		'#dark-mode-checkbox'
 	)
 	const currentTheme = localStorage.getItem('theme')
 
