@@ -26,6 +26,9 @@ var (
 	//go:embed css.css
 	cssBody []byte
 
+	//go:embed js.js
+	jsBody []byte
+
 	// FUTURE: consider the use of `embed.FS` and `template.ParseFS()`, if there grow to be many files here.
 	// It has slightly less compile-time safety checks on filenames, though.
 )
@@ -69,10 +72,10 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 //
 // Errors:
 //
-// 	- warpforge-error-io -- in case of errors writing out the new html content.
-// 	- warpforge-error-internal -- in case of templating errors.
-// 	- warpforge-error-catalog-invalid -- in case the catalog data is invalid.
-// 	- warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-catalog-invalid -- in case the catalog data is invalid.
+//   - warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
 func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	// Emit catalog index.
 	if err := cfg.CatalogToHtml(); err != nil {
@@ -82,6 +85,12 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "css.css"), cssBody, 0644); err != nil {
 		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
 	}
+
+	// Emit the "once" stuff.
+	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "js.js"), jsBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
+	}
+
 	// Emit all modules within.
 	modNames := cfg.Cat_dab.Modules()
 	for _, modName := range modNames {
@@ -101,8 +110,8 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 //
 // Errors:
 //
-// 	- warpforge-error-io -- in case of errors writing out the new html content.
-// 	- warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) doTemplate(outputPath string, tmpl string, data interface{}) error {
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0775); err != nil {
 		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
@@ -126,8 +135,8 @@ func (cfg SiteConfig) doTemplate(outputPath string, tmpl string, data interface{
 //
 // Errors:
 //
-// 	- warpforge-error-io -- in case of errors writing out the new html content.
-// 	- warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) CatalogToHtml() error {
 	// Future: It's perhaps a bit odd that this uses the workspace.Catalog object instead of the API object.  We probably haven't hammered out appropriate data access helpers yet.
 	return cfg.doTemplate(
@@ -142,10 +151,10 @@ func (cfg SiteConfig) CatalogToHtml() error {
 //
 // Errors:
 //
-// 	- warpforge-error-io -- in case of errors writing out the new html content.
-// 	- warpforge-error-internal -- in case of templating errors.
-// 	- warpforge-error-catalog-invalid -- in case the catalog data is invalid.
-// 	- warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-catalog-invalid -- in case the catalog data is invalid.
+//   - warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
 func (cfg SiteConfig) CatalogModuleAndChildrenToHtml(catMod wfapi.CatalogModule) error {
 	if err := cfg.CatalogModuleToHtml(catMod); err != nil {
 		return err
@@ -168,8 +177,8 @@ func (cfg SiteConfig) CatalogModuleAndChildrenToHtml(catMod wfapi.CatalogModule)
 //
 // Errors:
 //
-// 	- warpforge-error-io -- in case of errors writing out the new html content.
-// 	- warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 	return cfg.doTemplate(
 		filepath.Join(cfg.OutputPath, string(catMod.Name), "_module.html"),
@@ -188,8 +197,8 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 //
 // Errors:
 //
-// 	- warpforge-error-io -- in case of errors writing out the new html content.
-// 	- warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.CatalogRelease) error {
 	return cfg.doTemplate(
 		filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases", string(rel.ReleaseName)+".html"),
