@@ -308,7 +308,10 @@ li {
 
 .content-selection {
 	padding: var(--space-lg);
-	align-self: flex-start;
+	display: flex;
+	flex-wrap: nowrap;
+    width: 100%;
+    max-width: 1200px;
 }
 
 .content-selection > label {
