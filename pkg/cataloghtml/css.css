@@ -304,6 +304,7 @@ li {
 #releases-radiobutton:checked ~ .content-wrapper .releases,
 #metadata-radiobutton:checked ~ .content-wrapper .metadata {
 	opacity: 1;
+	height: initial;
 }
 
 .content-selection {
