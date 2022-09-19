@@ -1,26 +1,55 @@
 <html>
+
 <head>
-	<!--
 	<link rel="stylesheet" href="{{ (url "css.css") }}" />
-	<script src="{{ (url "js.js") }}" ></script>
- 	-->
+	<script src="{{ (url "js.js") }}"></script>
 </head>
+
 <body>
-	<div style="border: 1px solid; padding: 0.5em;">
-		<i>module:</i>
-		<h1 style="display:inline">{{ .Name }}</h1>
+	<input type="checkbox" id="dark-mode-checkbox" />
+	<div class="container">
+		<div class="header">
+			<div>
+				<small><i><a href="{{ (url "index.html") }}">Catalog</a> > module</i></small>
+				<h1>{{ .Name }}</h1>
+			</div>
+			<div class="theme-switch-wrapper">
+				<label class="theme-switch" for="dark-mode-checkbox">
+					<div class="slider round">
+						<div class="sun-ray-1"></div>
+						<div class="sun-ray-2"></div>
+					</div>
+				</label>
+			</div>
+		</div>
+		<input checked name="content-type" type="radio" id="releases-radiobutton" />
+		<input name="content-type" type="radio" id="metadata-radiobutton" />
+		<div class="content-selection">
+			<label id="release-label" for="releases-radiobutton"><strong>Releases</strong></label>
+			<label id="metadata-label" for="metadata-radiobutton"><strong>Metadata</strong></label>
+		</div>
+		<div class="content-wrapper">
+			<div class="content">
+				<div class="releases">
+					<ul>
+						{{- $dot := . -}}
+						{{- range $releaseKey := .Releases.Keys }}
+						<li><a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html" )) }}">{{
+								$releaseKey }}</a>
+							<small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small>
+						</li>
+						{{- end }}
+					</ul>
+				</div>
+				<div class="metadata">
+					{{- range $metadataKey := .Metadata.Keys }}
+					<dt>{{ $metadataKey }}</dt>
+					<dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
+					{{- end }}
+				</div>
+			</div>
+		</div>
 	</div>
-	(<a href="{{ (url "index.html") }}">back to root</a>)
-	<h2>releases</h2>
-	<ul>
-	{{- $dot := . -}}
-	{{- range $releaseKey := .Releases.Keys }}
-		<li><a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html")) }}">{{ $releaseKey }}</a> <small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small></li>
-	{{- end }}
-	</ul>
-	<h2>metadata</h2>
-	{{- range $metadataKey := .Metadata.Keys }}
-		<dt>{{ $metadataKey }}</dt><dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
-	{{- end }}
 </body>
+
 </html>
