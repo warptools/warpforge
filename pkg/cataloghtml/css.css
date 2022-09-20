@@ -292,6 +292,24 @@ li {
 	background-color: var(--black);
 }
 
+/* Index page */
+.content-heading > strong {
+	position: relative;
+}
+
+.content-heading > strong:before {
+	content: '';
+	border: 20px solid var(--code-bg-color);
+	border-left-color: transparent;
+	border-right-color: transparent;
+	border-top-color: transparent;
+	position: absolute;
+	top: var(--space-md);
+	left: 50%;
+	transform: translateX(-50%);
+	cursor: default;
+}
+
 /* Release & Module page */
 
 .tab-content {
@@ -335,7 +353,7 @@ li {
 	position: absolute;
 	top: var(--space-md);
 	left: 50%;
-	transform: translateX(-50%);
+	transform: translatex(-50%);
 	cursor: default;
 }
 
