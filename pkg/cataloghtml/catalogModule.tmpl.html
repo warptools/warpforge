@@ -22,15 +22,15 @@
 				</label>
 			</div>
 		</div>
-		<input checked name="content-type" type="radio" id="releases-radiobutton" />
-		<input name="content-type" type="radio" id="metadata-radiobutton" />
-		<div class="content-selection">
-			<label id="release-label" for="releases-radiobutton"><strong>Releases</strong></label>
-			<label id="metadata-label" for="metadata-radiobutton"><strong>Metadata</strong></label>
+		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
+		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-2">
+		<div class="tabs">
+			<label for="tab-radiobutton-1"><strong>Releases</strong></label>
+			<label for="tab-radiobutton-2"><strong>Metadata</strong></label>
 		</div>
 		<div class="content-wrapper">
 			<div class="content">
-				<div class="releases">
+				<div class="tab-content">
 					<ul>
 						{{- $dot := . -}}
 						{{- range $releaseKey := .Releases.Keys }}
@@ -41,7 +41,7 @@
 						{{- end }}
 					</ul>
 				</div>
-				<div class="metadata">
+				<div class="tab-content">
 					{{- range $metadataKey := .Metadata.Keys }}
 					<dt>{{ $metadataKey }}</dt>
 					<dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>

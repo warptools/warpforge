@@ -100,7 +100,6 @@ body > input {
 	flex-direction: column;
 	align-items: center;
 	min-height: 100%;
-	transition: 0.3s all;
 }
 
 /* Structural classes */
@@ -191,7 +190,7 @@ li {
 	height: 18px;
 	left: 2px;
 	position: absolute;
-	transition: 0.4s;
+	transition: 0.3s;
 	width: 18px;
 }
 
@@ -293,37 +292,41 @@ li {
 	background-color: var(--black);
 }
 
-/* Modules page */
-.releases,
-.metadata {
+/* Release & Module page */
+
+.tab-content {
 	height: 0;
 	opacity: 0;
-	transition: 0.1s 0.1s all;
+	word-break: break-all;
 }
 
-#releases-radiobutton:checked ~ .content-wrapper .releases,
-#metadata-radiobutton:checked ~ .content-wrapper .metadata {
-	opacity: 1;
-	height: initial;
-}
-
-.content-selection {
+.tabs {
 	padding: var(--space-lg);
 	display: flex;
 	flex-wrap: nowrap;
-    width: 100%;
-    max-width: 1200px;
+	width: 100%;
+	max-width: 1200px;
 }
 
-.content-selection > label {
+.tabs > label {
 	display: inline-block;
 	cursor: pointer;
 	margin-right: var(--space-md);
 	position: relative;
 }
 
-#releases-radiobutton:checked ~ .content-selection #release-label:before,
-#metadata-radiobutton:checked ~ .content-selection #metadata-label:before {
+.tab-radiobutton {
+	display: none;
+}
+
+/* 
+	If there's more than 2 tabs we can just add another count here.
+	Unfortunately it doesn't seem like we can just iterate using
+	a simple function here since .tab-radiobutton:nth-of-type(x) 
+	needs to match .tab-content:nth-of-type(y). (x = y)
+*/
+.tab-radiobutton:nth-of-type(1):checked ~ .tabs > label:nth-of-type(1):before,
+.tab-radiobutton:nth-of-type(2):checked ~ .tabs > label:nth-of-type(2):before {
 	content: '';
 	border: 20px solid var(--code-bg-color);
 	border-left-color: transparent;
@@ -336,7 +339,16 @@ li {
 	cursor: default;
 }
 
-#releases-radiobutton,
-#metadata-radiobutton {
-	display: none;
+/* 
+	Same as above, we want different nth-of-type to match which gets tricky,
+	so for now we count manually.
+*/
+.tab-radiobutton:nth-of-type(1):checked
+	~ .content-wrapper
+	.tab-content:nth-of-type(1),
+.tab-radiobutton:nth-of-type(2):checked
+	~ .content-wrapper
+	.tab-content:nth-of-type(2) {
+	opacity: 1;
+	height: initial;
 }
