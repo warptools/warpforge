@@ -21,7 +21,10 @@ which is not available and rigged up as a convenient library yet.
 <input type="checkbox" id="dark-mode-checkbox" />
 <div class="container">
 	<div class="header">
-		<h1 style="display:inline">Catalog</h1>
+		<div>
+			<small>&nbsp;</small>
+			<h1>Catalog</h1>
+		</div>
 		<div class="theme-switch-wrapper">
 			<label class="theme-switch" for="dark-mode-checkbox">
 				<div class="slider round">
@@ -31,9 +34,11 @@ which is not available and rigged up as a convenient library yet.
 			</label>
 		</div>
 	</div>
+	<div class="content content-heading">
+		<strong>Modules</strong>
+	</div>
 	<div class="content-wrapper">
 		<div class="content">
-			<h2>Modules</h2>
 			<ul>
 				{{- range $moduleName := . }}
 				<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
