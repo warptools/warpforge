@@ -1,8 +1,9 @@
 <html>
 
 <head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="{{ (url "css.css") }}" />
-	<script src="{{ (url "js.js") }}" ></script>
+	<script src="{{ (url "js.js") }}"></script>
 </head>
 
 <body>
@@ -10,8 +11,10 @@
 	<div class="container">
 		<div class="header">
 			<div>
-				<small><i><a href="{{ (url "index.html") }}">Catalog</a> &gt; 
-					<a href="{{ (url (string .Module.Name) "_module.html") }}">{{ .Module.Name }}</a> &gt; {{ .Release.ReleaseName }} </i></small>
+				<small><i><a href="{{ (url "index.html") }}">Catalog</a></i>
+					<i>&gt; <a href="{{ (url (string .Module.Name) "_module.html") }}">{{ .Module.Name }}</a></i>
+					&gt;
+					<i> {{ .Release.ReleaseName }} </i></small>
 				<h1>{{ .Module.Name }}</h1>
 			</div>
 			<div class="theme-switch-wrapper">

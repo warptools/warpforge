@@ -115,8 +115,17 @@ body > input {
 	margin-bottom: var(--space-xxl);
 }
 
+.header i {
+	display: inline-block;
+	text-overflow: ellipsis;
+	max-width: 200px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
 .header h1 {
 	margin: 0;
+	word-break: break-all;
 }
 
 .content-wrapper {
@@ -131,6 +140,11 @@ body > input {
 	width: 100%;
 	max-width: 1200px;
 	padding: var(--space-lg);
+	padding-bottom: var(--space-xl);
+}
+
+.content-heading {
+	padding-bottom: var(--space-lg);
 }
 
 h1,
@@ -151,6 +165,7 @@ a {
 
 li {
 	list-style: none;
+	line-height: 1.4;
 	margin-bottom: var(--space-sm);
 }
 
@@ -158,6 +173,36 @@ li {
 .theme-switch-wrapper {
 	display: flex;
 	align-items: center;
+
+	/* 
+		Put the switch in the bottom of the screen
+		so it doesn't cover the heading	
+	*/
+	position: fixed;
+	bottom: var(--space-lg);
+	right: var(--space-lg);
+}
+
+.theme-switch-wrapper:before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 50px;
+	height: 50px;
+	background-color: var(--bg-color);
+	border-radius: 100px;
+}
+
+/* Put the switch back in the header */
+@media (min-width: 768px) {
+	.theme-switch-wrapper {
+		position: static;
+	}
+	.theme-switch-wrapper:before {
+		content: initial;
+	}
 }
 
 .theme-switch {
