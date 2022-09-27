@@ -383,6 +383,13 @@ warpforge catalog init my-catalog
 warpforge catalog ls
 ```
 
+### Generate Catalog HTML
+
+[testmark]:# (base-workspace/then-generatehtml/sequence)
+```
+warpforge catalog --name=test generate-html
+```
+
 ### Add an Item to a Catalog
 
 #### tar

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
+	"github.com/warpfork/warpforge/pkg/cataloghtml"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -79,6 +81,22 @@ var catalogCmdDef = cli.Command{
 			Name:   "ingest-git-tags",
 			Usage:  "Ingest all tags from a git repository into a catalog entry",
 			Action: cmdIngestGitTags,
+		},
+		{
+			Name:   "generate-html",
+			Usage:  "Generates HTML output for the catalog containing information on modules",
+			Action: cmdGenerateHtml,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "output",
+					Aliases: []string{"o"},
+					Usage:   "Output path for HTML generation",
+				},
+				&cli.StringFlag{
+					Name:  "url-prefix",
+					Usage: "Url prefix for links within generated HTML",
+				},
+			},
 		},
 	},
 }
@@ -675,6 +693,61 @@ func cmdCatalogShow(c *cli.Context) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+func cmdGenerateHtml(c *cli.Context) error {
+	catalogName := c.String("name")
+
+	// open the workspace set
+	wsSet, err := openWorkspaceSet()
+	if err != nil {
+		return err
+	}
+
+	// create the catalog if it does not exist
+	exists, err := wsSet.Root.HasCatalog(catalogName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("catalog %q not found", catalogName)
+	}
+
+	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
+	}
+
+	// by default, output to a subdir of the catalog named `_html`
+	// this can be overriden by a cli flag that provides a path
+	outputPath := filepath.Join("/", wsSet.Root.CatalogPath(&catalogName), "_html")
+	if c.String("output") != "" {
+		outputPath = c.String("output")
+	}
+
+	// by default, the URL prefix is the same as the output path,
+	// this works if the HTML is accessed using `file:///` URLs.
+	// however, to allow for generating a hosted site, this can be
+	// overridden by the CLI
+	urlPrefix := outputPath
+	if c.String("url-prefix") != "" {
+		urlPrefix = c.String("url-prefix")
+	}
+
+	cfg := cataloghtml.SiteConfig{
+		Ctx:        context.Background(),
+		Cat_dab:    cat,
+		OutputPath: outputPath,
+		URLPrefix:  urlPrefix,
+	}
+	os.RemoveAll(cfg.OutputPath)
+	if err := cfg.CatalogAndChildrenToHtml(); err != nil {
+		return fmt.Errorf("failed to generate html: %s", err)
+	}
+
+	fmt.Printf("published HTML for catalog %q to %s\n", catalogName, outputPath)
 
 	return nil
 }
