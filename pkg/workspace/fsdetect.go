@@ -87,7 +87,8 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 
 // FindWorkspaceStack works similarly to FindWorkspace, but finds all workspaces, not just the nearest one.
 // The first element of the returned slice is the nearest workspace; subsequent elements are its parents, then grandparents, etc.
-// The last element of the returned slice is the home workspace (or at the most extreme: where the home workspace *should be*).
+// The last element of the returned slice is the root workspace.
+// If no root workspace is found then the last element will be the home workspace (or at the most extreme: where the home workspace *should be*).
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
 //
@@ -106,6 +107,9 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 			break
 		}
 		wss = append(wss, ws)
+		if ws.IsRootWorkspace() {
+			break
+		}
 	}
 	// If no root workspace was found, include the home workspace at the end of the stack.
 	// Unless it's already there, of course.
