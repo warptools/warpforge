@@ -360,7 +360,7 @@ func (cat *Catalog) AddItem(
 	_, hasItem := release.Items.Values[ref.ItemName]
 	if hasItem && !overwrite {
 		// item exists but overwrite not requested, error
-		return wfapi.ErrorCatalogAlreadyExists(releaseFilePath, ref.ItemName)
+		return wfapi.ErrorCatalogItemAlreadyExists(releaseFilePath, ref.ItemName)
 	}
 	if !hasItem {
 		// item does not exist, add key

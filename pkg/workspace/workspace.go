@@ -128,10 +128,7 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
 
 func (ws *Workspace) IsRootWorkspace() bool {
 	// check if the root marker file exists
-	fd, err := ws.fsys.Open(filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
-	if fd != nil {
-		fd.Close()
-	}
+	_, err := fs.Stat(ws.fsys, filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
 	return err == nil || ws.isHomeWorkspace
 }
 

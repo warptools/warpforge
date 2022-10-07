@@ -40,7 +40,7 @@ var catalogCmdDef = cli.Command{
 	Subcommands: []*cli.Command{
 		{
 			Name:   "init",
-			Usage:  "Initialize a catalog in the current directory",
+			Usage:  "Creates a named catalog in the root workspace",
 			Action: cmdCatalogInit,
 		},
 		{
@@ -139,7 +139,8 @@ func cmdCatalogInit(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	catalogPath := filepath.Join("/", wsSet.Root.CatalogPath(&catalogName))
+
+	catalogPath := filepath.Join("/", wsSet.Root().CatalogPath(&catalogName))
 
 	// check if the catalog directory exists
 	_, err = os.Stat(catalogPath)
@@ -177,12 +178,12 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	// create the catalog if it does not exist
-	exists, err := wsSet.Root.HasCatalog(catalogName)
+	exists, err := wsSet.Root().HasCatalog(catalogName)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		err := wsSet.Root.CreateCatalog(catalogName)
+		err := wsSet.Root().CreateCatalog(catalogName)
 		if err != nil {
 			return err
 		}
@@ -203,7 +204,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 		ItemName:    wfapi.ItemLabel(itemName),
 	}
 
-	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	cat, err := wsSet.Root().OpenCatalog(&catalogName)
 	if err != nil {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
@@ -272,7 +273,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	if c.Bool("verbose") {
-		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root.CatalogPath(&catalogName))
+		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root().CatalogPath(&catalogName))
 
 	}
 
@@ -286,7 +287,7 @@ func cmdCatalogLs(c *cli.Context) error {
 	}
 
 	// get the list of catalogs in this workspace
-	catalogs, err := wsSet.Root.ListCatalogs()
+	catalogs, err := wsSet.Root().ListCatalogs()
 	if err != nil {
 		return fmt.Errorf("failed to list catalogs: %s", err)
 	}
@@ -340,6 +341,8 @@ func cmdCatalogBundle(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	local := wsSet[0]
+	root := wsSet.Root()
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -369,7 +372,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 	}
 
 	for _, ref := range refs {
-		wareId, wareAddr, err := wsSet.Root.GetCatalogWare(ref)
+		wareId, wareAddr, err := root.GetCatalogWare(ref)
 		if err != nil {
 			return err
 		}
@@ -380,7 +383,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 		}
 
 		fmt.Fprintf(c.App.Writer, "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
-		cat, err := wsSet.Stack[0].OpenCatalog(nil)
+		cat, err := local.OpenCatalog(nil)
 		if err != nil {
 			return fmt.Errorf("failed to open catalog: %s", err)
 		}
@@ -428,7 +431,7 @@ func cmdCatalogUpdate(c *cli.Context) error {
 	}
 
 	// get the catalog path for the root workspace
-	catalogPath := filepath.Join("/", wss.Root.CatalogBasePath())
+	catalogPath := filepath.Join("/", wss.Root().CatalogBasePath())
 	// create the path if it does not exist
 	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
 		err = os.MkdirAll(catalogPath, 0755)
@@ -502,12 +505,12 @@ func cmdCatalogRelease(c *cli.Context) error {
 	}
 
 	// create the catalog if it does not exist
-	exists, err := wsSet.Root.HasCatalog(catalogName)
+	exists, err := wsSet.Root().HasCatalog(catalogName)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		err := wsSet.Root.CreateCatalog(catalogName)
+		err := wsSet.Root().CreateCatalog(catalogName)
 		if err != nil {
 			return err
 		}
@@ -535,7 +538,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return err
 	}
 
-	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	cat, err := wsSet.Root().OpenCatalog(&catalogName)
 	if err != nil {
 		return err
 	}
@@ -592,7 +595,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	cat, err := wsSet.Root().OpenCatalog(&catalogName)
 	if err != nil {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
@@ -641,7 +644,7 @@ func cmdCatalogShow(c *cli.Context) error {
 	}
 
 	catalogName := c.String("name")
-	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	cat, err := wsSet.Root().OpenCatalog(&catalogName)
 	if err != nil {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
@@ -707,7 +710,7 @@ func cmdGenerateHtml(c *cli.Context) error {
 	}
 
 	// create the catalog if it does not exist
-	exists, err := wsSet.Root.HasCatalog(catalogName)
+	exists, err := wsSet.Root().HasCatalog(catalogName)
 	if err != nil {
 		return err
 	}
@@ -715,14 +718,14 @@ func cmdGenerateHtml(c *cli.Context) error {
 		return fmt.Errorf("catalog %q not found", catalogName)
 	}
 
-	cat, err := wsSet.Root.OpenCatalog(&catalogName)
+	cat, err := wsSet.Root().OpenCatalog(&catalogName)
 	if err != nil {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
 
 	// by default, output to a subdir of the catalog named `_html`
 	// this can be overriden by a cli flag that provides a path
-	outputPath := filepath.Join("/", wsSet.Root.CatalogPath(&catalogName), "_html")
+	outputPath := filepath.Join("/", wsSet.Root().CatalogPath(&catalogName), "_html")
 	if c.String("output") != "" {
 		outputPath = c.String("output")
 	}

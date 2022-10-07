@@ -187,7 +187,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		// TODO: unclear if this should happen here or elsewhere
 		if wareAddr == nil {
 			// check if the ware is already in the warehouse
-			_, wsPath := wsSet.Root.Path()
+			_, wsPath := wsSet.Root().Path()
 			warehousePath := filepath.Join("/",
 				wsPath,
 				".warpforge",
@@ -353,7 +353,7 @@ func execProtoformula(ctx context.Context,
 	}
 
 	// execute the derived formula
-	rr, err := formulaexec.Exec(ctx, wsSet.Root,
+	rr, err := formulaexec.Exec(ctx, wsSet.Root(),
 		wfapi.FormulaAndContext{
 			Formula: wfapi.FormulaCapsule{Formula: &formula},
 			Context: &wfapi.FormulaContextCapsule{FormulaContext: &formulaCtx},
