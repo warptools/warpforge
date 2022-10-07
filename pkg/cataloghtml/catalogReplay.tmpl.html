@@ -1,0 +1,46 @@
+<html>
+
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Replay for {{ .Module.Name }}:{{ .Release.ReleaseName }}</title>
+	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+	<script src="{{ (url "js.js") }}"></script>
+</head>
+
+<body>
+	<input type="checkbox" id="dark-mode-checkbox">
+	<div class="container">
+		<div class="header">
+			<div>
+				<small><i><a href="{{ (url "index.html") }}">Catalog</a></i>
+					<i>&gt; <a href="{{ (url (string .Module.Name) "_module.html") }}">{{ .Module.Name }}</a></i>
+					<i>&gt; <a href="{{ (url (string .Module.Name) "_releases" (string .Release.ReleaseName)) }}.html">{{ .Release.ReleaseName }}</a></i>
+					<i>&gt; Replay</i></small>
+				<h1>{{ .Module.Name }}</h1>
+			</div>
+			<div class="theme-switch-wrapper">
+				<label class="theme-switch" for="dark-mode-checkbox">
+					<div class="slider round">
+						<div class="sun-ray-1"></div>
+						<div class="sun-ray-2"></div>
+					</div>
+				</label>
+			</div>
+		</div>
+		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
+		<div class="tabs">
+			<label for="tab-radiobutton-1"><strong>Plot</strong></label>
+		</div>
+		<div class="content-wrapper">
+			<div class="content">
+				<div class="tab-content">
+					<pre>
+						{{ ( .PlotFormatter.FormattedJson ) }}
+					</pre>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

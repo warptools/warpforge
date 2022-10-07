@@ -3,12 +3,16 @@ package cataloghtml
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"html/template"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -22,6 +26,9 @@ var (
 
 	//go:embed catalogRelease.tmpl.html
 	catalogReleaseTemplate string
+
+	//go:embed catalogReplay.tmpl.html
+	catalogReplayTemplate string
 
 	//go:embed css.css
 	cssBody []byte
@@ -160,12 +167,22 @@ func (cfg SiteConfig) CatalogModuleAndChildrenToHtml(catMod wfapi.CatalogModule)
 		return err
 	}
 	for _, releaseName := range catMod.Releases.Keys {
-		rel, err := cfg.Cat_dab.GetRelease(wfapi.CatalogRef{catMod.Name, releaseName, ""})
+		ref := wfapi.CatalogRef{catMod.Name, releaseName, ""}
+		rel, err := cfg.Cat_dab.GetRelease(ref)
 		if err != nil {
 			return err
 		}
 		if err := cfg.ReleaseToHtml(catMod, *rel); err != nil {
 			return err
+		}
+		replay, err := cfg.Cat_dab.GetReplay(ref)
+		if err != nil {
+			return err
+		}
+		if replay != nil {
+			if err := cfg.ReplayToHtml(catMod, *rel, *replay); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -187,7 +204,7 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 	)
 }
 
-// CatalogModuleToHtml generates a page for a release within a catalog module
+// ReleaseToHtml generates a page for a release within a catalog module
 // which enumerates all the items within it,
 // as well as enumerates all the metadata attached to the release.
 //
@@ -208,4 +225,40 @@ func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalo
 			"Release": rel,
 		},
 	)
+}
+
+// ReplayToHtml generates a page for a replay within a release.
+//
+// Errors:
+//
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-serialization -- in case serializing plot fails
+func (cfg SiteConfig) ReplayToHtml(catMod wfapi.CatalogModule, rel wfapi.CatalogRelease, replayPlot wfapi.Plot) error {
+	plotJson, errRaw := ipld.Marshal(json.Encode, &replayPlot, wfapi.TypeSystem.TypeByName("Plot"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
+	}
+
+	return cfg.doTemplate(
+		filepath.Join(cfg.OutputPath, string(catMod.Name), "_replays", string(replayPlot.Cid())+".html"),
+		catalogReplayTemplate,
+		map[string]interface{}{
+			"Module":        catMod,
+			"Release":       rel,
+			"PlotFormatter": PlotFormatter{cfg: cfg, Json: string(plotJson)},
+		},
+	)
+}
+
+type PlotFormatter struct {
+	cfg  SiteConfig
+	Json string
+}
+
+func (pf PlotFormatter) FormattedJson() template.HTML {
+	r := regexp.MustCompile("catalog:([^:\"]+):([^:\"]+):([^:\"]+)")
+	replaceStr := fmt.Sprintf("<a href=\"%s/$1/_releases/$2.html\">catalog:$1:$2:$3</a>", pf.cfg.URLPrefix)
+	json := string(r.ReplaceAll([]byte(pf.Json), []byte(replaceStr)))
+	return template.HTML(json)
 }
