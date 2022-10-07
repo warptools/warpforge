@@ -29,10 +29,7 @@ type Workspace struct {
 //
 //    - warpforge-error-workspace -- when the workspace directory fails to open
 func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
-	f, err := fsys.Open(filepath.Join(rootPath, magicWorkspaceDirname))
-	if f != nil {
-		f.Close()
-	}
+	_, err := statDir(fsys, filepath.Join(rootPath, magicWorkspaceDirname))
 	if err != nil {
 		return nil, wfapi.ErrorWorkspace(rootPath, err)
 	}

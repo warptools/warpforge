@@ -100,10 +100,11 @@ func TestCatalogLookup(t *testing.T) {
 				},
 			}
 			var err error
-			wss, _, err := FindWorkspace(fsys, "", "home/user/")
+			ws, _, err := FindWorkspace(fsys, "", "home/user/")
 			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, ws, qt.IsNotNil)
 
-			wareId, wareAddr, err := wss.GetCatalogWare(ref)
+			wareId, wareAddr, err := ws.GetCatalogWare(ref)
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, wareId, qt.IsNotNil)
 			qt.Assert(t, wareId.Hash, qt.Equals, "abcd")
@@ -141,6 +142,7 @@ func TestCatalogLookup(t *testing.T) {
 			var err error
 			ws, _, err := FindWorkspace(fsys, "", "home/user/")
 			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, ws, qt.IsNotNil)
 
 			catName := "test"
 			cat, err := ws.OpenCatalog(&catName)
@@ -176,6 +178,9 @@ func TestCatalogLookup(t *testing.T) {
 			}
 			var err error
 			ws, _, err := FindWorkspace(fsys, "", "home/user/")
+			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, ws, qt.IsNotNil)
+
 			cat, err := ws.OpenCatalog(nil)
 			qt.Assert(t, err, qt.IsNil)
 			_, err = cat.GetReplay(ref)

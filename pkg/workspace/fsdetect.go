@@ -57,11 +57,8 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 	for {
 		// Assume the search path exists and is a dir (we'll get a reasonable error anyway if it's not);
 		//  join that path with our search target and try to open it.
-		f, err := fsys.Open(filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
-		if f != nil {
-			f.Close()
-		}
-		if err == nil { // no error?  Found it!
+		_, err := statDir(fsys, filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
+		if err == nil {
 			ws := openWorkspace(fsys, filepath.Join(basisPath, searchAt))
 			if ws.isHomeWorkspace {
 				ws = nil
@@ -83,6 +80,18 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 		//  Whatever this error is, our search has blind spots: error out.
 		return nil, searchAt, wfapi.ErrorSearchingFilesystem("workspace", err)
 	}
+}
+
+// statDir is fs.Stat but returns fs.ErrNotExist if the path is not a dir
+func statDir(fsys fs.FS, path string) (fs.FileInfo, error) {
+	fi, err := fs.Stat(fsys, path)
+	if err != nil {
+		return fi, err
+	}
+	if !fi.IsDir() {
+		return fi, fs.ErrNotExist
+	}
+	return fi, err
 }
 
 // FindWorkspaceStack works similarly to FindWorkspace, but finds all workspaces, not just the nearest one.
