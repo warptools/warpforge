@@ -45,12 +45,12 @@ var catalogCmdDef = cli.Command{
 		},
 		{
 			Name:   "add",
-			Usage:  "Add an item to the catalog",
+			Usage:  "Add an item to the given catalog in the root workspace. Will create a catalog if required.",
 			Action: cmdCatalogAdd,
 		},
 		{
 			Name:  "release",
-			Usage: "Add a module to the catalog as a new release",
+			Usage: "Add a module to the root workspace catalog as a new release",
 			Action: chainCmdMiddleware(cmdCatalogRelease,
 				cmdMiddlewareLogging,
 				cmdMiddlewareTracingConfig,
@@ -59,32 +59,32 @@ var catalogCmdDef = cli.Command{
 		},
 		{
 			Name:   "ls",
-			Usage:  "List available catalogs",
+			Usage:  "List available catalogs in the root workspace",
 			Action: cmdCatalogLs,
 		},
 		{
 			Name:   "show",
-			Usage:  "Show the contents of a module",
+			Usage:  "Show the contents of a module in the root workspace catalog",
 			Action: cmdCatalogShow,
 		},
 		{
 			Name:   "bundle",
-			Usage:  "Bundle required catalog items into this project's catalog",
+			Usage:  "Bundle required catalog items into the current directory's workspace catalog. Will create a workspace and catalog in the current directory if none exists.",
 			Action: cmdCatalogBundle,
 		},
 		{
 			Name:   "update",
-			Usage:  "Update remote catalogs",
+			Usage:  "Update remote catalogs in the root workspace. Will install the default warpsys catalog.",
 			Action: cmdCatalogUpdate,
 		},
 		{
 			Name:   "ingest-git-tags",
-			Usage:  "Ingest all tags from a git repository into a catalog entry",
+			Usage:  "Ingest all tags from a git repository into a root workspace catalog entry",
 			Action: cmdIngestGitTags,
 		},
 		{
 			Name:   "generate-html",
-			Usage:  "Generates HTML output for the catalog containing information on modules",
+			Usage:  "Generates HTML output for the root workspace catalog containing information on modules",
 			Action: cmdGenerateHtml,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
