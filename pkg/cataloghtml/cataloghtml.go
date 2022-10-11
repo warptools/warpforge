@@ -1,8 +1,10 @@
 package cataloghtml
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"os"
@@ -12,9 +14,13 @@ import (
 	"regexp"
 
 	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/codec/json"
+	ipldJson "github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+
+	"github.com/alecthomas/chroma/formatters"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 )
 
 var (
@@ -56,6 +62,10 @@ type SiteConfig struct {
 
 	// Set to "/" if you'll be publishing at the root of a subdomain.
 	URLPrefix string
+
+	// URL to warehouse to use for download links in generated HTML
+	// If nil, download links will be disabled
+	DownloadURL *string
 }
 
 func (cfg SiteConfig) tfuncs() map[string]interface{} {
@@ -221,8 +231,9 @@ func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalo
 		filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases", string(rel.ReleaseName)+".html"),
 		catalogReleaseTemplate,
 		map[string]interface{}{
-			"Module":  catMod,
-			"Release": rel,
+			"Module":        catMod,
+			"Release":       rel,
+			"LinkGenerator": downloadLinkGenerator{cfg: cfg},
 		},
 	)
 }
@@ -235,7 +246,7 @@ func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalo
 //   - warpforge-error-internal -- in case of templating errors.
 //   - warpforge-error-serialization -- in case serializing plot fails
 func (cfg SiteConfig) ReplayToHtml(catMod wfapi.CatalogModule, rel wfapi.CatalogRelease, replayPlot wfapi.Plot) error {
-	plotJson, errRaw := ipld.Marshal(json.Encode, &replayPlot, wfapi.TypeSystem.TypeByName("Plot"))
+	plotJson, errRaw := ipld.Marshal(ipldJson.Encode, &replayPlot, wfapi.TypeSystem.TypeByName("Plot"))
 	if errRaw != nil {
 		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
 	}
@@ -246,19 +257,63 @@ func (cfg SiteConfig) ReplayToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalog
 		map[string]interface{}{
 			"Module":        catMod,
 			"Release":       rel,
-			"PlotFormatter": PlotFormatter{cfg: cfg, Json: string(plotJson)},
+			"PlotFormatter": plotFormatter{cfg: cfg, json: string(plotJson)},
 		},
 	)
 }
 
-type PlotFormatter struct {
+// Helper type to format JSON Plot into HTML with links
+type plotFormatter struct {
 	cfg  SiteConfig
-	Json string
+	json string
 }
 
-func (pf PlotFormatter) FormattedJson() template.HTML {
-	r := regexp.MustCompile("catalog:([^:\"]+):([^:\"]+):([^:\"]+)")
+func (pf plotFormatter) FormattedJson() template.HTML {
+	// indent the json
+	var indentedJson bytes.Buffer
+	err := json.Indent(&indentedJson, []byte(pf.json), "", "  ")
+	if err != nil {
+		panic("failed to indent json")
+	}
+
+	// apply syntax highlighting to json
+	lexer := lexers.Get("json")
+	style := styles.Get("dracula")
+	if err != nil {
+		panic(fmt.Sprintf("failed to modify style: %s", err))
+	}
+	formatter := formatters.Get("html")
+	if lexer == nil || style == nil || formatter == nil {
+		panic("failed to setup syntax highlighting")
+	}
+	iterator, err := lexer.Tokenise(nil, indentedJson.String())
+	if err != nil {
+		panic("failed to tokenize for syntax highlighting")
+	}
+	var outBuf bytes.Buffer
+	err = formatter.Format(&outBuf, style, iterator)
+	if err != nil {
+		panic("failed to apply syntax highlighting")
+	}
+
+	// replace catalog references with links
+	out := outBuf.String()
+	r := regexp.MustCompile("catalog:([^:\"<>]+):([^:\"<>]+):([^:\"<>]+)")
 	replaceStr := fmt.Sprintf("<a href=\"%s/$1/_releases/$2.html\">catalog:$1:$2:$3</a>", pf.cfg.URLPrefix)
-	json := string(r.ReplaceAll([]byte(pf.Json), []byte(replaceStr)))
-	return template.HTML(json)
+	out = string(r.ReplaceAll([]byte(out), []byte(replaceStr)))
+	return template.HTML(out)
+}
+
+type downloadLinkGenerator struct {
+	cfg SiteConfig
+}
+
+func (dlg downloadLinkGenerator) DownloadLinksAvailable() bool {
+	// if download URL prefix is set, a link can be created
+	return dlg.cfg.DownloadURL != nil
+}
+
+func (dlg downloadLinkGenerator) DownloadLink(wareId wfapi.WareID) template.HTML {
+	link := fmt.Sprintf("(<a href=\"%s/%s/%s/%s\">download</a>)", *dlg.cfg.DownloadURL, wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
+	return template.HTML(link)
 }
