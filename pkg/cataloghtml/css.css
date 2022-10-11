@@ -169,6 +169,20 @@ li {
 	margin-bottom: var(--space-sm);
 }
 
+dt {
+	font-weight: bold;
+	margin-bottom: var(--space-md);
+	margin-top: var(--space-lg);
+}
+
+dt:first-of-type {
+	margin-top: 0;
+}
+
+dd {
+	margin: var(--space-sm) var(--space-lg);
+}
+
 /* Styling toggle */
 .theme-switch-wrapper {
 	display: flex;
@@ -360,6 +374,7 @@ li {
 .tab-content {
 	height: 0;
 	opacity: 0;
+	pointer-events: none;
 	word-break: break-all;
 }
 
@@ -414,4 +429,5 @@ li {
 	.tab-content:nth-of-type(2) {
 	opacity: 1;
 	height: initial;
+	pointer-events: initial;
 }
