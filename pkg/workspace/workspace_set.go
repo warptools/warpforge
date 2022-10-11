@@ -1,8 +1,6 @@
 package workspace
 
 import (
-	"io/fs"
-
 	"github.com/warpfork/warpforge/wfapi"
 )
 
@@ -11,28 +9,6 @@ type WorkspaceSet []*Workspace
 
 func (wsSet WorkspaceSet) Root() *Workspace {
 	return wsSet[len(wsSet)-1]
-}
-
-// Opens a full WorkspaceSet
-// searches from searchPath up to basisPath for workspaces
-// The root workspace will be the first workspace found that is marked as a root, or the home workspace if none exists
-// Errors:
-//
-//    - warpforge-error-workspace -- when the workspace directory fails to open
-//    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
-func OpenWorkspaceSet(fsys fs.FS, basisPath string, searchPath string) (WorkspaceSet, wfapi.Error) {
-	set, err := FindWorkspaceStack(fsys, basisPath, searchPath)
-	if err != nil {
-		return nil, err
-	}
-	if len(set) == 0 {
-		homeWS, err := OpenHomeWorkspace(fsys)
-		if err != nil {
-			return nil, err
-		}
-		set = append(set, homeWS)
-	}
-	return set, nil
 }
 
 // Get a catalog ware from a workspace set.

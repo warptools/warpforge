@@ -127,3 +127,37 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss []*Worksp
 	}
 	return wss, nil
 }
+
+// FindRootWorkspace calls FindWorkspaceStack and returns the root workspace.
+//
+// A root workspace is marked by containing a file named "root"
+//
+// If no root filesystems are marked, this will default to the last item in the
+// stack, which is the home workspace.
+//
+// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
+//
+// Errors:
+//
+//    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
+func FindRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, wfapi.Error) {
+	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ws := range stack {
+		if ws.IsRootWorkspace() {
+			// this is our root workspace so we're done
+			return ws, nil
+		}
+	}
+	panic("FindWorkspaceStack must return a root workspace.")
+}
+
+// checkIsRootWorkspace returns true if the workspace contains the magic "root" file.
+func checkIsRootWorkspace(fsys fs.FS, rootPath string) bool {
+	// check if the root marker file exists
+	_, err := fs.Stat(fsys, filepath.Join(rootPath, magicWorkspaceDirname, "root"))
+	return err == nil
+}

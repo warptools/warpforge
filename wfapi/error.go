@@ -33,6 +33,18 @@ func (e *ErrorVal) Code() string {
 	return e.CodeString
 }
 
+// IsCode returns true if any ErrorVal in this error chain contains the given code string
+// This is similar to errors.Is
+func (e *ErrorVal) IsCode(code string) bool {
+	if e.CodeString == code {
+		return true
+	}
+	if e.Cause == nil {
+		return false
+	}
+	return e.Cause.IsCode(code)
+}
+
 // wrap takes an unknown error, and if it's *ErrorVal, returns it as such;
 // if it's any other golang error, it wraps it in an *ErrorVal which has only the message field set.
 //

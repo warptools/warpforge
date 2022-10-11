@@ -14,6 +14,7 @@ type Workspace struct {
 	fsys            fs.FS  // the fs.  (Most of the application is expected to use just one of these, but it's always configurable, largely for tests.)
 	rootPath        string // workspace root path -- *not* including the magicWorkspaceDirname segment on the end.
 	isHomeWorkspace bool   // if it's the ultimate workspace (the one in your homedir).
+	isRootWorkspace bool   // if it's a root workspace.
 }
 
 // OpenWorkspace returns a pointer to a Workspace object.
@@ -38,28 +39,21 @@ func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
 
 // openWorkspace is the same as the public method, but with no error checking at all;
 // it presumes you've already done that (as most of the Find methods have).
+//
+// Changing the filesystem or home directory won't affect the status of whether this workspace
+// is considered a root workspace or the home workspace respectively after opening. This should
+// prevent an active workspace set from losing its root workspace at the cost of inconsistent state
+// from an outside perspective.
 func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 	rootPath = filepath.Clean(rootPath)
+	isHomeWorkspace := rootPath == homedir
 	return &Workspace{
 		fsys:            fsys,
 		rootPath:        rootPath,
-		isHomeWorkspace: rootPath == homedir,
+		isHomeWorkspace: isHomeWorkspace,
+		isRootWorkspace: checkIsRootWorkspace(fsys, rootPath) || isHomeWorkspace,
 		// that's it; everything else is loaded later.
 	}
-}
-
-// Path returns the workspace's fs and path -- the directory that is its root.
-// (This does *not* include the ".warpforge" segment on the end of the path.)
-func (ws *Workspace) Path() (fs.FS, string) {
-	return ws.fsys, ws.rootPath
-}
-
-// IsHomeWorkspace returns true if this workspace is the one in the user's home dir.
-// The home workspace is sometimes treated specially, because it's always the last one --
-// it can have no parents, and is the final word for any config overrides.
-// Some functions will refuse to work on the home workspace, or work specially on it.
-func (ws *Workspace) IsHomeWorkspace() bool {
-	return ws.isHomeWorkspace
 }
 
 // OpenHomeWorkspace calls OpenWorkspace on the user's homedir.
@@ -74,33 +68,18 @@ func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
 	return OpenWorkspace(fsys, homedir)
 }
 
-// OpenRootWorkspace calls OpenWorkspace on the first root workspace in the stack.
-//
-// A root workspace is marked by containing a file named "root"
-//
-// If no root filesystems are marked, this will default to the last item in the
-// stack, which is the home workspace.
-//
-// An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
-//
-// Errors:
-//
-//    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
-func OpenRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, wfapi.Error) {
-	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
-	if err != nil {
-		return nil, err
-	}
+// Path returns the workspace's fs and path -- the directory that is its root.
+// (This does *not* include the ".warpforge" segment on the end of the path.)
+func (ws *Workspace) Path() (fs.FS, string) {
+	return ws.fsys, ws.rootPath
+}
 
-	for _, ws := range stack {
-		if ws.IsRootWorkspace() {
-			// this is our root workspace so we're done
-			return ws, nil
-		}
-	}
-
-	// no matches, default to the last item in the stack
-	return stack[len(stack)-1], nil
+// IsHomeWorkspace returns true if this workspace is the one in the user's home dir.
+// The home workspace is sometimes treated specially, because it's always the last one --
+// it can have no parents, and is the final word for any config overrides.
+// Some functions will refuse to work on the home workspace, or work specially on it.
+func (ws *Workspace) IsHomeWorkspace() bool {
+	return ws.isHomeWorkspace
 }
 
 // Returns the path for a cached ware within a workspace
@@ -123,10 +102,9 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
 		wareId.Hash), nil
 }
 
+// IsRootWorkspace returns true if the workspace is a root workspace
 func (ws *Workspace) IsRootWorkspace() bool {
-	// check if the root marker file exists
-	_, err := fs.Stat(ws.fsys, filepath.Join(ws.rootPath, magicWorkspaceDirname, "root"))
-	return err == nil || ws.isHomeWorkspace
+	return ws.isRootWorkspace
 }
 
 // Returns the base path which contains memos (i.e., `.../.warpforge/memos`)
