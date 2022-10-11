@@ -93,6 +93,7 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 //   - warpforge-error-internal -- in case of templating errors.
 //   - warpforge-error-catalog-invalid -- in case the catalog data is invalid.
 //   - warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
+//   - warpforge-error-serialization -- in case the replay plot serialization fails
 func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	// Emit catalog index.
 	if err := cfg.CatalogToHtml(); err != nil {
@@ -172,6 +173,7 @@ func (cfg SiteConfig) CatalogToHtml() error {
 //   - warpforge-error-internal -- in case of templating errors.
 //   - warpforge-error-catalog-invalid -- in case the catalog data is invalid.
 //   - warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
+//   - warpforge-error-serialization -- in case the replay plot serialization fails
 func (cfg SiteConfig) CatalogModuleAndChildrenToHtml(catMod wfapi.CatalogModule) error {
 	if err := cfg.CatalogModuleToHtml(catMod); err != nil {
 		return err
