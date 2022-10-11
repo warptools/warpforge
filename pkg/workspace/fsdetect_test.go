@@ -56,6 +56,7 @@ func TestWorkspaceDetection(t *testing.T) {
 				"home/user",
 			})
 			qt.Check(t, wss[len(wss)-1].IsHomeWorkspace(), qt.IsTrue)
+			qt.Check(t, wss[len(wss)-1].IsRootWorkspace(), qt.IsTrue)
 		})
 		t.Run("find-stack-works-in-nested-project", func(t *testing.T) {
 			wss, err := FindWorkspaceStack(fsys, "", "home/user/workspace/quux-proj")
@@ -76,6 +77,50 @@ func TestWorkspaceDetection(t *testing.T) {
 				"home/user",
 			})
 			qt.Check(t, wss[len(wss)-1].IsHomeWorkspace(), qt.IsTrue)
+		})
+	})
+	t.Run("happy-path-with-root-workspace", func(t *testing.T) {
+		fsys := fstest.MapFS{
+			"home/user/.warpforge":                                               &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"home/user/yaworkspace/.warpforge":                                   &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"home/user/yaworkspace/rootworkspace/.warpforge":                     &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"home/user/yaworkspace/rootworkspace/.warpforge/root":                &fstest.MapFile{Mode: 0755},
+			"home/user/yaworkspace/rootworkspace/workspace/.warpforge":           &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"home/user/yaworkspace/rootworkspace/workspace/quux-proj/.warpforge": &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"home/user/yaworkspace/rootworkspace/workspace/quux-proj/subdir":     &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+		}
+		// fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		// 	fmt.Printf(":fs: %s -- %#v\n", path, d)
+		// 	return nil
+		// })
+		t.Run("find-returns-root-workspace", func(t *testing.T) {
+			wss, _, err := FindWorkspace(fsys, "", "home/user/yaworkspace/rootworkspace")
+			qt.Check(t, err, qt.IsNil)
+			qt.Check(t, wss.rootPath, qt.Equals, "home/user/yaworkspace/rootworkspace")
+			qt.Check(t, wss.IsHomeWorkspace(), qt.IsFalse)
+			qt.Check(t, wss.IsRootWorkspace(), qt.IsTrue)
+		})
+		t.Run("find-stack-works-in-nested-project", func(t *testing.T) {
+			wss, err := FindWorkspaceStack(fsys, "", "home/user/yaworkspace/rootworkspace/workspace/quux-proj")
+			qt.Check(t, err, qt.IsNil)
+			qt.Check(t, projectWorkspacePaths(wss), qt.DeepEquals, []string{
+				"home/user/yaworkspace/rootworkspace/workspace/quux-proj",
+				"home/user/yaworkspace/rootworkspace/workspace",
+				"home/user/yaworkspace/rootworkspace",
+			})
+			qt.Check(t, wss[len(wss)-1].IsHomeWorkspace(), qt.IsFalse)
+			qt.Check(t, wss[len(wss)-1].IsRootWorkspace(), qt.IsTrue)
+		})
+		t.Run("find-stack-works-in-nested-project-subdir", func(t *testing.T) {
+			wss, err := FindWorkspaceStack(fsys, "", "home/user/yaworkspace/rootworkspace/workspace/quux-proj/subdir")
+			qt.Check(t, err, qt.IsNil)
+			qt.Check(t, projectWorkspacePaths(wss), qt.DeepEquals, []string{
+				"home/user/yaworkspace/rootworkspace/workspace/quux-proj",
+				"home/user/yaworkspace/rootworkspace/workspace",
+				"home/user/yaworkspace/rootworkspace",
+			})
+			qt.Check(t, wss[len(wss)-1].IsHomeWorkspace(), qt.IsFalse)
+			qt.Check(t, wss[len(wss)-1].IsRootWorkspace(), qt.IsTrue)
 		})
 	})
 }
