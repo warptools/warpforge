@@ -83,7 +83,7 @@ func ErrorUnknown(msgTmpl string, cause error) Error {
 func ErrorInternal(msgTmpl string, cause error) Error {
 	return &ErrorVal{
 		CodeString: "warpforge-error-internal",
-		Message:    msgTmpl,
+		Message:    fmt.Sprintf("%s (cause: %s)", msgTmpl, cause),
 		Cause:      wrapErr(cause),
 	}
 }
