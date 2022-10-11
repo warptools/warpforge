@@ -88,7 +88,7 @@ var catalogCmdDef = cli.Command{
 		},
 		{
 			Name:  "bundle",
-			Usage: "Bundle required catalog items into the current directory's workspace catalog. Will create a workspace and catalog in the current directory if none exists.",
+			Usage: "Bundle required catalog items into the local workspace.",
 			Action: chainCmdMiddleware(cmdCatalogBundle,
 				cmdMiddlewareLogging,
 				cmdMiddlewareTracingConfig,
@@ -392,14 +392,12 @@ func cmdCatalogBundle(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	local := wsSet[0]
-	root := wsSet.Root()
+	local := wsSet.Local()
 
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get pwd: %s", err)
 	}
-
 	plot, err := plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
 	if err != nil {
 		return err
@@ -407,23 +405,8 @@ func cmdCatalogBundle(c *cli.Context) error {
 
 	refs := gatherCatalogRefs(plot)
 
-	catalogPath := filepath.Join(pwd, ".warpforge", "catalog")
-	// create a catalog if it does not exist
-	if _, err = os.Stat(catalogPath); os.IsNotExist(err) {
-		err = os.MkdirAll(catalogPath, 0755)
-		if err != nil {
-			return fmt.Errorf("failed to create catalog directory: %s", err)
-		}
-
-		// we need to reopen the workspace set after creating the directory
-		wsSet, err = openWorkspaceSet()
-		if err != nil {
-			return err
-		}
-	}
-
 	for _, ref := range refs {
-		wareId, wareAddr, err := root.GetCatalogWare(ref)
+		wareId, wareAddr, err := wsSet.GetCatalogWare(ref)
 		if err != nil {
 			return err
 		}

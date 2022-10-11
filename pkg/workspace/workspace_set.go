@@ -7,6 +7,10 @@ import (
 // A WorkspaceSet is a slice of workspaces ending with a root workspace.
 type WorkspaceSet []*Workspace
 
+func (wsSet WorkspaceSet) Local() *Workspace {
+	return wsSet[0]
+}
+
 func (wsSet WorkspaceSet) Root() *Workspace {
 	return wsSet[len(wsSet)-1]
 }
