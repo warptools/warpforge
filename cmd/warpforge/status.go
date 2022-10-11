@@ -189,7 +189,7 @@ func cmdStatus(c *cli.Context) error {
 	fmt.Fprintf(c.App.Writer, ")\n")
 
 	// handle all other workspaces
-	for _, ws := range wss.Stack {
+	for _, ws := range wss {
 		fs, subPath := ws.Path()
 		path := fmt.Sprintf("%s%s", fs, subPath)
 
@@ -201,18 +201,20 @@ func cmdStatus(c *cli.Context) error {
 		labels := []string{}
 
 		// collect workspaces labels
-		if *ws == *wss.Root {
+		isRoot := ws.IsRootWorkspace()
+		isHome := ws.IsHomeWorkspace()
+		if isRoot {
 			labels = append(labels, "root workspace")
 		}
-		if *ws == *wss.Home {
+		if isHome {
 			labels = append(labels, "home workspace")
 		}
-		if *ws != *wss.Root && *ws != *wss.Home {
+		if !isRoot && !isHome {
 			labels = append(labels, "workspace")
 		}
 
 		// label if it's a git repo
-		if _, err := os.Stat(filepath.Join(path, ".git")); !os.IsNotExist(err) {
+		if isGitRepo(path) {
 			labels = append(labels, "git repo")
 		}
 
@@ -233,4 +235,9 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+func isGitRepo(path string) bool {
+	_, err := os.Stat(filepath.Join(path, ".git"))
+	return !os.IsNotExist(err)
 }

@@ -161,7 +161,7 @@ func cmdRun(c *cli.Context) error {
 
 					// run formula
 					config := wfapi.FormulaExecConfig{}
-					_, err = formulaexec.Exec(ctx, wsSet.Root, frmAndCtx, config)
+					_, err = formulaexec.Exec(ctx, wsSet.Root(), frmAndCtx, config)
 					if err != nil {
 						return err
 					}

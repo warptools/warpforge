@@ -56,7 +56,7 @@ func openWorkspaceSet() (workspace.WorkspaceSet, error) {
 		return workspace.WorkspaceSet{}, fmt.Errorf("failed to get working directory: %s", err)
 	}
 
-	wss, err := workspace.OpenWorkspaceSet(os.DirFS("/"), "", pwd[1:])
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
 	if err != nil {
 		return workspace.WorkspaceSet{}, fmt.Errorf("failed to open workspace: %s", err)
 	}
