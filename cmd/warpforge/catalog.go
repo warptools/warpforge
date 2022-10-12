@@ -94,7 +94,11 @@ var catalogCmdDef = cli.Command{
 				},
 				&cli.StringFlag{
 					Name:  "url-prefix",
-					Usage: "Url prefix for links within generated HTML",
+					Usage: "URL prefix for links within generated HTML",
+				},
+				&cli.StringFlag{
+					Name:  "download-url",
+					Usage: "URL for warehouse to use for download links",
 				},
 			},
 		},
@@ -739,11 +743,18 @@ func cmdGenerateHtml(c *cli.Context) error {
 		urlPrefix = c.String("url-prefix")
 	}
 
+	var warehouseUrl *string = nil
+	if c.String("download-url") != "" {
+		dlUrl := c.String("download-url")
+		warehouseUrl = &dlUrl
+	}
+
 	cfg := cataloghtml.SiteConfig{
-		Ctx:        context.Background(),
-		Cat_dab:    cat,
-		OutputPath: outputPath,
-		URLPrefix:  urlPrefix,
+		Ctx:         context.Background(),
+		Cat_dab:     cat,
+		OutputPath:  outputPath,
+		URLPrefix:   urlPrefix,
+		DownloadURL: warehouseUrl,
 	}
 	os.RemoveAll(cfg.OutputPath)
 	if err := cfg.CatalogAndChildrenToHtml(); err != nil {

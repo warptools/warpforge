@@ -1,16 +1,26 @@
 package cataloghtml
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
+	"fmt"
 	"html/template"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 
+	"github.com/ipld/go-ipld-prime"
+	ipldJson "github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+
+	"github.com/alecthomas/chroma/formatters"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 )
 
 var (
@@ -22,6 +32,9 @@ var (
 
 	//go:embed catalogRelease.tmpl.html
 	catalogReleaseTemplate string
+
+	//go:embed catalogReplay.tmpl.html
+	catalogReplayTemplate string
 
 	//go:embed css.css
 	cssBody []byte
@@ -49,6 +62,10 @@ type SiteConfig struct {
 
 	// Set to "/" if you'll be publishing at the root of a subdomain.
 	URLPrefix string
+
+	// URL to warehouse to use for download links in generated HTML
+	// If nil, download links will be disabled
+	DownloadURL *string
 }
 
 func (cfg SiteConfig) tfuncs() map[string]interface{} {
@@ -76,6 +93,7 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 //   - warpforge-error-internal -- in case of templating errors.
 //   - warpforge-error-catalog-invalid -- in case the catalog data is invalid.
 //   - warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
+//   - warpforge-error-serialization -- in case the replay plot serialization fails
 func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	// Emit catalog index.
 	if err := cfg.CatalogToHtml(); err != nil {
@@ -155,17 +173,28 @@ func (cfg SiteConfig) CatalogToHtml() error {
 //   - warpforge-error-internal -- in case of templating errors.
 //   - warpforge-error-catalog-invalid -- in case the catalog data is invalid.
 //   - warpforge-error-catalog-parse -- in case the catalog data failed to parse entirely.
+//   - warpforge-error-serialization -- in case the replay plot serialization fails
 func (cfg SiteConfig) CatalogModuleAndChildrenToHtml(catMod wfapi.CatalogModule) error {
 	if err := cfg.CatalogModuleToHtml(catMod); err != nil {
 		return err
 	}
 	for _, releaseName := range catMod.Releases.Keys {
-		rel, err := cfg.Cat_dab.GetRelease(wfapi.CatalogRef{catMod.Name, releaseName, ""})
+		ref := wfapi.CatalogRef{catMod.Name, releaseName, ""}
+		rel, err := cfg.Cat_dab.GetRelease(ref)
 		if err != nil {
 			return err
 		}
 		if err := cfg.ReleaseToHtml(catMod, *rel); err != nil {
 			return err
+		}
+		replay, err := cfg.Cat_dab.GetReplay(ref)
+		if err != nil {
+			return err
+		}
+		if replay != nil {
+			if err := cfg.ReplayToHtml(catMod, *rel, *replay); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -187,7 +216,7 @@ func (cfg SiteConfig) CatalogModuleToHtml(catMod wfapi.CatalogModule) error {
 	)
 }
 
-// CatalogModuleToHtml generates a page for a release within a catalog module
+// ReleaseToHtml generates a page for a release within a catalog module
 // which enumerates all the items within it,
 // as well as enumerates all the metadata attached to the release.
 //
@@ -204,8 +233,91 @@ func (cfg SiteConfig) ReleaseToHtml(catMod wfapi.CatalogModule, rel wfapi.Catalo
 		filepath.Join(cfg.OutputPath, string(catMod.Name), "_releases", string(rel.ReleaseName)+".html"),
 		catalogReleaseTemplate,
 		map[string]interface{}{
-			"Module":  catMod,
-			"Release": rel,
+			"Module":        catMod,
+			"Release":       rel,
+			"LinkGenerator": downloadLinkGenerator{cfg: cfg},
 		},
 	)
+}
+
+// ReplayToHtml generates a page for a replay within a release.
+//
+// Errors:
+//
+//   - warpforge-error-io -- in case of errors writing out the new html content.
+//   - warpforge-error-internal -- in case of templating errors.
+//   - warpforge-error-serialization -- in case serializing plot fails
+func (cfg SiteConfig) ReplayToHtml(catMod wfapi.CatalogModule, rel wfapi.CatalogRelease, replayPlot wfapi.Plot) error {
+	plotJson, errRaw := ipld.Marshal(ipldJson.Encode, &replayPlot, wfapi.TypeSystem.TypeByName("Plot"))
+	if errRaw != nil {
+		return wfapi.ErrorSerialization("failed to serialize module", errRaw)
+	}
+
+	return cfg.doTemplate(
+		filepath.Join(cfg.OutputPath, string(catMod.Name), "_replays", string(replayPlot.Cid())+".html"),
+		catalogReplayTemplate,
+		map[string]interface{}{
+			"Module":        catMod,
+			"Release":       rel,
+			"PlotFormatter": plotFormatter{cfg: cfg, json: string(plotJson)},
+		},
+	)
+}
+
+// Helper type to format JSON Plot into HTML with links
+type plotFormatter struct {
+	cfg  SiteConfig
+	json string
+}
+
+func (pf plotFormatter) FormattedJson() template.HTML {
+	// indent the json
+	var indentedJson bytes.Buffer
+	err := json.Indent(&indentedJson, []byte(pf.json), "", "  ")
+	if err != nil {
+		panic("failed to indent json")
+	}
+
+	// apply syntax highlighting to json
+	lexer := lexers.Get("json")
+	style := styles.Get("dracula")
+	if err != nil {
+		panic(fmt.Sprintf("failed to modify style: %s", err))
+	}
+	formatter := formatters.Get("html")
+	if lexer == nil || style == nil || formatter == nil {
+		panic("failed to setup syntax highlighting")
+	}
+	iterator, err := lexer.Tokenise(nil, indentedJson.String())
+	if err != nil {
+		panic("failed to tokenize for syntax highlighting")
+	}
+	var outBuf bytes.Buffer
+	err = formatter.Format(&outBuf, style, iterator)
+	if err != nil {
+		panic("failed to apply syntax highlighting")
+	}
+
+	// replace catalog references with links
+	// quotations get replaced with their character code (&#34;), so we must
+	// use that for replacement
+	out := outBuf.String()
+	r := regexp.MustCompile(`catalog:([^:]+):([^:]+):([^:&]+)&#34;`)
+	replaceStr := fmt.Sprintf("<a href=\"%s/$1/_releases/$2.html\">catalog:$1:$2:$3</a>&#34;", pf.cfg.URLPrefix)
+	out = string(r.ReplaceAllString(out, replaceStr))
+	return template.HTML(out)
+}
+
+type downloadLinkGenerator struct {
+	cfg SiteConfig
+}
+
+func (dlg downloadLinkGenerator) DownloadLinksAvailable() bool {
+	// if download URL prefix is set, a link can be created
+	return dlg.cfg.DownloadURL != nil
+}
+
+func (dlg downloadLinkGenerator) DownloadLink(wareId wfapi.WareID) template.HTML {
+	link := fmt.Sprintf("(<a href=\"%s/%s/%s/%s\">download</a>)", *dlg.cfg.DownloadURL, wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
+	return template.HTML(link)
 }

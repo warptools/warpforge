@@ -5,6 +5,7 @@ module github.com/warpfork/warpforge
 go 1.16
 
 require (
+	github.com/alecthomas/chroma v0.10.0
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb
 	github.com/fatih/color v1.13.0
 	github.com/frankban/quicktest v1.14.3
