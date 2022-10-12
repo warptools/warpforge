@@ -299,10 +299,12 @@ func (pf plotFormatter) FormattedJson() template.HTML {
 	}
 
 	// replace catalog references with links
+	// quotations get replaced with their character code (&#34;), so we must
+	// use that for replacement
 	out := outBuf.String()
-	r := regexp.MustCompile("catalog:([^:\"<>]+):([^:\"<>]+):([^:\"<>]+)")
-	replaceStr := fmt.Sprintf("<a href=\"%s/$1/_releases/$2.html\">catalog:$1:$2:$3</a>", pf.cfg.URLPrefix)
-	out = string(r.ReplaceAll([]byte(out), []byte(replaceStr)))
+	r := regexp.MustCompile(`catalog:([^:]+):([^:]+):([^:&]+)&#34;`)
+	replaceStr := fmt.Sprintf("<a href=\"%s/$1/_releases/$2.html\">catalog:$1:$2:$3</a>&#34;", pf.cfg.URLPrefix)
+	out = string(r.ReplaceAllString(out, replaceStr))
 	return template.HTML(out)
 }
 
