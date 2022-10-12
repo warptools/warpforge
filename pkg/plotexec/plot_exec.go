@@ -15,6 +15,7 @@ import (
 	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const LOG_TAG_START = "┌─ plot"
@@ -254,9 +255,12 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		ws, _ := workspace.OpenHomeWorkspace(os.DirFS("/"))
 
 		// resolve the revision of the git ingest to a hash
-		repo, gitErr := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+		gitCtx, gitSpan := tracing.Start(ctx, "clone git repository", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
+		defer gitSpan.End()
+		repo, gitErr := git.CloneContext(gitCtx, memory.NewStorage(), nil, &git.CloneOptions{
 			URL: "file://" + path,
 		})
+		tracing.EndWithStatus(gitSpan, gitErr)
 		if gitErr != nil {
 			return input, nil, wfapi.ErrorGit(fmt.Sprintf("failed to checkout git repository at %q to memory", path), gitErr)
 		}
@@ -276,10 +280,13 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 			return input, nil, wfapi.ErrorPlotInvalid(fmt.Sprintf("plot contains invalid WareID %q", *input.WareID))
 		}
 		if _, errRaw = os.Stat(cachePath); os.IsNotExist(errRaw) {
-			_, gitErr = git.PlainClone(cachePath, false, &git.CloneOptions{
+			gitCtx, gitSpan := tracing.Start(ctx, "checkout git ingest", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
+			defer gitSpan.End()
+			_, gitErr = git.PlainCloneContext(gitCtx, cachePath, false, &git.CloneOptions{
 				URL:               "file://" + path,
 				RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 			})
+			tracing.EndWithStatus(gitSpan, gitErr)
 
 			if gitErr != nil {
 				return input, nil, wfapi.ErrorGit(fmt.Sprintf("failed to checkout git ingest for repository %s", path), gitErr)

@@ -72,10 +72,18 @@ func cmdWatch(c *cli.Context) error {
 	for {
 		outerCtx, outerSpan := tracing.Start(ctx, "watch-loop")
 		for path, rev := range ingests {
-			innerCtx, innerSpan := tracing.Start(outerCtx, "watch-loop-ingest", trace.WithAttributes(attribute.String("warpforge.ingest.path", path), attribute.String("warpforge.ingest.rev", rev)))
-			r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+			innerCtx, innerSpan := tracing.Start(outerCtx, "watch-loop-ingest",
+				trace.WithAttributes(
+					attribute.String(tracing.AttrKeyWarpforgeIngestPath, path),
+					attribute.String(tracing.AttrKeyWarpforgeIngestRev, rev),
+				),
+			)
+			gitCtx, gitSpan := tracing.Start(innerCtx, "copy local repo", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
+			defer gitSpan.End()
+			r, err := git.CloneContext(gitCtx, memory.NewStorage(), nil, &git.CloneOptions{
 				URL: "file://" + path,
 			})
+			tracing.EndWithStatus(gitSpan, err)
 			if err != nil {
 				return fmt.Errorf("failed to checkout git repository at %q to memory: %s", path, err)
 			}
@@ -87,7 +95,7 @@ func cmdWatch(c *cli.Context) error {
 			hash := hashBytes.String()
 
 			if ingestCache[path] != hash {
-				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String("warpforge.ingest.hash", hash)))
+				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
 				_, err := execModule(innerCtx, config, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
