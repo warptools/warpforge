@@ -25,13 +25,12 @@ func TestWorkspaceCatalogPath(t *testing.T) {
 		output   string
 		err      wfapi.Error
 	}{
-		// TODO: Next commit fixes pointers.
-		// {
-		// 	testCase: "empty catalog name",
-		// 	input:    "",
-		// 	output:   "home/user/.warpforge/catalog",
-		// 	err:      nil,
-		// },
+		{
+			testCase: "empty catalog name",
+			input:    "",
+			output:   "home/user/.warpforge/catalog",
+			err:      nil,
+		},
 		{
 			testCase: "valid catalog name",
 			input:    "foo",
@@ -94,7 +93,7 @@ func TestWorkspaceCatalogPath(t *testing.T) {
 		},
 	} {
 		t.Run(tt.testCase, func(t *testing.T) {
-			result, err := ws.CatalogPath(&tt.input)
+			result, err := ws.CatalogPath(tt.input)
 			if tt.err == nil {
 				qt.Check(t, err, qt.IsNil)
 			}

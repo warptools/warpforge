@@ -145,7 +145,7 @@ func TestCatalogLookup(t *testing.T) {
 			qt.Assert(t, ws, qt.IsNotNil)
 
 			catName := "test"
-			cat, err := ws.OpenCatalog(&catName)
+			cat, err := ws.OpenCatalog(catName)
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, len(cat.Modules()), qt.Equals, 2)
 			qt.Assert(t, cat.Modules()[0], qt.Equals, wfapi.ModuleName("example.com/module"))
@@ -181,7 +181,7 @@ func TestCatalogLookup(t *testing.T) {
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, ws, qt.IsNotNil)
 
-			cat, err := ws.OpenCatalog(nil)
+			cat, err := ws.OpenCatalog("")
 			qt.Assert(t, err, qt.IsNil)
 			_, err = cat.GetReplay(ref)
 			qt.Assert(t, err, qt.IsNil)

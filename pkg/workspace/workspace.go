@@ -148,15 +148,15 @@ func (ws *Workspace) defaultCatalogPath() string {
 // Errors:
 //
 //    - warpforge-error-catalog-invalid -- when catalog name is invalid
-func (ws *Workspace) CatalogPath(name *string) (string, wfapi.Error) {
-	if name == nil {
+func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
+	if name == "" {
 		return ws.defaultCatalogPath(), nil
 	}
 	basePath := ws.CatalogBasePath()
-	catalogPath := filepath.Join(basePath, *name)
+	catalogPath := filepath.Join(basePath, name)
 
-	if !reCatalogName.MatchString(*name) {
-		return "", wfapi.ErrorCatalogInvalid(*name, fmt.Sprintf("catalog name must match expression: %s", reCatalogName))
+	if !reCatalogName.MatchString(name) {
+		return "", wfapi.ErrorCatalogInvalid(name, fmt.Sprintf("catalog name must match expression: %s", reCatalogName))
 	}
 	return catalogPath, nil
 }
@@ -167,7 +167,7 @@ func (ws *Workspace) CatalogPath(name *string) (string, wfapi.Error) {
 //
 //    - warpforge-error-catalog-invalid -- when opened catalog has invalid data
 //    - warpforge-error-io -- when IO error occurs during opening of catalog
-func (ws *Workspace) OpenCatalog(name *string) (Catalog, wfapi.Error) {
+func (ws *Workspace) OpenCatalog(name string) (Catalog, wfapi.Error) {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return Catalog{}, err
@@ -180,29 +180,29 @@ func (ws *Workspace) OpenCatalog(name *string) (Catalog, wfapi.Error) {
 // Errors:
 //
 //    - warpforge-error-io -- when listing directory fails
-func (ws *Workspace) ListCatalogs() ([]*string, wfapi.Error) {
+func (ws *Workspace) ListCatalogs() ([]string, wfapi.Error) {
 	catalogsPath := ws.CatalogBasePath()
 
 	_, err := fs.Stat(ws.fsys, catalogsPath)
 	if os.IsNotExist(err) {
 		// no catalogs directory, return an empty list
-		return []*string{}, nil
+		return []string{}, nil
 	} else if err != nil {
-		return []*string{}, wfapi.ErrorIo("failed to stat catalogs path", &catalogsPath, err)
+		return []string{}, wfapi.ErrorIo("failed to stat catalogs path", catalogsPath, err)
 	}
 
 	// list the directory
 	catalogs, err := fs.ReadDir(ws.fsys, catalogsPath)
 	if err != nil {
-		return []*string{}, wfapi.ErrorIo("failed to read catalogs dir", &catalogsPath, err)
+		return []string{}, wfapi.ErrorIo("failed to read catalogs dir", catalogsPath, err)
 	}
 
 	// build a list of subdirectories, each is a catalog
-	var list []*string
+	var list []string
 	for _, c := range catalogs {
 		if c.IsDir() {
 			name := c.Name()
-			list = append(list, &name)
+			list = append(list, name)
 		}
 	}
 	return list, nil
@@ -227,11 +227,11 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 	// if it exists, add the "catalog" subdirectory to the end of the list
 	// this is done by adding a catalog with nil name, which refers to the unnamed catalog
 	// in the "catalog" subdirectory
-	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
+	catalogPath := ws.defaultCatalogPath()
 	_, errRaw := fs.Stat(ws.fsys, catalogPath)
 	if errRaw == nil {
-		// "catalog" subdirectory exists, append nil
-		cats = append(cats, nil)
+		// "catalog" subdirectory exists, append empty string
+		cats = append(cats, "")
 	}
 
 	for _, c := range cats {
@@ -259,19 +259,18 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 // Errors:
 //
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
-//     - warpforge-error-catalog-invalid -- when a catalog name is invalid
+//     - warpforge-error-catalog-invalid -- when the catalog name is invalid
 func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
-	path, err := ws.CatalogPath(&name)
+	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return false, err
 	}
-
 	_, errRaw := fs.Stat(ws.fsys, path)
 	if os.IsNotExist(errRaw) {
 		return false, nil
 	}
 	if errRaw != nil {
-		return false, wfapi.ErrorIo("could not stat catalog path", &path, errRaw)
+		return false, wfapi.ErrorIo("could not stat catalog path", path, errRaw)
 	}
 	return true, nil
 }
@@ -282,9 +281,10 @@ func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
 // Errors:
 //
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
-//     - warpforge-error-catalog-invalid -- when the catalog already exists
+//     - warpforge-error-catalog-invalid -- when the catalog already exists or the name is invalid
 func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
-	path, err := ws.CatalogPath(&name)
+	// catalog does not exist, create it
+	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return err
 	}
@@ -299,10 +299,9 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 		return wfapi.ErrorCatalogInvalid(path, "catalog already exists")
 	}
 
-	// catalog does not exist, create it
 	errRaw := os.MkdirAll(path, 0755)
 	if errRaw != nil {
-		return wfapi.ErrorIo("could not create catalog directory", &path, errRaw)
+		return wfapi.ErrorIo("could not create catalog directory", path, errRaw)
 	}
 
 	return nil
@@ -325,13 +324,13 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.
 	}
 
 	// if it exists, add the "catalog" subdirectory to the end of the list
-	// this is done by adding a catalog with nil name, which refers to the unnamed catalog
+	// this is done by adding a catalog with empty name, which refers to the unnamed catalog
 	// in the "catalog" subdirectory
-	catalogPath := filepath.Join(ws.rootPath, magicWorkspaceDirname, "catalog")
-	_, errRaw := fs.Stat(ws.fsys, catalogPath)
+	catalogPath := ws.defaultCatalogPath()
+	_, errRaw := statDir(ws.fsys, catalogPath)
 	if errRaw == nil {
-		// "catalog" subdirectory exists, append nil
-		cats = append(cats, nil)
+		// "catalog" subdirectory exists, append empty string
+		cats = append(cats, "")
 	}
 
 	for _, c := range cats {

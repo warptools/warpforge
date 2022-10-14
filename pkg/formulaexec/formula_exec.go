@@ -176,7 +176,7 @@ func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runCon
 	configFile := filepath.Join(runPath, "config.json")
 	err := os.RemoveAll(configFile)
 	if err != nil {
-		return rc, wfapi.ErrorIo("failed to remove config.json", &configFile, err)
+		return rc, wfapi.ErrorIo("failed to remove config.json", configFile, err)
 	}
 	var cmd *exec.Cmd
 	cmdCtx, cmdSpan := tracing.Start(ctx, "runc config", trace.WithAttributes(tracing.AttrFullExecNameRunc))
@@ -198,7 +198,7 @@ func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runCon
 	}
 	configFileBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return rc, wfapi.ErrorIo("failed to read runc config", &configFile, err)
+		return rc, wfapi.ErrorIo("failed to read runc config", configFile, err)
 	}
 	err = json.Unmarshal(configFileBytes, &rc.spec)
 	if err != nil {
@@ -210,7 +210,7 @@ func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runCon
 	rootPath := filepath.Join(runPath, "root")
 	err = os.MkdirAll(rootPath, 0755)
 	if err != nil {
-		return rc, wfapi.ErrorIo("failed to create root directory", &rootPath, err)
+		return rc, wfapi.ErrorIo("failed to create root directory", rootPath, err)
 	}
 
 	root := specs.Root{
@@ -403,11 +403,11 @@ func makeWareMount(ctx context.Context,
 	// create upper and work dirs
 	errRaw := os.MkdirAll(upperdirPath, 0755)
 	if errRaw != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", &upperdirPath, errRaw)
+		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", upperdirPath, errRaw)
 	}
 	errRaw = os.MkdirAll(workdirPath, 0755)
 	if errRaw != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", &workdirPath, errRaw)
+		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", workdirPath, errRaw)
 	}
 
 	return specs.Mount{
@@ -436,11 +436,11 @@ func makeOverlayPathMount(ctx context.Context, config runConfig, path string, de
 	// create upper and work dirs
 	err := os.MkdirAll(upperdirPath, 0755)
 	if err != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", &upperdirPath, err)
+		return specs.Mount{}, wfapi.ErrorIo("creation of upperdir failed", upperdirPath, err)
 	}
 	err = os.MkdirAll(workdirPath, 0755)
 	if err != nil {
-		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", &workdirPath, err)
+		return specs.Mount{}, wfapi.ErrorIo("creation of workdir failed", workdirPath, err)
 	}
 
 	return specs.Mount{
@@ -487,12 +487,12 @@ func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (str
 	}
 	bundlePath, err := ioutil.TempDir(config.runPath, "bundle-")
 	if err != nil {
-		return "", wfapi.ErrorIo("creating bundle tmpdir", nil, err)
+		return "", wfapi.ErrorIo("creating bundle tmpdir", bundlePath, err)
 	}
 	configPath := filepath.Join(bundlePath, "config.json")
 	err = ioutil.WriteFile(configPath, configBytes, 0644)
 	if err != nil {
-		return "", wfapi.ErrorIo("writing config.json", &configPath, err)
+		return "", wfapi.ErrorIo("writing config.json", configPath, err)
 	}
 
 	cmdCtx, cmdSpan := tracing.Start(ctx, "exec bundle", trace.WithAttributes(tracing.AttrFullExecNameRunc))
@@ -591,7 +591,7 @@ func GetBinPath() (string, wfapi.Error) {
 	} else {
 		binPath, err := os.Executable()
 		if err != nil {
-			return "", wfapi.ErrorIo("failed to locate binary path", nil, err)
+			return "", wfapi.ErrorIo("failed to locate binary path", "", err)
 		}
 		return filepath.Dir(binPath), nil
 	}
@@ -671,7 +671,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 
 	pwd, errRaw := os.Getwd()
 	if errRaw != nil {
-		return rr, wfapi.ErrorIo("failed to get working dir", nil, errRaw)
+		return rr, wfapi.ErrorIo("failed to get working dir", "", errRaw)
 	}
 
 	// get the root workspace location
@@ -687,7 +687,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 	warehousePath := filepath.Join(wsPath, "warehouse")
 	errRaw = os.MkdirAll(warehousePath, 0755)
 	if errRaw != nil {
-		return rr, wfapi.ErrorIo("failed to create warehouse", &warehousePath, errRaw)
+		return rr, wfapi.ErrorIo("failed to create warehouse", warehousePath, errRaw)
 	}
 
 	binPath, err := GetBinPath()
@@ -703,7 +703,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 	}
 	runPath, errRaw := ioutil.TempDir(base, "warpforge-run-")
 	if errRaw != nil {
-		return rr, wfapi.ErrorIo("failed to create temp run directory", nil, errRaw)
+		return rr, wfapi.ErrorIo("failed to create temp run directory", base, errRaw)
 	}
 
 	_, keep := os.LookupEnv("WARPFORGE_KEEP_RUNDIR")
@@ -880,14 +880,14 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 		scriptPath := filepath.Join(runPath, "script")
 		errRaw = os.MkdirAll(scriptPath, 0755)
 		if errRaw != nil {
-			return rr, wfapi.ErrorIo("failed to create script dir", &scriptPath, errRaw)
+			return rr, wfapi.ErrorIo("failed to create script dir", scriptPath, errRaw)
 		}
 
 		// open the script file
 		scriptFilePath := filepath.Join(scriptPath, "run")
 		scriptFile, errRaw := os.OpenFile(scriptFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 		if errRaw != nil {
-			return rr, wfapi.ErrorIo("failed to open script file for writing", &scriptFilePath, errRaw)
+			return rr, wfapi.ErrorIo("failed to open script file for writing", scriptFilePath, errRaw)
 		}
 		defer scriptFile.Close()
 
@@ -897,14 +897,14 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 			entryFilePath := filepath.Join(scriptPath, fmt.Sprintf("entry-%d", n))
 			entryFile, err := os.OpenFile(entryFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
-				return rr, wfapi.ErrorIo("failed to open entry file for writing", &entryFilePath, err)
+				return rr, wfapi.ErrorIo("failed to open entry file for writing", entryFilePath, err)
 			}
 			defer entryFile.Close()
 
 			// write the entry file
 			_, err = entryFile.WriteString(entry + "\n")
 			if err != nil {
-				return rr, wfapi.ErrorIo("error writing entry file", &entryFilePath, err)
+				return rr, wfapi.ErrorIo("error writing entry file", entryFilePath, err)
 			}
 
 			// write a line to execute this entry into the main script file
@@ -914,7 +914,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 				filepath.Join(containerScriptPath(), fmt.Sprintf("entry-%d", n)))
 			_, err = scriptFile.WriteString(entrySrc)
 			if err != nil {
-				return rr, wfapi.ErrorIo("error writing entry to script file", &scriptFilePath, err)
+				return rr, wfapi.ErrorIo("error writing entry to script file", scriptFilePath, err)
 			}
 		}
 

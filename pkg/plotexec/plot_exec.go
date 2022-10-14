@@ -241,7 +241,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 
 		path, errRaw := filepath.Abs(basis.Ingest.GitIngest.HostPath)
 		if errRaw != nil {
-			return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorIo("failed to convert git host path to absolute path", &basis.Ingest.GitIngest.HostPath, errRaw)
+			return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorIo("failed to convert git host path to absolute path", basis.Ingest.GitIngest.HostPath, errRaw)
 		}
 
 		// populate cache dir with git ingest

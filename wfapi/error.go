@@ -144,13 +144,9 @@ func ErrorExecutorFailed(executorEngineName string, cause error) Error {
 // Errors:
 //
 //    - warpforge-error-io --
-func ErrorIo(context string, path *string, cause error) Error {
+func ErrorIo(context string, path string, cause error) Error {
 	var details [][2]string
-	if path != nil {
-		details = [][2]string{{"context", context}, {"path", *path}}
-	} else {
-		details = [][2]string{{"context", context}, {"path", "none"}}
-	}
+	details = [][2]string{{"context", context}, {"path", path}}
 	return &ErrorVal{
 		CodeString: "warpforge-error-io",
 		Message:    fmt.Sprintf("io error: %s: %s", context, cause),
