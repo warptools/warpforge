@@ -2,6 +2,8 @@ package tracing
 
 import (
 	"context"
+	"strings"
+	"unicode"
 
 	"github.com/warpfork/warpforge/wfapi"
 	"go.opentelemetry.io/otel/attribute"
@@ -52,16 +54,36 @@ func Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) 
 	return TracerFromCtx(ctx).Start(ctx, spanName, opts...)
 }
 
-const SpanAttrWarpforgeErrorCode = "warpforge.error.code"
-const SpanAttrWarpforgeFormulaId = "warpforge.formula.id"
-const SpanAttrWarpforgePackId = "warpforge.pack.id"
-
 // SetSpanError is a helper function to set the span error based on a wfapi.Error
 func SetSpanError(ctx context.Context, err wfapi.Error) {
 	e := err.(*wfapi.ErrorVal)
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
-		attribute.String(SpanAttrWarpforgeErrorCode, e.Code()),
+		attribute.String(AttrKeyWarpforgeErrorCode, e.Code()),
 	)
 	span.SetStatus(codes.Error, e.Error())
+}
+
+func EndWithStatus(span trace.Span, err error) {
+	if err == nil {
+		span.SetStatus(codes.Ok, "")
+		return
+	}
+	span.SetStatus(codes.Error, err.Error())
+	span.End()
+}
+
+// PrintableAttribute creates an attribute.KeyValue with only printable characters from the value
+func PrintableAttribute(key string, value string) attribute.KeyValue {
+	return attribute.String(key, Printable(value))
+}
+
+// Printable returns the input with only printable characters as defined by unicode.IsGraphic
+func Printable(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsGraphic(r) {
+			return r
+		}
+		return -1
+	}, s)
 }

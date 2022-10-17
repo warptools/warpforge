@@ -10,13 +10,19 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var statusCmdDef = cli.Command{
-	Name:    "status",
-	Usage:   "Get status of workspaces and installation",
-	Action:  cmdStatus,
+	Name:  "status",
+	Usage: "Get status of workspaces and installation",
+	Action: chainCmdMiddleware(cmdStatus,
+		cmdMiddlewareLogging,
+		cmdMiddlewareTracingConfig,
+		cmdMiddlewareTracingSpan,
+	),
 	Aliases: []string{"info"},
 }
 
@@ -24,6 +30,7 @@ func cmdStatus(c *cli.Context) error {
 	fmtBold := color.New(color.Bold)
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
 	verbose := c.Bool("verbose")
+	ctx := c.Context
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -65,10 +72,13 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, "runc not found (expected at %s)\n", runcPath)
 		pluginsOk = false
 	} else {
-		runcVersionCmd := exec.Command(filepath.Join(binPath, "runc"), "--version")
+		cmdCtx, cmdSpan := tracing.Start(ctx, "exec", trace.WithAttributes(tracing.AttrFullExecNameRunc))
+		defer cmdSpan.End()
+		runcVersionCmd := exec.CommandContext(cmdCtx, filepath.Join(binPath, "runc"), "--version")
 		var runcVersionOut bytes.Buffer
 		runcVersionCmd.Stdout = &runcVersionOut
 		err = runcVersionCmd.Run()
+		tracing.EndWithStatus(cmdSpan, err)
 		if err != nil {
 			return fmt.Errorf("failed to get runc version information: %s", err)
 		}

@@ -165,7 +165,7 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 //
 //    - warpforge-error-io -- when file reads, writes, and dir creation fails
 //    - warpforge-error-executor-failed -- when generation of the base spec by runc fails
-func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
+func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 	rc := runConfig{
 		runPath: runPath,
 		wsPath:  wsPath,
@@ -179,17 +179,20 @@ func getBaseConfig(wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 		return rc, wfapi.ErrorIo("failed to remove config.json", &configFile, err)
 	}
 	var cmd *exec.Cmd
+	cmdCtx, cmdSpan := tracing.Start(ctx, "runc config", trace.WithAttributes(tracing.AttrFullExecNameRunc))
+	defer cmdSpan.End()
 	if os.Getuid() == 0 {
-		cmd = exec.Command(filepath.Join(binPath, "runc"),
+		cmd = exec.CommandContext(cmdCtx, filepath.Join(binPath, "runc"),
 			"spec",
 			"-b", runPath)
 	} else {
-		cmd = exec.Command(filepath.Join(binPath, "runc"),
+		cmd = exec.CommandContext(cmdCtx, filepath.Join(binPath, "runc"),
 			"spec",
 			"--rootless",
 			"-b", runPath)
 	}
 	err = cmd.Run()
+	tracing.EndWithStatus(cmdSpan, err)
 	if err != nil {
 		return rc, wfapi.ErrorExecutorFailed("failed to generate runc config", err)
 	}
@@ -492,7 +495,9 @@ func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (str
 		return "", wfapi.ErrorIo("writing config.json", &configPath, err)
 	}
 
-	cmd := exec.Command(filepath.Join(config.binPath, "runc"),
+	cmdCtx, cmdSpan := tracing.Start(ctx, "exec bundle", trace.WithAttributes(tracing.AttrFullExecNameRunc))
+	defer cmdSpan.End()
+	cmd := exec.CommandContext(cmdCtx, filepath.Join(config.binPath, "runc"),
 		"--root", filepath.Join(config.wsPath, "runc-root"),
 		"run",
 		"-b", bundlePath, // bundle path
@@ -515,6 +520,7 @@ func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (str
 		cmd.Stdout = &stdoutBuf
 	}
 	err = cmd.Run()
+	tracing.EndWithStatus(cmdSpan, err)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return "", wfapi.ErrorExecutorFailed("runc", fmt.Errorf("%s %s", stdoutBuf.String(), stderrBuf.String()))
@@ -557,7 +563,7 @@ func rioPack(ctx context.Context, config runConfig, path string) (wfapi.WareID, 
 		}
 		if out.Result.WareId != "" {
 			// found wareId
-			span.AddEvent("Found ware ID", trace.WithAttributes(attribute.String(tracing.SpanAttrWarpforgePackId, out.Result.WareId)))
+			span.AddEvent("Found ware ID", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeWareId, out.Result.WareId)))
 			break
 		}
 	}
@@ -639,7 +645,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 		panic(fmt.Sprintf("Fatal IPLD Error: failed to encode CID for Formula: %s", errRaw))
 	}
 	rr.FormulaID = fid
-	span.SetAttributes(attribute.String(tracing.SpanAttrWarpforgeFormulaId, fid))
+	span.SetAttributes(attribute.String(tracing.AttrKeyWarpforgeFormulaId, fid))
 	logger.Info(LOG_TAG_START, "")
 
 	// check if a memoized RunRecord already exists
@@ -713,7 +719,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 
 	// get our configuration for the exec step
 	// this config will collect the various inputs (mounts and vars) as each is set up
-	execConfig, err := getBaseConfig(wsPath, runPath, binPath)
+	execConfig, err := getBaseConfig(ctx, wsPath, runPath, binPath)
 	if err != nil {
 		return rr, err
 	}
@@ -745,7 +751,7 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 		} else if port.SandboxPath != nil {
 			var mnt specs.Mount
 			// create a temporary config for setting up the mount
-			config, err := getBaseConfig(wsPath, runPath, binPath)
+			config, err := getBaseConfig(ctx, wsPath, runPath, binPath)
 			if err != nil {
 				return rr, err
 			}

@@ -16,7 +16,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"github.com/warpfork/warpforge/pkg/cataloghtml"
 	"github.com/warpfork/warpforge/pkg/plotexec"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const defaultCatalogUrl = "https://github.com/warpsys/catalog.git"
@@ -39,14 +41,22 @@ var catalogCmdDef = cli.Command{
 	},
 	Subcommands: []*cli.Command{
 		{
-			Name:   "init",
-			Usage:  "Creates a named catalog in the root workspace",
-			Action: cmdCatalogInit,
+			Name:  "init",
+			Usage: "Creates a named catalog in the root workspace",
+			Action: chainCmdMiddleware(cmdCatalogInit,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
-			Name:   "add",
-			Usage:  "Add an item to the given catalog in the root workspace. Will create a catalog if required.",
-			Action: cmdCatalogAdd,
+			Name:  "add",
+			Usage: "Add an item to the given catalog in the root workspace. Will create a catalog if required.",
+			Action: chainCmdMiddleware(cmdCatalogAdd,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
 			Name:  "release",
@@ -58,34 +68,59 @@ var catalogCmdDef = cli.Command{
 			),
 		},
 		{
-			Name:   "ls",
-			Usage:  "List available catalogs in the root workspace",
-			Action: cmdCatalogLs,
+			Name:  "ls",
+			Usage: "List available catalogs in the root workspace",
+			Action: chainCmdMiddleware(cmdCatalogLs,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
-			Name:   "show",
-			Usage:  "Show the contents of a module in the root workspace catalog",
-			Action: cmdCatalogShow,
+			Name:  "show",
+			Usage: "Show the contents of a module in the root workspace catalog",
+
+			Action: chainCmdMiddleware(cmdCatalogShow,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
-			Name:   "bundle",
-			Usage:  "Bundle required catalog items into the current directory's workspace catalog. Will create a workspace and catalog in the current directory if none exists.",
-			Action: cmdCatalogBundle,
+			Name:  "bundle",
+			Usage: "Bundle required catalog items into the current directory's workspace catalog. Will create a workspace and catalog in the current directory if none exists.",
+			Action: chainCmdMiddleware(cmdCatalogBundle,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
-			Name:   "update",
-			Usage:  "Update remote catalogs in the root workspace. Will install the default warpsys catalog.",
-			Action: cmdCatalogUpdate,
+			Name:  "update",
+			Usage: "Update remote catalogs in the root workspace. Will install the default warpsys catalog.",
+			Action: chainCmdMiddleware(cmdCatalogUpdate,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
-			Name:   "ingest-git-tags",
-			Usage:  "Ingest all tags from a git repository into a root workspace catalog entry",
-			Action: cmdIngestGitTags,
+			Name:  "ingest-git-tags",
+			Usage: "Ingest all tags from a git repository into a root workspace catalog entry",
+			Action: chainCmdMiddleware(cmdIngestGitTags,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 		},
 		{
-			Name:   "generate-html",
-			Usage:  "Generates HTML output for the root workspace catalog containing information on modules",
-			Action: cmdGenerateHtml,
+			Name:  "generate-html",
+			Usage: "Generates HTML output for the root workspace catalog containing information on modules",
+			Action: chainCmdMiddleware(cmdGenerateHtml,
+				cmdMiddlewareLogging,
+				cmdMiddlewareTracingConfig,
+				cmdMiddlewareTracingSpan,
+			),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:    "output",
@@ -105,20 +140,24 @@ var catalogCmdDef = cli.Command{
 	},
 }
 
-func scanWareId(packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID, error) {
+func scanWareId(ctx context.Context, packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID, error) {
 	result := wfapi.WareID{}
 	rioPath, err := binPath("rio")
 	if err != nil {
 		return result, fmt.Errorf("failed to get path to rio")
 	}
-	rioScan := exec.Command(
-		rioPath, "scan", "--source="+string(addr), string(packType),
+	cmdCtx, cmdSpan := tracing.Start(ctx, "rio scan", trace.WithAttributes(tracing.AttrFullExecNameRio))
+	defer cmdSpan.End()
+	rioScan := exec.CommandContext(
+		cmdCtx, rioPath, "scan", "--source="+string(addr), string(packType),
 	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	rioScan.Stdout = &stdout
 	rioScan.Stderr = &stderr
 	err = rioScan.Run()
+	tracing.EndWithStatus(cmdSpan, err)
+
 	if err != nil {
 		return result, fmt.Errorf("failed to run rio scan command: %s\n%s", err, stderr.String())
 	}
@@ -168,7 +207,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 	if c.Args().Len() < 3 {
 		return fmt.Errorf("invalid input. usage: warpforge catalog add [pack type] [catalog ref] [url] [ref]")
 	}
-
+	ctx := c.Context
 	catalogName := c.String("name")
 
 	packType := c.Args().Get(0)
@@ -216,7 +255,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 	switch packType {
 	case "tar":
 		// perform rio scan to determine the ware id of the provided item
-		scanWareId, err := scanWareId(wfapi.Packtype(packType), wfapi.WarehouseAddr(url))
+		scanWareId, err := scanWareId(ctx, wfapi.Packtype(packType), wfapi.WarehouseAddr(url))
 		if err != nil {
 			return fmt.Errorf("scanning %q failed: %s", url, err)
 		}
@@ -240,7 +279,10 @@ func cmdCatalogAdd(c *cli.Context) error {
 			Name: "origin",
 			URLs: []string{url},
 		})
-		refs, err := remote.List(&git.ListOptions{})
+		listCtx, listSpan := tracing.Start(ctx, "git ls-remote", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitLs))
+		defer listSpan.End()
+		refs, err := remote.ListContext(listCtx, &git.ListOptions{})
+		tracing.EndWithStatus(listSpan, err)
 		if err != nil {
 			return err
 		}
@@ -403,7 +445,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 	// install our default remote catalog as "default-remote" by cloning from git
 	// this will noop if the catalog already exists
-
+	ctx := c.Context
 	defaultCatalogPath := filepath.Join(path, "warpsys")
 	if _, err := os.Stat(defaultCatalogPath); !os.IsNotExist(err) {
 		// a dir exists for this catalog, do nothing
@@ -413,9 +455,13 @@ func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 	if !c.Bool("quiet") {
 		fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", defaultCatalogPath)
 	}
-	_, err := git.PlainClone(defaultCatalogPath, false, &git.CloneOptions{
+
+	gitCtx, gitSpan := tracing.Start(ctx, "clone catalog", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
+	defer gitSpan.End()
+	_, err := git.PlainCloneContext(gitCtx, defaultCatalogPath, false, &git.CloneOptions{
 		URL: defaultCatalogUrl,
 	})
+	tracing.EndWithStatus(gitSpan, err)
 
 	if !c.Bool("quiet") {
 		fmt.Fprintf(c.App.Writer, " done.\n")
@@ -444,8 +490,7 @@ func cmdCatalogUpdate(c *cli.Context) error {
 		}
 	}
 
-	err = installDefaultRemoteCatalog(c, catalogPath)
-	if err != nil {
+	if err = installDefaultRemoteCatalog(c, catalogPath); err != nil {
 		return fmt.Errorf("failed to install default catalog: %s", err)
 	}
 
@@ -547,7 +592,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return err
 	}
 
-	ref := wfapi.CatalogRef{
+	parent := wfapi.CatalogRef{
 		ModuleName:  module.Name,
 		ReleaseName: wfapi.ReleaseName(releaseName),
 		ItemName:    wfapi.ItemLabel(""), // replay is not item specific
@@ -567,7 +612,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 		}
 	}
 
-	err = cat.AddReplay(ref, plot, c.Bool("force"))
+	err = cat.AddReplay(parent, plot, c.Bool("force"))
 	if err != nil {
 		return err
 	}
@@ -579,6 +624,8 @@ func cmdIngestGitTags(c *cli.Context) error {
 	if c.Args().Len() != 3 {
 		return fmt.Errorf("invalid input. usage: warpforge catalog ingest-git-repo [module name] [url] [item name]")
 	}
+	ctx := c.Context
+
 	moduleName := c.Args().Get(0)
 	url := c.Args().Get(1)
 	itemName := c.Args().Get(2)
@@ -588,7 +635,11 @@ func cmdIngestGitTags(c *cli.Context) error {
 		Name: "origin",
 		URLs: []string{url},
 	})
-	refs, err := remote.List(&git.ListOptions{})
+
+	listCtx, listSpan := tracing.Start(ctx, "git ls-remote", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitLs))
+	defer listSpan.End()
+	refs, err := remote.ListContext(listCtx, &git.ListOptions{})
+	tracing.EndWithStatus(listSpan, err)
 	if err != nil {
 		return err
 	}

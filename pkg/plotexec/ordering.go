@@ -7,7 +7,6 @@ import (
 
 	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -110,7 +109,7 @@ func orderSteps_visit(
 	plot wfapi.Plot,
 	outputPipes *map[wfapi.StepName][]wfapi.LocalLabel,
 ) error {
-	ctx, span := tracing.Start(ctx, "OrderSteps_visit", trace.WithAttributes(attribute.String("warpforge.step.name", string(name))))
+	ctx, span := tracing.Start(ctx, "OrderSteps_visit", trace.WithAttributes(tracing.PrintableAttribute(tracing.AttrKeyWarpforgeStepName, string(name))))
 	defer span.End()
 	// if step has already been visited, we're done
 	if _, ok := todo[name]; !ok {

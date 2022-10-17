@@ -27,6 +27,14 @@ func cmdMiddlewareLogging(f cli.ActionFunc) cli.ActionFunc {
 	}
 }
 
+func setSpanError(ctx context.Context, err error) {
+	wfErr, ok := err.(wfapi.Error)
+	if !ok {
+		wfErr = wfapi.ErrorUnknown("command failed", err)
+	}
+	tracing.SetSpanError(ctx, wfErr)
+}
+
 // cmdMiddlewareTracingSpan starts a span with the command name that ends when
 // the middleware exits after returning from the command or next middleware
 func cmdMiddlewareTracingSpan(f cli.ActionFunc) cli.ActionFunc {
@@ -34,7 +42,11 @@ func cmdMiddlewareTracingSpan(f cli.ActionFunc) cli.ActionFunc {
 		ctx, span := tracing.Start(c.Context, c.Command.FullName())
 		defer span.End()
 		c.Context = ctx
-		return f(c)
+		err := f(c)
+		if err != nil {
+			setSpanError(ctx, err)
+		}
+		return err
 	}
 }
 

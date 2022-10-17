@@ -11,9 +11,13 @@ import (
 )
 
 var quickstartCmdDef = cli.Command{
-	Name:   "quickstart",
-	Usage:  "Generate a basic module and plot",
-	Action: cmdQuickstart,
+	Name:  "quickstart",
+	Usage: "Generate a basic module and plot",
+	Action: chainCmdMiddleware(cmdQuickstart,
+		cmdMiddlewareLogging,
+		cmdMiddlewareTracingConfig,
+		cmdMiddlewareTracingSpan,
+	),
 }
 
 const defaultPlotJson = `{
