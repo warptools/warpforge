@@ -42,7 +42,7 @@
 						{{- $dot := .Release -}}
 						{{- range $itemKey := .Release.Items.Keys }}
 						{{ $item := index $dot.Items.Values $itemKey }}
-						<li>{{ $itemKey }} : {{ $item }} {{ if $linksAvailable }}<small>{{ ($linkGen.DownloadLink $item) }}</small>{{ end }}</li>
+						<li>{{ $itemKey }} : {{ $item }} {{ if $linksAvailable }}<small>download: <a href="{{ ($linkGen.DownloadUrl $item) }}">http</a></small>{{ end }}</li>
 						{{- end }}
 					</ul>
 				</div>

@@ -303,7 +303,12 @@ func (pf plotFormatter) FormattedJson() template.HTML {
 	// use that for replacement
 	out := outBuf.String()
 	r := regexp.MustCompile(`catalog:([^:]+):([^:]+):([^:&]+)&#34;`)
-	replaceStr := fmt.Sprintf("<a href=\"%s/$1/_releases/$2.html\">catalog:$1:$2:$3</a>&#34;", pf.cfg.URLPrefix)
+	prefix := pf.cfg.URLPrefix
+	// add trailing slash if needed
+	if prefix[len(prefix)-1] != '/' {
+		prefix = prefix + "/"
+	}
+	replaceStr := fmt.Sprintf("<a href=\"%s$1/_releases/$2.html\">catalog:$1:$2:$3</a>&#34;", prefix)
 	out = string(r.ReplaceAllString(out, replaceStr))
 	return template.HTML(out)
 }
@@ -317,7 +322,6 @@ func (dlg downloadLinkGenerator) DownloadLinksAvailable() bool {
 	return dlg.cfg.DownloadURL != nil
 }
 
-func (dlg downloadLinkGenerator) DownloadLink(wareId wfapi.WareID) template.HTML {
-	link := fmt.Sprintf("(<a href=\"%s/%s/%s/%s\">download</a>)", *dlg.cfg.DownloadURL, wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
-	return template.HTML(link)
+func (dlg downloadLinkGenerator) DownloadUrl(wareId wfapi.WareID) string {
+	return fmt.Sprintf("%s/%s/%s/%s", *dlg.cfg.DownloadURL, wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 }
