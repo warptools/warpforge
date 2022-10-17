@@ -171,7 +171,7 @@ func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
 //
 // Errors:
 //
-//    - warpforge-error-catalog-invalid -- when opened catalog has invalid data
+//    - warpforge-error-catalog-invalid -- when opened catalog has invalid data or an invalid name
 //    - warpforge-error-io -- when IO error occurs during opening of catalog
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
 func (ws *Workspace) OpenCatalog(name string) (Catalog, wfapi.Error) {
@@ -283,16 +283,14 @@ func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
 	return true, nil
 }
 
-// Create a new catalog.
-// This only creates the catalog and does not open it.
+// createCatalog creates a new catalog
+// createCatalog does not open the new catalog.
 //
 // Errors:
 //
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
 //     - warpforge-error-catalog-invalid -- when the catalog already exists
-//     - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
-	// catalog does not exist, create it
+func (ws *Workspace) createCatalog(name string, existsOk bool) wfapi.Error {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return err
@@ -305,7 +303,10 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 		return err
 	}
 	if exists {
-		return wfapi.ErrorCatalogInvalid(path, "catalog already exists")
+		if !existsOk {
+			return wfapi.ErrorCatalogInvalid(path, "catalog already exists")
+		}
+		return nil
 	}
 
 	errRaw := os.MkdirAll(path, 0755)
@@ -314,6 +315,30 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 	}
 
 	return nil
+}
+
+// CreateOrOpenCatalog will create a catalog if it does not exist before opening
+//
+// Errors:
+//
+//  - warpforge-error-catalog-invalid -- when the catalog name is invalid
+//  - warpforge-error-io -- when the
+func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, wfapi.Error) {
+	if err := ws.createCatalog(name, true); err != nil {
+		return Catalog{}, err
+	}
+	return ws.OpenCatalog(name)
+}
+
+// Create a new catalog.
+// This only creates the catalog and does not open it.
+//
+// Errors:
+//
+//     - warpforge-error-io -- when reading or writing the catalog directory fails
+//     - warpforge-error-catalog-invalid -- when the catalog already exists or the name is invalid
+func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
+	return ws.createCatalog(name, false)
 }
 
 // Get a catalog replay from a workspace, doing lookup by CatalogRef.

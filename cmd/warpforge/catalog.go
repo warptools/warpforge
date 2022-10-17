@@ -405,6 +405,10 @@ func cmdCatalogBundle(c *cli.Context) error {
 
 	refs := gatherCatalogRefs(plot)
 
+	cat, err := local.CreateOrOpenCatalog("")
+	if err != nil {
+		return fmt.Errorf("failed to open catalog: %s", err)
+	}
 	for _, ref := range refs {
 		wareId, wareAddr, err := wsSet.GetCatalogWare(ref)
 		if err != nil {
@@ -417,10 +421,6 @@ func cmdCatalogBundle(c *cli.Context) error {
 		}
 
 		fmt.Fprintf(c.App.Writer, "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
-		cat, err := local.OpenCatalog("")
-		if err != nil {
-			return fmt.Errorf("failed to open catalog: %s", err)
-		}
 		cat.AddItem(ref, *wareId, c.Bool("force"))
 		if wareAddr != nil {
 			cat.AddByWareMirror(ref, *wareId, *wareAddr)
