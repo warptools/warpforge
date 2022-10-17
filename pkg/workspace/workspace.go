@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -134,20 +135,30 @@ func (ws *Workspace) CatalogBasePath() string {
 	)
 }
 
-// Returns the catalog path for catalog with a given name within a workspace
-func (ws *Workspace) CatalogPath(name *string) string {
+// defaultCatalogPath returns the path to the default catalog belonging to this workspace.
+func (ws *Workspace) defaultCatalogPath() string {
+	return filepath.Join(ws.rootPath, ".warpforge", "catalog")
+}
+
+// Returns the catalog path for catalog with a given name within a workspace.
+// Guards against filepath modifying names by considering any path which
+// would be modified by filepath.Clean to be considered invalid.
+// Guards against catalog nesting by considering any name with filepath separators to be invalid.
+//
+// Errors:
+//
+//    - warpforge-error-catalog-invalid -- when catalog name is invalid
+func (ws *Workspace) CatalogPath(name *string) (string, wfapi.Error) {
 	if name == nil {
-		return filepath.Join(
-			ws.rootPath,
-			".warpforge",
-			"catalog",
-		)
-	} else {
-		return filepath.Join(
-			ws.CatalogBasePath(),
-			*name,
-		)
+		return ws.defaultCatalogPath(), nil
 	}
+	basePath := ws.CatalogBasePath()
+	catalogPath := filepath.Join(basePath, *name)
+
+	if !reCatalogName.MatchString(*name) {
+		return "", wfapi.ErrorCatalogInvalid(*name, fmt.Sprintf("catalog name must match expression: %s", reCatalogName))
+	}
+	return catalogPath, nil
 }
 
 // Open a catalog within this workspace with a given name
@@ -157,7 +168,10 @@ func (ws *Workspace) CatalogPath(name *string) string {
 //    - warpforge-error-catalog-invalid -- when opened catalog has invalid data
 //    - warpforge-error-io -- when IO error occurs during opening of catalog
 func (ws *Workspace) OpenCatalog(name *string) (Catalog, wfapi.Error) {
-	path := ws.CatalogPath(name)
+	path, err := ws.CatalogPath(name)
+	if err != nil {
+		return Catalog{}, err
+	}
 	return OpenCatalog(ws.fsys, path)
 }
 
@@ -245,15 +259,21 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 // Errors:
 //
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
+//     - warpforge-error-catalog-invalid -- when a catalog name is invalid
 func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
-	path := ws.CatalogPath(&name)
-	if _, errRaw := fs.Stat(ws.fsys, path); os.IsNotExist(errRaw) {
+	path, err := ws.CatalogPath(&name)
+	if err != nil {
+		return false, err
+	}
+
+	_, errRaw := fs.Stat(ws.fsys, path)
+	if os.IsNotExist(errRaw) {
 		return false, nil
-	} else if errRaw == nil {
-		return true, nil
-	} else {
+	}
+	if errRaw != nil {
 		return false, wfapi.ErrorIo("could not stat catalog path", &path, errRaw)
 	}
+	return true, nil
 }
 
 // Create a new catalog.
@@ -264,7 +284,11 @@ func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
 //     - warpforge-error-catalog-invalid -- when the catalog already exists
 func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
-	path := filepath.Join("/", ws.CatalogPath(&name))
+	path, err := ws.CatalogPath(&name)
+	if err != nil {
+		return err
+	}
+	path = filepath.Join("/", path)
 
 	// check if the catalog path exists
 	exists, err := ws.HasCatalog(name)

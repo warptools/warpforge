@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/facette/natsort"
@@ -18,7 +19,10 @@ import (
 
 const (
 	magicModuleFilename = "_module.json"
+	CatalogNameFormat   = `^([A-Za-z0-9][-A-Za-z0-9_.]{0,62})?$`
 )
+
+var reCatalogName = regexp.MustCompile(CatalogNameFormat)
 
 // The Catalog struct represents a single catalog.
 // All methods of Catalog will operate on that specific catalog. Higher level

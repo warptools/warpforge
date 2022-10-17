@@ -182,8 +182,12 @@ func cmdCatalogInit(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	catalogPath := filepath.Join("/", wsSet.Root().CatalogPath(&catalogName))
+	root := wsSet.Root()
+	catalogPath, err := root.CatalogPath(&catalogName)
+	if err != nil {
+		return err
+	}
+	catalogPath = filepath.Join("/", catalogPath)
 
 	// check if the catalog directory exists
 	_, err = os.Stat(catalogPath)
@@ -246,8 +250,9 @@ func cmdCatalogAdd(c *cli.Context) error {
 		ReleaseName: wfapi.ReleaseName(releaseName),
 		ItemName:    wfapi.ItemLabel(itemName),
 	}
+	root := wsSet.Root()
 
-	cat, err := wsSet.Root().OpenCatalog(&catalogName)
+	cat, err := root.OpenCatalog(&catalogName)
 	if err != nil {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
@@ -319,7 +324,8 @@ func cmdCatalogAdd(c *cli.Context) error {
 	}
 
 	if c.Bool("verbose") {
-		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", wsSet.Root().CatalogPath(&catalogName))
+		path, _ := root.CatalogPath(&catalogName) // assume an error would be handled earlier
+		fmt.Fprintf(c.App.Writer, "added item to catalog %q\n", path)
 
 	}
 
@@ -780,7 +786,12 @@ func cmdGenerateHtml(c *cli.Context) error {
 
 	// by default, output to a subdir of the catalog named `_html`
 	// this can be overriden by a cli flag that provides a path
-	outputPath := filepath.Join("/", wsSet.Root().CatalogPath(&catalogName), "_html")
+	root := wsSet.Root()
+	catalogPath, err := root.CatalogPath(&catalogName)
+	if err != nil {
+		return err
+	}
+	outputPath := filepath.Join("/", catalogPath, "_html")
 	if c.String("output") != "" {
 		outputPath = c.String("output")
 	}
