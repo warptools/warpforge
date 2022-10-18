@@ -366,3 +366,19 @@ func ErrorCatalogItemAlreadyExists(path string, itemName ItemLabel) Error {
 		},
 	}
 }
+
+// ErrorCatalogName is returned when a catalog name is invalid
+//
+// Errors:
+//
+//    - warpforge-error-catalog-name --
+func ErrorCatalogName(name string, reason string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-catalog-name",
+		Message:    fmt.Sprintf("catalog name is invalid"),
+		Details: [][2]string{
+			{"name", name},
+			{"reason", reason},
+		},
+	}
+}

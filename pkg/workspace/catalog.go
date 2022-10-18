@@ -19,7 +19,7 @@ import (
 
 const (
 	magicModuleFilename = "_module.json"
-	CatalogNameFormat   = `^([A-Za-z0-9][-A-Za-z0-9_.]{0,62})?$`
+	CatalogNameFormat   = `^[A-Za-z0-9][-A-Za-z0-9_.]{0,62}$`
 )
 
 var reCatalogName = regexp.MustCompile(CatalogNameFormat)

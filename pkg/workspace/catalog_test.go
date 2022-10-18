@@ -114,6 +114,7 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("multi-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
+				"home/user/.warpforge/root": &fstest.MapFile{Mode: 0644},
 				"home/user/.warpforge/catalogs/test/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
