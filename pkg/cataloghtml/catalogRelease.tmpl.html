@@ -47,7 +47,7 @@
 						<div><strong>{{ $itemKey }}</strong></div>
 						<div class="short">
 							<span class="long-text">{{ $item }}</span>
-							<button onclick="navigator.clipboard.writeText({{ $item }})">copy</button>
+							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
 						</div>
 						<div class="download-link">{{ if $linksAvailable }}<small>{{ ($linkGen.DownloadLink $item) }}</small>{{ end }}</div>
 					</div>
