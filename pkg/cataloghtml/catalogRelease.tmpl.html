@@ -3,7 +3,9 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Version</title>
-	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+	<link rel="stylesheet" href="{{ (url "main.css") }}" />
+	<link rel="stylesheet" href="{{ (url "toggle.css") }}" />
+	<link rel="stylesheet" href="{{ (url "tabs.css") }}" />
 	<script src="{{ (url "js.js") }}"></script>
 </head>
 
@@ -30,30 +32,35 @@
 		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-2">
 		<div class="tabs">
-			<label for="tab-radiobutton-1"><strong>Items</strong></label>
-			<label for="tab-radiobutton-2"><strong>Metadata</strong></label>
+			<label for="tab-radiobutton-1"><h3>Items</h3></label>
+			<label for="tab-radiobutton-2"><h3>Metadata</h3></label>
 		</div>
 		<div class="content-wrapper">
 			<div class="content">
 				<div class="tab-content">
-					<ul>
-						{{- $linkGen := .LinkGenerator -}}
-						{{- $linksAvailable := .LinkGenerator.DownloadLinksAvailable -}}
+					{{- $linkGen := .LinkGenerator -}}
+					{{- $linksAvailable := .LinkGenerator.DownloadLinksAvailable -}}
+					<div class="tab-content-grid">
 						{{- $dot := .Release -}}
 						{{- range $itemKey := .Release.Items.Keys }}
 						{{ $item := index $dot.Items.Values $itemKey }}
-						<li>{{ $itemKey }} : {{ $item }} {{ if $linksAvailable }}<small>{{ ($linkGen.DownloadLink $item) }}</small>{{ end }}</li>
-						{{- end }}
-					</ul>
+						<div><strong>{{ $itemKey }}</strong></div>
+						<div class="short">
+							<span class="long-text">{{ $item }}</span>
+							<button onclick="navigator.clipboard.writeText({{ $item }})">copy</button>
+						</div>
+						<div class="download-link">{{ if $linksAvailable }}<small>{{ ($linkGen.DownloadLink $item) }}</small>{{ end }}</div>
+					</div>
+					{{- end }}
 				</div>
 				<div class="tab-content">
 					{{- $module := .Module }}
 					{{- range $metadataKey := .Release.Metadata.Keys }}
 					<dt>{{ $metadataKey }}</dt>
 					{{- if eq $metadataKey "replay" }}
-						<dd><a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">{{ index $dot.Metadata.Values $metadataKey }}</a></dd>
+					<dd><a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">{{ index $dot.Metadata.Values $metadataKey }}</a></dd>
 					{{- else }}
-						<dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
+					<dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
 					{{- end }}
 					{{- end }}
 				</div>
