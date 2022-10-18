@@ -1,0 +1,89 @@
+.short {
+	max-width: 250px;
+	display: flex;
+	align-items: center;
+}
+
+.long-text {
+	display: inline-block;
+	overflow: hidden;
+	max-width: 200px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tab-content-grid {
+	display: grid;
+	grid-template-columns: 200px auto 200px;
+	gap: var(--space-md);
+}
+
+.tab-content-grid .download-link {
+	justify-self: end;
+}
+
+.tab-content {
+	height: 0;
+	opacity: 0;
+	pointer-events: none;
+	word-break: break-all;
+}
+
+.tabs {
+	padding: var(--space-lg);
+	display: flex;
+	flex-wrap: nowrap;
+	width: 100%;
+	max-width: 1200px;
+}
+
+.tabs > label {
+	display: inline-block;
+	cursor: pointer;
+	margin-right: var(--space-md);
+	position: relative;
+}
+
+.tabs > label > h3 {
+	font-size: 20px;
+	margin: 0;
+}
+
+.tab-radiobutton {
+	display: none;
+}
+
+/* 
+	If there's more than 2 tabs we can just add another count here.
+	Unfortunately it doesn't seem like we can just iterate using
+	a simple function here since .tab-radiobutton:nth-of-type(x) 
+	needs to match .tab-content:nth-of-type(y). (x = y)
+*/
+.tab-radiobutton:nth-of-type(1):checked ~ .tabs > label:nth-of-type(1):before,
+.tab-radiobutton:nth-of-type(2):checked ~ .tabs > label:nth-of-type(2):before {
+	content: '';
+	border: 20px solid var(--code-bg-color);
+	border-left-color: transparent;
+	border-right-color: transparent;
+	border-top-color: transparent;
+	position: absolute;
+	top: var(--space-md);
+	left: 50%;
+	transform: translatex(-50%);
+	cursor: default;
+}
+
+/* 
+	Same as above, we want different nth-of-type to match which gets tricky,
+	so for now we count manually.
+*/
+.tab-radiobutton:nth-of-type(1):checked
+	~ .content-wrapper
+	.tab-content:nth-of-type(1),
+.tab-radiobutton:nth-of-type(2):checked
+	~ .content-wrapper
+	.tab-content:nth-of-type(2) {
+	opacity: 1;
+	height: initial;
+	pointer-events: initial;
+}
