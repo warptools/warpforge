@@ -9,18 +9,20 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/wfapi"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
+	"github.com/warpfork/warpforge/pkg/tracing"
+	"github.com/warpfork/warpforge/wfapi"
 )
 
 var watchCmdDef = cli.Command{
 	Name:  "watch",
 	Usage: "Watch a directory for git commits, executing plot on each new commit",
-	Action: chainCmdMiddleware(cmdWatch,
-		cmdMiddlewareLogging,
-		cmdMiddlewareTracingConfig,
+	Action: util.ChainCmdMiddleware(cmdWatch,
+		util.CmdMiddlewareLogging,
+		util.CmdMiddlewareTracingConfig,
 	),
 }
 
@@ -34,7 +36,7 @@ func cmdWatch(c *cli.Context) error {
 
 	// TODO: currently we read the module/plot from the provided path.
 	// instead, we should read it from the git cache dir
-	plot, err := plotFromFile(filepath.Join(path, PLOT_FILE_NAME))
+	plot, err := util.PlotFromFile(filepath.Join(path, util.PlotFilename))
 	if err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func cmdWatch(c *cli.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
-				_, err := execModule(innerCtx, config, filepath.Join(c.Args().First(), MODULE_FILE_NAME))
+				_, err := util.ExecModule(innerCtx, config, filepath.Join(c.Args().First(), util.ModuleFilename))
 				if err != nil {
 					fmt.Printf("exec failed: %s\n", err)
 				}

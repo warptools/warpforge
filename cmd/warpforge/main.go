@@ -14,11 +14,6 @@ import (
 
 const VERSION = "v0.4.0"
 
-// The module name used for unique strings, such as tracing identifiers
-// Grab it via `go list -m` or manually. It's not available at runtime and
-// it's too trivial to generate. Might inject with LDFLAGS later.
-const MODULE = "github.com/warpfork/warpforge"
-
 func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 	app := cli.NewApp()
 	app.Name = "warpforge"
@@ -81,6 +76,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&statusCmdDef,
 		&quickstartCmdDef,
 		&ferkCmdDef,
+		&healthCmdDef,
 	}
 	return app
 }

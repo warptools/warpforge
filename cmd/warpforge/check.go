@@ -8,6 +8,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
+
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -15,52 +17,60 @@ import (
 var checkCmdDef = cli.Command{
 	Name:  "check",
 	Usage: "Check file(s) for syntax and sanity",
-	Action: chainCmdMiddleware(cmdCheck,
-		cmdMiddlewareLogging,
-		cmdMiddlewareTracingConfig,
-		cmdMiddlewareTracingSpan,
+	Action: util.ChainCmdMiddleware(cmdCheck,
+		util.CmdMiddlewareLogging,
+		util.CmdMiddlewareTracingConfig,
+		util.CmdMiddlewareTracingSpan,
 	),
 }
 
 func checkModule(fileName string) (*ipld.Node, error) {
 	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		return nil, err
+		return nil, wfapi.ErrorIo("cannot read module file", fileName, err)
 	}
 
 	moduleCapsule := wfapi.ModuleCapsule{}
 	n, err := ipld.Unmarshal([]byte(f), json.Decode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
-	return &n, err
+	if err != nil {
+		return nil, wfapi.ErrorSerialization("cannot deserialize module", err)
+	}
+	return &n, nil
 }
 
 func checkPlot(ctx context.Context, fileName string) (*ipld.Node, error) {
 	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		return nil, err
+		return nil, wfapi.ErrorIo("cannot read plot file", fileName, err)
 	}
 
 	// parse the Plot
 	plot := wfapi.Plot{}
 	n, err := ipld.Unmarshal([]byte(f), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
 	if err != nil {
-		return nil, err
+		return nil, wfapi.ErrorSerialization("cannot deserialize plot", err)
 	}
 
 	// ensure Plot order can be resolved
-	_, err = plotexec.OrderSteps(ctx, plot)
+	if _, err := plotexec.OrderSteps(ctx, plot); err != nil {
+		return &n, err
+	}
 
-	return &n, err
+	return &n, nil
 }
 
 func checkFormula(fileName string) (*ipld.Node, error) {
 	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		return nil, err
+		return nil, wfapi.ErrorIo("cannot read formula file", fileName, err)
 	}
 
 	frmAndCtx := wfapi.FormulaAndContext{}
 	n, err := ipld.Unmarshal([]byte(f), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
-	return &n, err
+	if err != nil {
+		return nil, wfapi.ErrorSerialization("cannot deserialize formula", err)
+	}
+	return &n, nil
 }
 
 func cmdCheck(c *cli.Context) error {
@@ -70,7 +80,7 @@ func cmdCheck(c *cli.Context) error {
 	ctx := c.Context
 
 	for _, filename := range c.Args().Slice() {
-		t, err := getFileType(filename)
+		t, err := util.GetFileType(filename)
 		if err != nil {
 			return err
 		}
@@ -80,17 +90,18 @@ func cmdCheck(c *cli.Context) error {
 		case "formula":
 			n, err = checkFormula(filename)
 			if err != nil {
-				return fmt.Errorf("%s: %s", filename, err)
+				return err
 			}
+
 		case "plot":
 			n, err = checkPlot(ctx, filename)
 			if err != nil {
-				return fmt.Errorf("%s: %s", filename, err)
+				return err
 			}
 		case "module":
 			n, err = checkModule(filename)
 			if err != nil {
-				return fmt.Errorf("%s: %s", filename, err)
+				return err
 			}
 		default:
 			if c.Bool("verbose") {

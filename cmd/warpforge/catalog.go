@@ -14,14 +14,15 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/catalog"
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
 	"github.com/warpfork/warpforge/pkg/cataloghtml"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel/trace"
 )
-
-const defaultCatalogUrl = "https://github.com/warpsys/catalog.git"
 
 var catalogCmdDef = cli.Command{
 	Name:  "catalog",
@@ -43,83 +44,83 @@ var catalogCmdDef = cli.Command{
 		{
 			Name:  "init",
 			Usage: "Creates a named catalog in the root workspace",
-			Action: chainCmdMiddleware(cmdCatalogInit,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogInit,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "add",
 			Usage: "Add an item to the given catalog in the root workspace. Will create a catalog if required.",
-			Action: chainCmdMiddleware(cmdCatalogAdd,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogAdd,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "release",
 			Usage: "Add a module to the root workspace catalog as a new release",
-			Action: chainCmdMiddleware(cmdCatalogRelease,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogRelease,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "ls",
 			Usage: "List available catalogs in the root workspace",
-			Action: chainCmdMiddleware(cmdCatalogLs,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogLs,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "show",
 			Usage: "Show the contents of a module in the root workspace catalog",
 
-			Action: chainCmdMiddleware(cmdCatalogShow,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogShow,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "bundle",
 			Usage: "Bundle required catalog items into the local workspace.",
-			Action: chainCmdMiddleware(cmdCatalogBundle,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogBundle,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "update",
 			Usage: "Update remote catalogs in the root workspace. Will install the default warpsys catalog.",
-			Action: chainCmdMiddleware(cmdCatalogUpdate,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdCatalogUpdate,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "ingest-git-tags",
 			Usage: "Ingest all tags from a git repository into a root workspace catalog entry",
-			Action: chainCmdMiddleware(cmdIngestGitTags,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdIngestGitTags,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 		},
 		{
 			Name:  "generate-html",
 			Usage: "Generates HTML output for the root workspace catalog containing information on modules",
-			Action: chainCmdMiddleware(cmdGenerateHtml,
-				cmdMiddlewareLogging,
-				cmdMiddlewareTracingConfig,
-				cmdMiddlewareTracingSpan,
+			Action: util.ChainCmdMiddleware(cmdGenerateHtml,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
 			),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
@@ -142,7 +143,7 @@ var catalogCmdDef = cli.Command{
 
 func scanWareId(ctx context.Context, packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID, error) {
 	result := wfapi.WareID{}
-	rioPath, err := binPath("rio")
+	rioPath, err := util.BinPath("rio")
 	if err != nil {
 		return result, fmt.Errorf("failed to get path to rio")
 	}
@@ -155,12 +156,12 @@ func scanWareId(ctx context.Context, packType wfapi.Packtype, addr wfapi.Warehou
 	var stderr bytes.Buffer
 	rioScan.Stdout = &stdout
 	rioScan.Stderr = &stderr
-	err = rioScan.Run()
-	tracing.EndWithStatus(cmdSpan, err)
-
-	if err != nil {
-		return result, fmt.Errorf("failed to run rio scan command: %s\n%s", err, stderr.String())
+	cmdErr := rioScan.Run()
+	tracing.EndWithStatus(cmdSpan, cmdErr)
+	if cmdErr != nil {
+		return result, fmt.Errorf("failed to run rio scan command: %s\n%s", cmdErr, stderr.String())
 	}
+
 	wareIdStr := strings.TrimSpace(stdout.String())
 	hash := strings.Split(wareIdStr, ":")[1]
 	result = wfapi.WareID{
@@ -176,9 +177,9 @@ func cmdCatalogInit(c *cli.Context) error {
 		return fmt.Errorf("no catalog name provided")
 	}
 	catalogName := c.Args().First()
-
+	var err error
 	// open the workspace set and get the catalog path
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -191,15 +192,15 @@ func cmdCatalogInit(c *cli.Context) error {
 
 	// check if the catalog directory exists
 	_, err = os.Stat(catalogPath)
-	if os.IsNotExist(err) {
-		// catalog does not exist, create the dir
-		err = os.MkdirAll(catalogPath, 0755)
-	} else {
-		// catalog already exists
-		return fmt.Errorf("catalog %q already exists (path: %q)", catalogName, catalogPath)
+	if !os.IsNotExist(err) {
+		if err == nil {
+			// catalog already exists
+			return fmt.Errorf("catalog %q already exists (path: %q)", catalogName, catalogPath)
+		}
+		return fmt.Errorf("catalog %q already exists (path: %q): %w", catalogName, catalogPath, err)
 	}
-
-	if err != nil {
+	// catalog does not exist, create the dir
+	if err := os.MkdirAll(catalogPath, 0755); err != nil {
 		// stat or mkdir failed
 		return fmt.Errorf("failed to create catalog: %s", err)
 	}
@@ -219,7 +220,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 	url := c.Args().Get(2)
 
 	// open the workspace set
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -332,7 +333,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 }
 
 func cmdCatalogLs(c *cli.Context) error {
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -352,110 +353,22 @@ func cmdCatalogLs(c *cli.Context) error {
 	return nil
 }
 
-func gatherCatalogRefs(plot wfapi.Plot) []wfapi.CatalogRef {
-	refs := []wfapi.CatalogRef{}
-
-	// gather this plot's inputs
-	for _, input := range plot.Inputs.Values {
-		if input.Basis().CatalogRef != nil {
-			refs = append(refs, *input.Basis().CatalogRef)
-		}
-	}
-
-	// gather subplot inputs
-	for _, step := range plot.Steps.Values {
-		if step.Plot != nil {
-			// recursively gather the refs from subplot(s)
-			newRefs := gatherCatalogRefs(*step.Plot)
-
-			// deduplicate
-			unique := true
-			for _, newRef := range newRefs {
-				for _, existingRef := range refs {
-					if newRef == existingRef {
-						unique = false
-						break
-					}
-				}
-				if unique {
-					refs = append(refs, newRef)
-				}
-			}
-		}
-	}
-
-	return refs
-}
-
 func cmdCatalogBundle(c *cli.Context) error {
-	wsSet, err := openWorkspaceSet()
+	var err error
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
-	local := wsSet.Local()
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get pwd: %s", err)
 	}
-	plot, err := plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
+	plot, err := util.PlotFromFile(filepath.Join(pwd, util.PlotFilename))
 	if err != nil {
 		return err
 	}
 
-	refs := gatherCatalogRefs(plot)
-
-	cat, err := local.CreateOrOpenCatalog("")
-	if err != nil {
-		return fmt.Errorf("failed to open catalog: %s", err)
-	}
-	for _, ref := range refs {
-		wareId, wareAddr, err := wsSet.GetCatalogWare(ref)
-		if err != nil {
-			return err
-		}
-
-		if wareId == nil {
-			return fmt.Errorf("could not find catalog entry for %s:%s:%s",
-				ref.ModuleName, ref.ReleaseName, ref.ItemName)
-		}
-
-		fmt.Fprintf(c.App.Writer, "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
-		cat.AddItem(ref, *wareId, c.Bool("force"))
-		if wareAddr != nil {
-			cat.AddByWareMirror(ref, *wareId, *wareAddr)
-		}
-	}
-
-	return nil
-}
-
-func installDefaultRemoteCatalog(c *cli.Context, path string) error {
-	// install our default remote catalog as "default-remote" by cloning from git
-	// this will noop if the catalog already exists
-	ctx := c.Context
-	defaultCatalogPath := filepath.Join(path, "warpsys")
-	if _, err := os.Stat(defaultCatalogPath); !os.IsNotExist(err) {
-		// a dir exists for this catalog, do nothing
-		return nil
-	}
-
-	if !c.Bool("quiet") {
-		fmt.Fprintf(c.App.Writer, "installing default catalog to %s...", defaultCatalogPath)
-	}
-
-	gitCtx, gitSpan := tracing.Start(ctx, "clone catalog", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
-	defer gitSpan.End()
-	_, err := git.PlainCloneContext(gitCtx, defaultCatalogPath, false, &git.CloneOptions{
-		URL: defaultCatalogUrl,
-	})
-	tracing.EndWithStatus(gitSpan, err)
-
-	if !c.Bool("quiet") {
-		fmt.Fprintf(c.App.Writer, " done.\n")
-	}
-
-	if err != nil {
+	if err := wsSet.Tidy(c.Context, plot, c.Bool("force")); err != nil {
 		return err
 	}
 
@@ -463,7 +376,8 @@ func installDefaultRemoteCatalog(c *cli.Context, path string) error {
 }
 
 func cmdCatalogUpdate(c *cli.Context) error {
-	wss, err := openWorkspaceSet()
+	var err error
+	wss, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return fmt.Errorf("failed to open workspace set: %s", err)
 	}
@@ -478,7 +392,7 @@ func cmdCatalogUpdate(c *cli.Context) error {
 		}
 	}
 
-	if err = installDefaultRemoteCatalog(c, catalogPath); err != nil {
+	if err = catalog.InstallDefaultRemoteCatalog(c.Context, catalogPath); err != nil {
 		return fmt.Errorf("failed to install default catalog: %s", err)
 	}
 
@@ -529,6 +443,7 @@ func cmdCatalogUpdate(c *cli.Context) error {
 
 func cmdCatalogRelease(c *cli.Context) error {
 	ctx := c.Context
+	var err error
 
 	if c.Args().Len() != 1 {
 		return fmt.Errorf("invalid input. usage: warpforge catalog release [release name]")
@@ -536,7 +451,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	catalogName := c.String("name")
 
 	// open the workspace set
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -554,7 +469,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	}
 
 	// get the module, release, and item values (in format `module:release:item`)
-	module, err := moduleFromFile("module.wf")
+	module, err := util.ModuleFromFile("module.wf")
 	if err != nil {
 		return err
 	}
@@ -562,7 +477,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	releaseName := c.Args().Get(0)
 
 	fmt.Printf("building replay for module = %q, release = %q, executing plot...\n", module.Name, releaseName)
-	plot, err := plotFromFile(PLOT_FILE_NAME)
+	plot, err := util.PlotFromFile(util.PlotFilename)
 	if err != nil {
 		return err
 	}
@@ -634,7 +549,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 
 	// open the workspace set and catalog
 	catalogName := c.String("name")
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -681,7 +596,7 @@ func cmdCatalogShow(c *cli.Context) error {
 		return fmt.Errorf("invalid input. usage: warpforge catalog show [module name]")
 	}
 
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -747,7 +662,7 @@ func cmdGenerateHtml(c *cli.Context) error {
 	catalogName := c.String("name")
 
 	// open the workspace set
-	wsSet, err := openWorkspaceSet()
+	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
