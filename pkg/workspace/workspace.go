@@ -135,15 +135,15 @@ func (ws *Workspace) CatalogBasePath() string {
 	)
 }
 
-// defaultCatalogPath returns the path to the default catalog belonging to this workspace.
-func (ws *Workspace) defaultCatalogPath() string {
+// nonRootCatalogPath returns the path to the catalog in a non-root workspace.
+func (ws *Workspace) nonRootCatalogPath() string {
 	return filepath.Join(ws.rootPath, ".warpforge", "catalog")
 }
 
-// Returns the catalog path for catalog with a given name within a workspace.
-// Guards against filepath modifying names by considering any path which
-// would be modified by filepath.Clean to be considered invalid.
-// Guards against catalog nesting by considering any name with filepath separators to be invalid.
+// CatalogPath returns the catalog path for catalog with a given name within a workspace.
+// A non-root workspace must use an empty string as the catalog name.
+// A root workspace must use a catalog name that matches the regular expression in the
+// CatalogNameFormat package variable. A root workspace may not use an empty string catalog name.
 //
 // Errors:
 //
@@ -151,7 +151,7 @@ func (ws *Workspace) defaultCatalogPath() string {
 func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
 	if !ws.isRootWorkspace {
 		if name == "" {
-			return ws.defaultCatalogPath(), nil
+			return ws.nonRootCatalogPath(), nil
 		}
 		return "", wfapi.ErrorCatalogName(name, "named catalogs must be in a root workspace")
 	}
