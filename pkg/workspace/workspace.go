@@ -229,7 +229,6 @@ func (ws *Workspace) ListCatalogs() ([]string, wfapi.Error) {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-//     - warpforge-error-internal -- when the catalog name is invalid, this shouldn't happen
 func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
@@ -242,8 +241,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 		if err != nil {
 			switch err.(*wfapi.ErrorVal).Code() {
 			case "warpforge-error-catalog-name":
-				err := wfapi.ErrorInternal("referenced an invalid catalog", err)
-				return nil, nil, err
+				panic(err)
 			default:
 				// Error Codes -= warpforge-error-catalog-name
 				return nil, nil, err
@@ -327,7 +325,6 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-//     - warpforge-error-internal -- when the catalog name is invalid, this shouldn't happen
 func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
@@ -341,8 +338,7 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.
 			switch err.(*wfapi.ErrorVal).Code() {
 			case "warpforge-error-catalog-name":
 				// This shouldn't happen
-				err := wfapi.ErrorInternal("referenced an invalid catalog", err)
-				return nil, err
+				panic(err)
 			default:
 				// Error Codes -= warpforge-error-catalog-name
 				return nil, err

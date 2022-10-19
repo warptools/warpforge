@@ -22,7 +22,6 @@ func (wsSet WorkspaceSet) Root() *Workspace {
 //     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
 //     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
 	// traverse workspace stack
 	for _, ws := range wsSet {
@@ -49,7 +48,6 @@ func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *
 //     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
 //     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func (wsSet WorkspaceSet) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 	// traverse workspace stack
 	for _, ws := range wsSet {

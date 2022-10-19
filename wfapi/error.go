@@ -375,7 +375,7 @@ func ErrorCatalogItemAlreadyExists(path string, itemName ItemLabel) Error {
 func ErrorCatalogName(name string, reason string) Error {
 	return &ErrorVal{
 		CodeString: "warpforge-error-catalog-name",
-		Message:    fmt.Sprintf("catalog name is invalid"),
+		Message:    fmt.Sprintf("catalog name %q is invalid: %s", name, reason),
 		Details: [][2]string{
 			{"name", name},
 			{"reason", reason},

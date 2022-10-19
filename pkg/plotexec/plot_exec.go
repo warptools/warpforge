@@ -62,7 +62,6 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func plotInputToFormulaInput(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
@@ -103,7 +102,6 @@ func plotInputToFormulaInput(ctx context.Context,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func plotInputToFormulaInputSimple(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
@@ -323,8 +321,6 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
 //    - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-//    - warpforge-error-internal -- when serialization or deserialization of a memo fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func execProtoformula(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
@@ -385,7 +381,6 @@ func execProtoformula(ctx context.Context,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execPlot")
 	defer span.End()
@@ -514,7 +509,6 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-//    - warpforge-error-internal -- when a catalog name is invalid
 func Exec(ctx context.Context, wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "Exec")
 	defer span.End()
