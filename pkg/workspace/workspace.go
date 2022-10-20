@@ -289,7 +289,7 @@ func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
 // Errors:
 //
 //    - warpforge-error-io -- when reading or writing the catalog directory fails
-//    - warpforge-error-file-exists -- when the catalog already exists
+//    - warpforge-error-already-exists -- when the catalog already exists
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
 func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 	path, err := ws.CatalogPath(name)
@@ -304,7 +304,7 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 		return err
 	}
 	if exists {
-		return wfapi.ErrorFileExists(path)
+		return wfapi.ErrorFileAlreadyExists(path)
 	}
 
 	errRaw := os.MkdirAll(path, 0755)
@@ -326,10 +326,10 @@ func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, wfapi.Error) {
 	err := ws.CreateCatalog(name)
 	if err != nil {
 		switch err.(*wfapi.ErrorVal).Code() {
-		case "warpforge-error-file-exists":
+		case "warpforge-error-already-exists":
 			return ws.OpenCatalog(name)
 		default:
-			// Error Codes -= warpforge-error-file-exists
+			// Error Codes -= warpforge-error-already-exists
 			return Catalog{}, err
 		}
 	}

@@ -6,6 +6,10 @@ import (
 	"os"
 )
 
+const (
+	errCodeAlreadyExists = "warpforge-error-already-exists"
+)
+
 // Error is a grouping interface for wfapi errors.
 // It's also vacuous: there's only one concrete implementation (which is `*ErrorVal`).
 // Nonetheless, we use this when declaring return types for functions,
@@ -355,10 +359,10 @@ func ErrorCatalogInvalid(path string, reason string) Error {
 //
 // Errors:
 //
-//    - warpforge-error-catalog-item-already-exists --
+//    - warpforge-error-already-exists --
 func ErrorCatalogItemAlreadyExists(path string, itemName ItemLabel) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-catalog-item-already-exists",
+		CodeString: errCodeAlreadyExists,
 		Message:    fmt.Sprintf("item %q already exists in release file %q", itemName, path),
 		Details: [][2]string{
 			{"path", path},
@@ -383,14 +387,14 @@ func ErrorCatalogName(name string, reason string) Error {
 	}
 }
 
-// ErrorFileExists is returned when a file already exists
+// ErrorFileAlreadyExists is used when a file already exists
 //
 // Errors:
 //
-//    - warpforge-error-file-exists --
-func ErrorFileExists(path string) Error {
+//    - warpforge-error-already-exists --
+func ErrorFileAlreadyExists(path string) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-file-exists",
+		CodeString: errCodeAlreadyExists,
 		Message:    fmt.Sprintf("file already exists at path: %q", path),
 		Details: [][2]string{
 			{"path", path},
