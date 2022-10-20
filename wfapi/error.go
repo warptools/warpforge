@@ -397,18 +397,3 @@ func ErrorFileExists(path string) Error {
 		},
 	}
 }
-
-// ErrorFileMissing is returned when a file does not exist where expected
-//
-// Errors:
-//
-//    - warpforge-error-file-missing --
-func ErrorFileMissing(path string) Error {
-	return &ErrorVal{
-		CodeString: "warpforge-error-file-missing",
-		Message:    fmt.Sprintf("file does not exist at path: %q", path),
-		Details: [][2]string{
-			{"path", path},
-		},
-	}
-}
