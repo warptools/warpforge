@@ -47,10 +47,11 @@ type RioOutput struct {
 }
 
 type runConfig struct {
-	spec    specs.Spec
-	runPath string // path used to store temporary files used for formula run
-	wsPath  string // path to of the workspace to run in
-	binPath string // path containing required binaries to run (rio, runc)
+	spec        specs.Spec
+	runPath     string // path used to store temporary files used for formula run
+	wsPath      string // path to of the workspace to run in
+	binPath     string // path containing required binaries to run (rio, runc)
+	interactive bool   // flag to determine if stdin should be wired to containier for interactivity
 }
 
 // base directory for warpforge related files within the container
@@ -167,9 +168,10 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 //    - warpforge-error-executor-failed -- when generation of the base spec by runc fails
 func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
 	rc := runConfig{
-		runPath: runPath,
-		wsPath:  wsPath,
-		binPath: binPath,
+		runPath:     runPath,
+		wsPath:      wsPath,
+		binPath:     binPath,
+		interactive: false,
 	}
 
 	// generate a runc rootless config, then read the resulting config
@@ -504,7 +506,9 @@ func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (str
 		fmt.Sprintf("warpforge-%d", time.Now().UTC().UnixNano()), // container id
 	)
 
-	if config.spec.Process.Terminal {
+	// if the config has terminal enabled, and interactivity is requested,
+	// wire stdin to the contaniner
+	if config.spec.Process.Terminal && config.interactive {
 		cmd.Stdin = os.Stdin
 	}
 
@@ -934,12 +938,16 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 		return rr, wfapi.ErrorFormulaInvalid("unsupported action, or no action defined")
 	}
 
-	// determine output formatting. if interactive, do not apply any special formatting
+	// determine initeractivity output formatting.
+	// if interactive, do not apply any special formatting and wire stdin to container
+	// otherwiise, pretty-format the output and do not wire stdin
 	var runcWriter io.Writer
 	if formulaConfig.Interactive {
 		runcWriter = logger.RawWriter()
+		execConfig.interactive = true
 	} else {
 		runcWriter = logger.OutputWriter(LOG_TAG_OUTPUT)
+		execConfig.interactive = false
 	}
 
 	// run the action
