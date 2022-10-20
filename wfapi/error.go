@@ -382,3 +382,33 @@ func ErrorCatalogName(name string, reason string) Error {
 		},
 	}
 }
+
+// ErrorFileExists is returned when a file already exists
+//
+// Errors:
+//
+//    - warpforge-error-file-exists --
+func ErrorFileExists(path string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-file-exists",
+		Message:    fmt.Sprintf("file already exists at path: %q", path),
+		Details: [][2]string{
+			{"path", path},
+		},
+	}
+}
+
+// ErrorFileMissing is returned when a file does not exist where expected
+//
+// Errors:
+//
+//    - warpforge-error-file-missing --
+func ErrorFileMissing(path string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-file-missing",
+		Message:    fmt.Sprintf("file does not exist at path: %q", path),
+		Details: [][2]string{
+			{"path", path},
+		},
+	}
+}
