@@ -16,7 +16,7 @@ func memoizeRun(ws *workspace.Workspace, rr wfapi.RunRecord) wfapi.Error {
 	memoBasePath := ws.MemoBasePath()
 	err := os.MkdirAll(ws.MemoBasePath(), 0755)
 	if err != nil {
-		return wfapi.ErrorIo("failed to create memo dir", &memoBasePath, err)
+		return wfapi.ErrorIo("failed to create memo dir", memoBasePath, err)
 	}
 
 	// serialize the memo
@@ -29,7 +29,7 @@ func memoizeRun(ws *workspace.Workspace, rr wfapi.RunRecord) wfapi.Error {
 	memoPath := ws.MemoPath(rr.FormulaID)
 	err = os.WriteFile(memoPath, memoSerial, 0644)
 	if err != nil {
-		return wfapi.ErrorIo("failed to write memo file", &memoPath, err)
+		return wfapi.ErrorIo("failed to write memo file", memoPath, err)
 	}
 
 	return nil
@@ -47,13 +47,13 @@ func loadMemo(ws *workspace.Workspace, fid string) (*wfapi.RunRecord, wfapi.Erro
 		return nil, nil
 	} else if err != nil {
 		// found memo file, but error reading, return error
-		return nil, wfapi.ErrorIo("failed to stat memo file", &memoPath, err)
+		return nil, wfapi.ErrorIo("failed to stat memo file", memoPath, err)
 	}
 
 	// read the file
 	f, err := ioutil.ReadFile(memoPath)
 	if err != nil {
-		return nil, wfapi.ErrorIo("failed to read memo file", &memoPath, err)
+		return nil, wfapi.ErrorIo("failed to read memo file", memoPath, err)
 	}
 
 	memo := wfapi.RunRecord{}

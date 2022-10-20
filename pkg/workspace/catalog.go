@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/facette/natsort"
@@ -18,7 +19,10 @@ import (
 
 const (
 	magicModuleFilename = "_module.json"
+	CatalogNameFormat   = `^[A-Za-z0-9][-A-Za-z0-9_.]{0,62}$`
 )
+
+var reCatalogName = regexp.MustCompile(CatalogNameFormat)
 
 // The Catalog struct represents a single catalog.
 // All methods of Catalog will operate on that specific catalog. Higher level
@@ -117,7 +121,7 @@ func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName
 	thisDir := filepath.Join(basePath, string(moduleName))
 	files, errRaw := fs.ReadDir(cat.fsys, thisDir)
 	if errRaw != nil {
-		return wfapi.ErrorIo("could not read catalog directory", &cat.path, errRaw)
+		return wfapi.ErrorIo("could not read catalog directory", cat.path, errRaw)
 	}
 
 	// check if a "_module.json" exists
@@ -173,7 +177,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, wfa
 	if os.IsNotExist(errRaw) {
 		return nil, nil
 	} else if errRaw != nil {
-		return nil, wfapi.ErrorIo("failed to read catalog release file", &releasePath, errRaw)
+		return nil, wfapi.ErrorIo("failed to read catalog release file", releasePath, errRaw)
 	}
 
 	// parse the release file
@@ -259,13 +263,13 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, wfap
 		// no mirror file for this ware
 		return nil, nil
 	} else if err != nil {
-		return nil, wfapi.ErrorIo("error opening mirror file", &mirrorPath, err)
+		return nil, wfapi.ErrorIo("error opening mirror file", mirrorPath, err)
 	}
 
 	// read and unmarshal mirror data
 	mirrorBytes, err := ioutil.ReadAll(mirrorFile)
 	if err != nil {
-		return nil, wfapi.ErrorIo("failed to read mirror file", &mirrorPath, err)
+		return nil, wfapi.ErrorIo("failed to read mirror file", mirrorPath, err)
 	}
 	mirrorCapsule := wfapi.CatalogMirrorsCapsule{}
 	_, err = ipld.Unmarshal(mirrorBytes, json.Decode, &mirrorCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
@@ -294,13 +298,13 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 		// module file does not exist for this workspace
 		return nil, nil
 	} else if err != nil {
-		return nil, wfapi.ErrorIo("error opening module file", &modPath, err)
+		return nil, wfapi.ErrorIo("error opening module file", modPath, err)
 	}
 
 	// read and unmarshal module data
 	modBytes, err := ioutil.ReadAll(modFile)
 	if err != nil {
-		return nil, wfapi.ErrorIo("error reading module file", &modPath, err)
+		return nil, wfapi.ErrorIo("error reading module file", modPath, err)
 	}
 
 	modCapsule := wfapi.CatalogModuleCapsule{}
@@ -394,7 +398,7 @@ func (cat *Catalog) AddItem(
 		// create the module and releases since they should not already exist
 		errRaw := os.MkdirAll(releasesPath, 0755)
 		if errRaw != nil {
-			return wfapi.ErrorIo("failed to create releases directory", &releasesPath, errRaw)
+			return wfapi.ErrorIo("failed to create releases directory", releasesPath, errRaw)
 		}
 	}
 
@@ -437,11 +441,11 @@ func (cat *Catalog) AddItem(
 	// write the updated structures
 	errRaw = os.WriteFile(moduleFilePath, moduleSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, errRaw)
+		return wfapi.ErrorIo("failed to write module file", moduleFilePath, errRaw)
 	}
 	errRaw = os.WriteFile(releaseFilePath, releaseSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write release file", &releaseFilePath, err)
+		return wfapi.ErrorIo("failed to write release file", releaseFilePath, err)
 	}
 
 	return nil
@@ -479,7 +483,7 @@ func (cat *Catalog) AddByWareMirror(
 			return wfapi.ErrorCatalogParse(mirrorsPath, fmt.Errorf("no v1 CatalogMirrors in CatalogMirrorsCapsule"))
 		}
 	} else {
-		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)
+		return wfapi.ErrorIo("could not open mirrors file", mirrorsPath, err)
 	}
 
 	mirrors := mirrorsCapsule.CatalogMirrors
@@ -513,7 +517,7 @@ func (cat *Catalog) AddByWareMirror(
 	path := filepath.Join("/", filepath.Dir(mirrorsPath))
 	err = os.MkdirAll(path, 0755)
 	if err != nil {
-		return wfapi.ErrorIo("could not create catalog path", &path, err)
+		return wfapi.ErrorIo("could not create catalog path", path, err)
 	}
 	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 	if err != nil {
@@ -521,7 +525,7 @@ func (cat *Catalog) AddByWareMirror(
 	}
 	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
 	if err != nil {
-		return wfapi.ErrorIo("failed to write mirrors file", &mirrorsPath, err)
+		return wfapi.ErrorIo("failed to write mirrors file", mirrorsPath, err)
 	}
 
 	return nil
@@ -558,7 +562,7 @@ func (cat *Catalog) AddByModuleMirror(
 			return wfapi.ErrorCatalogParse(mirrorsPath, err)
 		}
 	} else {
-		return wfapi.ErrorIo("could not open mirrors file", &mirrorsPath, err)
+		return wfapi.ErrorIo("could not open mirrors file", mirrorsPath, err)
 	}
 
 	mirrors := mirrorsCapsule.CatalogMirrors
@@ -604,7 +608,7 @@ func (cat *Catalog) AddByModuleMirror(
 	path := filepath.Join("/", filepath.Dir(mirrorsPath))
 	err = os.MkdirAll(path, 0755)
 	if err != nil {
-		return wfapi.ErrorIo("could not create catalog path", &path, err)
+		return wfapi.ErrorIo("could not create catalog path", path, err)
 	}
 	mirrorSerial, err := ipld.Marshal(json.Encode, &mirrorsCapsule, wfapi.TypeSystem.TypeByName("CatalogMirrorsCapsule"))
 	if err != nil {
@@ -612,7 +616,7 @@ func (cat *Catalog) AddByModuleMirror(
 	}
 	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
 	if err != nil {
-		return wfapi.ErrorIo("failed to write mirrors file", &mirrorsPath, err)
+		return wfapi.ErrorIo("failed to write mirrors file", mirrorsPath, err)
 	}
 
 	return nil
@@ -655,7 +659,7 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 	if os.IsNotExist(errRaw) {
 		return nil, wfapi.ErrorCatalogInvalid(replayPath, "referenced replay file does not exist")
 	} else if errRaw != nil {
-		return nil, wfapi.ErrorIo("could not stat replay file", &replayPath, errRaw)
+		return nil, wfapi.ErrorIo("could not stat replay file", replayPath, errRaw)
 	}
 
 	replayCapsule := wfapi.ReplayCapsule{}
@@ -719,7 +723,7 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite b
 	}
 	errRaw = os.WriteFile(releasePath, releaseSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write release file", &releasePath, errRaw)
+		return wfapi.ErrorIo("failed to write release file", releasePath, errRaw)
 	}
 
 	// next, we will need to update the CatalogRelease CID in the CatalogModule
@@ -755,7 +759,7 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite b
 	}
 	errRaw = os.WriteFile(moduleFilePath, moduleSerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write module file", &moduleFilePath, errRaw)
+		return wfapi.ErrorIo("failed to write module file", moduleFilePath, errRaw)
 	}
 
 	// finally, write the Plot to the replay file
@@ -770,7 +774,7 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite b
 	replayDir := filepath.Dir(replayPath)
 	errRaw = os.MkdirAll(replayDir, 0755)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to create replays directory", &replayDir, errRaw)
+		return wfapi.ErrorIo("failed to create replays directory", replayDir, errRaw)
 	}
 
 	// serialize the replay Plot and write the file
@@ -781,7 +785,7 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite b
 	}
 	errRaw = os.WriteFile(replayPath, replaySerial, 0644)
 	if errRaw != nil {
-		return wfapi.ErrorIo("failed to write replay file", &replayPath, errRaw)
+		return wfapi.ErrorIo("failed to write replay file", replayPath, errRaw)
 	}
 
 	return nil

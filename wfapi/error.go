@@ -144,13 +144,9 @@ func ErrorExecutorFailed(executorEngineName string, cause error) Error {
 // Errors:
 //
 //    - warpforge-error-io --
-func ErrorIo(context string, path *string, cause error) Error {
+func ErrorIo(context string, path string, cause error) Error {
 	var details [][2]string
-	if path != nil {
-		details = [][2]string{{"context", context}, {"path", *path}}
-	} else {
-		details = [][2]string{{"context", context}, {"path", "none"}}
-	}
+	details = [][2]string{{"context", context}, {"path", path}}
 	return &ErrorVal{
 		CodeString: "warpforge-error-io",
 		Message:    fmt.Sprintf("io error: %s: %s", context, cause),
@@ -367,6 +363,22 @@ func ErrorCatalogItemAlreadyExists(path string, itemName ItemLabel) Error {
 		Details: [][2]string{
 			{"path", path},
 			{"itemName", string(itemName)},
+		},
+	}
+}
+
+// ErrorCatalogName is returned when a catalog name is invalid
+//
+// Errors:
+//
+//    - warpforge-error-catalog-name --
+func ErrorCatalogName(name string, reason string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-catalog-name",
+		Message:    fmt.Sprintf("catalog name %q is invalid: %s", name, reason),
+		Details: [][2]string{
+			{"name", name},
+			{"reason", reason},
 		},
 	}
 }
