@@ -114,6 +114,7 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("multi-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
+				"home/user/.warpforge/root": &fstest.MapFile{Mode: 0644},
 				"home/user/.warpforge/catalogs/test/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
@@ -145,7 +146,7 @@ func TestCatalogLookup(t *testing.T) {
 			qt.Assert(t, ws, qt.IsNotNil)
 
 			catName := "test"
-			cat, err := ws.OpenCatalog(&catName)
+			cat, err := ws.OpenCatalog(catName)
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, len(cat.Modules()), qt.Equals, 2)
 			qt.Assert(t, cat.Modules()[0], qt.Equals, wfapi.ModuleName("example.com/module"))
@@ -181,7 +182,7 @@ func TestCatalogLookup(t *testing.T) {
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, ws, qt.IsNotNil)
 
-			cat, err := ws.OpenCatalog(nil)
+			cat, err := ws.OpenCatalog("")
 			qt.Assert(t, err, qt.IsNil)
 			_, err = cat.GetReplay(ref)
 			qt.Assert(t, err, qt.IsNil)
