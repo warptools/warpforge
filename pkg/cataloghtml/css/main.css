@@ -113,6 +113,12 @@ button {
 	border: none;
 	padding: var(--space-xs) var(--space-sm);
 	border-radius: 3px;
+	white-space: nowrap;
+}
+
+button:hover {
+	background-color: var(--dark-heading-color);
+	color: white;
 }
 
 li {

@@ -12,10 +12,18 @@
 	white-space: nowrap;
 }
 
+.text-box {
+	background-color: var(--bg-color);
+}
+
 .tab-content-grid {
 	display: grid;
 	grid-template-columns: 200px auto 200px;
 	gap: var(--space-md);
+}
+
+.tab-content-grid > div {
+	padding: var(--space-xs);
 }
 
 .tab-content-grid .download-link {

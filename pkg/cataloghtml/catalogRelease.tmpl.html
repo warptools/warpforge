@@ -45,11 +45,11 @@
 						{{- range $itemKey := .Release.Items.Keys }}
 						{{ $item := index $dot.Items.Values $itemKey }}
 						<div><strong>{{ $itemKey }}</strong></div>
-						<div class="short">
+						<div class="short text-box">
 							<span class="long-text">{{ $item }}</span>
 							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
 						</div>
-						<div class="download-link">{{ if $linksAvailable }}<small>{{ ($linkGen.DownloadLink $item) }}</small>{{ end }}</div>
+						<div class="download-link">{{ if $linksAvailable }}download: ({{ ($linkGen.DownloadLink $item) }}){{ end }}</div>
 					</div>
 					{{- end }}
 				</div>

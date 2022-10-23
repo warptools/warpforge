@@ -6,6 +6,10 @@ import (
 	"os"
 )
 
+const (
+	errCodeAlreadyExists = "warpforge-error-already-exists"
+)
+
 // Error is a grouping interface for wfapi errors.
 // It's also vacuous: there's only one concrete implementation (which is `*ErrorVal`).
 // Nonetheless, we use this when declaring return types for functions,
@@ -144,13 +148,9 @@ func ErrorExecutorFailed(executorEngineName string, cause error) Error {
 // Errors:
 //
 //    - warpforge-error-io --
-func ErrorIo(context string, path *string, cause error) Error {
+func ErrorIo(context string, path string, cause error) Error {
 	var details [][2]string
-	if path != nil {
-		details = [][2]string{{"context", context}, {"path", *path}}
-	} else {
-		details = [][2]string{{"context", context}, {"path", "none"}}
-	}
+	details = [][2]string{{"context", context}, {"path", path}}
 	return &ErrorVal{
 		CodeString: "warpforge-error-io",
 		Message:    fmt.Sprintf("io error: %s: %s", context, cause),
@@ -359,14 +359,45 @@ func ErrorCatalogInvalid(path string, reason string) Error {
 //
 // Errors:
 //
-//    - warpforge-error-catalog-item-already-exists --
+//    - warpforge-error-already-exists --
 func ErrorCatalogItemAlreadyExists(path string, itemName ItemLabel) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-catalog-item-already-exists",
+		CodeString: errCodeAlreadyExists,
 		Message:    fmt.Sprintf("item %q already exists in release file %q", itemName, path),
 		Details: [][2]string{
 			{"path", path},
 			{"itemName", string(itemName)},
+		},
+	}
+}
+
+// ErrorCatalogName is returned when a catalog name is invalid
+//
+// Errors:
+//
+//    - warpforge-error-catalog-name --
+func ErrorCatalogName(name string, reason string) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-catalog-name",
+		Message:    fmt.Sprintf("catalog name %q is invalid: %s", name, reason),
+		Details: [][2]string{
+			{"name", name},
+			{"reason", reason},
+		},
+	}
+}
+
+// ErrorFileAlreadyExists is used when a file already exists
+//
+// Errors:
+//
+//    - warpforge-error-already-exists --
+func ErrorFileAlreadyExists(path string) Error {
+	return &ErrorVal{
+		CodeString: errCodeAlreadyExists,
+		Message:    fmt.Sprintf("file already exists at path: %q", path),
+		Details: [][2]string{
+			{"path", path},
 		},
 	}
 }

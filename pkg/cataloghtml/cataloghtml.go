@@ -105,21 +105,26 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	if err := cfg.CatalogToHtml(); err != nil {
 		return err
 	}
+
 	// Emit the "once" stuff.
-	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "main.css"), mainCssBody, 0644); err != nil {
-		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
+	path := filepath.Join(cfg.OutputPath, "main.css")
+	if err := os.WriteFile(path, mainCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
 
-	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "toggle.css"), toggleCssBody, 0644); err != nil {
-		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
+	path = filepath.Join(cfg.OutputPath, "toggle.css")
+	if err := os.WriteFile(path, toggleCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
 
-	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "tabs.css"), tabsCssBody, 0644); err != nil {
-		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
+	path = filepath.Join(cfg.OutputPath, "tabs.css")
+	if err := os.WriteFile(path, tabsCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
 
-	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "js.js"), jsBody, 0644); err != nil {
-		return wfapi.ErrorIo("couldn't open file for js as part of cataloghtml emission", nil, err)
+	path = filepath.Join(cfg.OutputPath, "js.js")
+	if err := os.WriteFile(path, jsBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
 
 	// Emit all modules within.
@@ -145,11 +150,11 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 //   - warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) doTemplate(outputPath string, tmpl string, data interface{}) error {
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0775); err != nil {
-		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
+		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", outputPath, err)
 	}
 	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
 	if err != nil {
-		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
+		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", outputPath, err)
 	}
 	defer f.Close()
 
