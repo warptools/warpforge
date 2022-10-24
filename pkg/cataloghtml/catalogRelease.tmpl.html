@@ -50,8 +50,8 @@
 							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
 						</div>
 						<div class="download-link">{{ if $linksAvailable }}download: ({{ ($linkGen.DownloadLink $item) }}){{ end }}</div>
+						{{- end }}
 					</div>
-					{{- end }}
 				</div>
 				<div class="tab-content">
 					{{- $module := .Module }}
