@@ -33,9 +33,15 @@
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-2">
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-3">
 		<div class="tabs">
-			<label for="tab-radiobutton-1"><h3>Overview</h3></label>
-			<label for="tab-radiobutton-2"><h3>Items</h3></label>
-			<label for="tab-radiobutton-3"><h3>Metadata</h3></label>
+			<label for="tab-radiobutton-1">
+				<h3>Overview</h3>
+			</label>
+			<label for="tab-radiobutton-2">
+				<h3>Items</h3>
+			</label>
+			<label for="tab-radiobutton-3">
+				<h3>Metadata</h3>
+			</label>
 		</div>
 		<div class="content-wrapper">
 			<div class="content">
@@ -60,18 +66,20 @@
 					</div>
 					<h3 class="margin-top-xl">Metadata</h3>
 					<div class="tab-content-grid col-2">
-						<div>Author:</div>
-						<div>{{ .Metadata.Author }}</div>
-						<div>License:</div>
-						<div>{{ .Metadata.License }}</div>
-						<div>Replay:</div>
-						<div>{{ .Metadata.Replay }}</div>
+						{{- $module := .Module }}
+						{{- range $i, $metadataKey := .Release.Metadata.Keys }}
+						{{- if lt $i 3 }}
+						<div>{{ $metadataKey }}</div>
+						{{- if eq $metadataKey "replay" }}
+						<div><a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">{{ index $dot.Metadata.Values $metadataKey }}</a></div>
+						{{- else }}
+						<div>{{ index $dot.Metadata.Values $metadataKey }}</div>
+						{{- end }}
 						<div></div>
-						<div>... 13 less-well-known fields [see more]</div>
-					</div>
-					<h3 class="margin-top-xl">Changelog</h3>
-					<div class="tab-content-grid col-2">
-						<!-- Changelog -->
+						{{- if gt len(.Release.Metadata.Keys) 3 }}
+						<div>...{{len(.Release.Metadata.Keys)}} less-well-known fields [<label for="tab-radiobutton-3"><a href="#">see more</a></label>]</div>
+						{{- end }}
+						{{- end }}
 					</div>
 				</div>
 				<!-- TAB: Items -->
