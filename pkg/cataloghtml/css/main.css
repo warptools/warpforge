@@ -186,3 +186,15 @@ dd {
 .content-heading {
 	padding-bottom: var(--space-lg);
 }
+
+.margin-top {
+	margin-top: var(--space-md);
+}
+
+.margin-top-lg {
+	margin-top: var(--space-lg);
+}
+
+.margin-top-xl {
+	margin-top: var(--space-xl);
+}

@@ -31,12 +31,50 @@
 		</div>
 		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-2">
+		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-3">
 		<div class="tabs">
-			<label for="tab-radiobutton-1"><h3>Items</h3></label>
-			<label for="tab-radiobutton-2"><h3>Metadata</h3></label>
+			<label for="tab-radiobutton-1"><h3>Overview</h3></label>
+			<label for="tab-radiobutton-2"><h3>Items</h3></label>
+			<label for="tab-radiobutton-3"><h3>Metadata</h3></label>
 		</div>
 		<div class="content-wrapper">
 			<div class="content">
+				<!-- TAB: Overview -->
+				<div class="tab-content">
+					{{- $linkGen := .LinkGenerator -}}
+					{{- $linksAvailable := .LinkGenerator.DownloadLinksAvailable -}}
+					<h3>Items</h3>
+					<div class="tab-content-grid">
+						{{- $dot := .Release -}}
+						{{- range $i, $itemKey := .Release.Items.Keys }}
+						{{- if lt $i 3 }}
+						{{ $item := index $dot.Items.Values $itemKey }}
+						<div>{{ $itemKey }}</div>
+						<div class="short text-box">
+							<span class="long-text">{{ $item }}</span>
+							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
+						</div>
+						<div class="download-link">{{ if $linksAvailable }}download: ({{ ($linkGen.DownloadLink $item) }}){{ end }}</div>
+						{{- end }}
+						{{- end }}
+					</div>
+					<h3 class="margin-top-xl">Metadata</h3>
+					<div class="tab-content-grid col-2">
+						<div>Author:</div>
+						<div>{{ .Metadata.Author }}</div>
+						<div>License:</div>
+						<div>{{ .Metadata.License }}</div>
+						<div>Replay:</div>
+						<div>{{ .Metadata.Replay }}</div>
+						<div></div>
+						<div>... 13 less-well-known fields [see more]</div>
+					</div>
+					<h3 class="margin-top-xl">Changelog</h3>
+					<div class="tab-content-grid col-2">
+						<!-- Changelog -->
+					</div>
+				</div>
+				<!-- TAB: Items -->
 				<div class="tab-content">
 					{{- $linkGen := .LinkGenerator -}}
 					{{- $linksAvailable := .LinkGenerator.DownloadLinksAvailable -}}
@@ -44,7 +82,7 @@
 						{{- $dot := .Release -}}
 						{{- range $itemKey := .Release.Items.Keys }}
 						{{ $item := index $dot.Items.Values $itemKey }}
-						<div><strong>{{ $itemKey }}</strong></div>
+						<div>{{ $itemKey }}</div>
 						<div class="short text-box">
 							<span class="long-text">{{ $item }}</span>
 							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
@@ -53,6 +91,7 @@
 						{{- end }}
 					</div>
 				</div>
+				<!-- TAB: Metadata -->
 				<div class="tab-content">
 					{{- $module := .Module }}
 					{{- range $metadataKey := .Release.Metadata.Keys }}

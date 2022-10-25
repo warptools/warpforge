@@ -22,6 +22,10 @@
 	gap: var(--space-md);
 }
 
+.tab-content-grid.col-2 {
+	grid-template-columns: 200px auto;
+}
+
 .tab-content-grid > div {
 	padding: var(--space-xs);
 }
@@ -68,7 +72,8 @@
 	needs to match .tab-content:nth-of-type(y). (x = y)
 */
 .tab-radiobutton:nth-of-type(1):checked ~ .tabs > label:nth-of-type(1):before,
-.tab-radiobutton:nth-of-type(2):checked ~ .tabs > label:nth-of-type(2):before {
+.tab-radiobutton:nth-of-type(2):checked ~ .tabs > label:nth-of-type(2):before,
+.tab-radiobutton:nth-of-type(3):checked ~ .tabs > label:nth-of-type(3):before {
 	content: '';
 	border: 20px solid var(--code-bg-color);
 	border-left-color: transparent;
@@ -90,7 +95,10 @@
 	.tab-content:nth-of-type(1),
 .tab-radiobutton:nth-of-type(2):checked
 	~ .content-wrapper
-	.tab-content:nth-of-type(2) {
+	.tab-content:nth-of-type(2),
+.tab-radiobutton:nth-of-type(3):checked
+	~ .content-wrapper
+	.tab-content:nth-of-type(3)	 {
 	opacity: 1;
 	height: initial;
 	pointer-events: initial;
