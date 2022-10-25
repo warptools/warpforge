@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 
 	"github.com/ipld/go-ipld-prime"
 	ipldJson "github.com/ipld/go-ipld-prime/codec/json"
@@ -84,6 +85,10 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 		},
 		"url": func(parts ...string) string {
 			return path.Join(append([]string{cfg.URLPrefix}, parts...)...)
+		},
+		"subtract": func(a, b int64) string {
+			// Very small helper function to subtract numbers in the templates
+			return strconv.FormatInt(a-b, 10)
 		},
 	}
 }

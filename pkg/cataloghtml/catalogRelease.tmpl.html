@@ -76,8 +76,9 @@
 						<div>{{ index $dot.Metadata.Values $metadataKey }}</div>
 						{{- end }}
 						<div></div>
-						{{- if gt len(.Release.Metadata.Keys) 3 }}
-						<div>...{{len(.Release.Metadata.Keys)}} less-well-known fields [<label for="tab-radiobutton-3"><a href="#">see more</a></label>]</div>
+						{{- if gt len .Release.Metadata.Keys 3 }}
+						<div>...{{ subtract len .Release.Metadata.Keys 3 }} less-well-known fields [<label for="tab-radiobutton-3"><a href="#">see more</a></label>]</div>
+						{{- end }}
 						{{- end }}
 						{{- end }}
 					</div>
