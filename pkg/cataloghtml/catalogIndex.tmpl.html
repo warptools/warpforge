@@ -16,7 +16,9 @@ which is not available and rigged up as a convenient library yet.
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Catalog</title>
-	<link rel="stylesheet" href="{{ (url "css.css") }}" />
+	<link rel="stylesheet" href="{{ (url "main.css") }}" />
+	<link rel="stylesheet" href="{{ (url "toggle.css") }}" />
+	<link rel="stylesheet" href="{{ (url "tabs.css") }}" />
 	<script src="{{ (url "js.js") }}"></script>
 </head>
 
@@ -36,16 +38,19 @@ which is not available and rigged up as a convenient library yet.
 			</label>
 		</div>
 	</div>
-	<div class="content content-heading">
-		<strong>Modules</strong>
+	<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
+	<div class="tabs">
+		<label for="tab-radiobutton-1"><h3>Modules</h3></label>
 	</div>
 	<div class="content-wrapper">
 		<div class="content">
-			<ul>
-				{{- range $moduleName := . }}
-				<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
-				{{- end }}
-			</ul>
+			<div class="tab-content">
+				<ul>
+					{{- range $moduleName := . }}
+					<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
+					{{- end }}
+				</ul>
+			</div>
 		</div>
 	</div>
 	</body>
