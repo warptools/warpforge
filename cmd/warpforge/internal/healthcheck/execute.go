@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/warpfork/warpforge/cmd/warpforge/internal/catalog"
 	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
+	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/pkg/workspace"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -74,54 +76,18 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 		return serum.Errorf(CodeRunFailure, "unable to find workspace stack: %w", err)
 	}
 
-	// localWs := wss.Local()
-
-	// if err := localWs.CreateCatalog(""); err != nil {
-	// 	return serum.Errorf(CodeRunFailure, "unable to create local catalog: %w", err)
-	// }
-
-	// if err := os.Chdir(localWorkspaceDir); err != nil {
-	// 	return serum.Errorf(CodeRunFailure, "failed to change directories: %q: %w", localWorkspaceDir, err)
-	// }
-
-	moduleCapsule := wfapi.ModuleCapsule{
-		Module: &wfapi.Module{
-			Name: wfapi.ModuleName("warpforge-internal-healthcheck"),
-		},
-	}
-
-	moduleSerial, err := ipld.Marshal(json.Encode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
-	if err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to serialize module: %w", err)
-	}
-
-	modulePath := filepath.Join(localWorkspaceDir, util.ModuleFilename)
-	if err := os.WriteFile(modulePath, moduleSerial, 0644); err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to write module file: %q: %w", modulePath, err)
-	}
-
 	plotCapsule := wfapi.PlotCapsule{}
 	_, err = ipld.Unmarshal([]byte(util.DefaultPlotJson), json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 	if err != nil {
 		return serum.Errorf(CodeRunFailure, "failed to deserialize default plot: %w", err)
 	}
-
-	plotSerial, err := ipld.Marshal(json.Encode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
-	if err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to serialize plot: %w", err)
-	}
-
-	plotFilePath := filepath.Join(localWorkspaceDir, util.PlotFilename)
-	if err := os.WriteFile(plotFilePath, plotSerial, 0644); err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to write plot file: %q: %w", plotFilePath, err)
+	if plotCapsule.Plot == nil {
+		return serum.Errorf(CodeRunFailure, "Execution failed: plot capsule missing plot")
 	}
 
 	catalogPath := filepath.Join("/", wss.Root().CatalogBasePath())
 	if err := catalog.InstallDefaultRemoteCatalog(ctx, catalogPath); err != nil {
 		return serum.Error(CodeRunFailure, serum.WithCause(err))
-	}
-	if plotCapsule.Plot == nil {
-		return serum.Errorf(CodeRunFailure, "Execution failed: plot capsule missing plot")
 	}
 	if err := wss.Tidy(ctx, *plotCapsule.Plot, true); err != nil {
 		return serum.Errorf(CodeRunFailure, "Execution failed: %w", err)
@@ -134,8 +100,20 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 		},
 	}
 
-	if _, err := util.ExecModule(ctx, config, util.ModuleFilename); err != nil {
+	result, err := plotexec.Exec(ctx, wss, plotCapsule, config)
+	if err != nil {
 		return serum.Errorf(CodeRunFailure, "Execution failed: %w", err)
 	}
+
+	invariant := wfapi.PlotResults{
+		Keys: []wfapi.LocalLabel{"output"},
+		Values: map[wfapi.LocalLabel]wfapi.WareID{
+			"output": wfapi.WareID{Packtype: "tar", Hash: "6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA"},
+		},
+	}
+	if !reflect.DeepEqual(result, invariant) {
+		return serum.Errorf(CodeRunFailure, "unexpected output: %s", result)
+	}
+
 	return serum.Errorf(CodeRunOkay, "Execution Successful")
 }
