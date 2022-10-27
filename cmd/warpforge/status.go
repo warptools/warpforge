@@ -9,19 +9,21 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
 	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var statusCmdDef = cli.Command{
 	Name:  "status",
 	Usage: "Get status of workspaces and installation",
-	Action: chainCmdMiddleware(cmdStatus,
-		cmdMiddlewareLogging,
-		cmdMiddlewareTracingConfig,
-		cmdMiddlewareTracingSpan,
+	Action: util.ChainCmdMiddleware(cmdStatus,
+		util.CmdMiddlewareLogging,
+		util.CmdMiddlewareTracingConfig,
+		util.CmdMiddlewareTracingSpan,
 	),
 	Aliases: []string{"info"},
 }
@@ -95,9 +97,9 @@ func cmdStatus(c *cli.Context) error {
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(pwd, MODULE_FILE_NAME)); err == nil {
+	if _, err := os.Stat(filepath.Join(pwd, util.ModuleFilename)); err == nil {
 		isModule = true
-		module, err = moduleFromFile(filepath.Join(pwd, MODULE_FILE_NAME))
+		module, err = util.ModuleFromFile(filepath.Join(pwd, util.ModuleFilename))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -112,11 +114,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(pwd, PLOT_FILE_NAME))
+	_, err = os.Stat(filepath.Join(pwd, util.PlotFilename))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
+		plot, err = util.PlotFromFile(filepath.Join(pwd, util.PlotFilename))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
@@ -129,7 +131,7 @@ func cmdStatus(c *cli.Context) error {
 			len(plot.Outputs.Keys))
 
 		// check for missing catalog refs
-		wss, err := openWorkspaceSet()
+		wss, err := util.OpenWorkspaceSet()
 		if err != nil {
 			return fmt.Errorf("failed to open workspace: %s", err)
 		}
@@ -173,7 +175,7 @@ func cmdStatus(c *cli.Context) error {
 
 	// display workspace info
 	fmt.Fprintf(c.App.Writer, "\nWorkspace:\n")
-	wss, err := openWorkspaceSet()
+	wss, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return fmt.Errorf("failed to open workspace set: %s", err)
 	}

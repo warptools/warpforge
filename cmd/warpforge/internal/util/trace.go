@@ -1,8 +1,7 @@
-package main
+package util
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 
@@ -18,14 +17,10 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 )
 
-// cmdMiddlewareTracing configures the logging system before executing the CLI command
-func cmdMiddlewareLogging(f cli.ActionFunc) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		logger := logging.NewLogger(c.App.Writer, c.App.ErrWriter, c.Bool("json"), c.Bool("quiet"), c.Bool("verbose"))
-		c.Context = logger.WithContext(c.Context)
-		return f(c)
-	}
-}
+// The module name used for unique strings, such as tracing identifiers
+// Grab it via `go list -m` or manually. It's not available at runtime and
+// it's too trivial to generate. Might inject with LDFLAGS later.
+const Module = "github.com/warpfork/warpforge"
 
 func setSpanError(ctx context.Context, err error) {
 	wfErr, ok := err.(wfapi.Error)
@@ -33,53 +28,6 @@ func setSpanError(ctx context.Context, err error) {
 		wfErr = wfapi.ErrorUnknown("command failed", err)
 	}
 	tracing.SetSpanError(ctx, wfErr)
-}
-
-// cmdMiddlewareTracingSpan starts a span with the command name that ends when
-// the middleware exits after returning from the command or next middleware
-func cmdMiddlewareTracingSpan(f cli.ActionFunc) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		ctx, span := tracing.Start(c.Context, c.Command.FullName())
-		defer span.End()
-		c.Context = ctx
-		err := f(c)
-		if err != nil {
-			setSpanError(ctx, err)
-		}
-		return err
-	}
-}
-
-// cmdMiddlewareTracingConfig configures the tracing system before executing the CLI command
-func cmdMiddlewareTracingConfig(f cli.ActionFunc) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		// TODO: Adjust the otel default logging apparatus
-		// logger := stdr.New(log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile))
-		// otel.SetLogger(logger)
-		tracerProvider, err := newTracingProvider(c)
-		if err != nil {
-			return fmt.Errorf("could not initialize tracing: %w", err)
-		}
-		if tracerProvider == nil {
-			c.Context = tracing.SetTracer(c.Context, nil)
-			return f(c)
-		}
-		ctx := c.Context
-		defer func() {
-			if tracerProvider == nil {
-				return
-			}
-			if err := tracerProvider.Shutdown(ctx); err != nil {
-				logger := logging.Ctx(ctx)
-				logger.Debug("", "tracing shutdown error: %s", err.Error())
-			}
-		}()
-
-		tr := tracerProvider.Tracer(MODULE)
-		ctx = tracing.SetTracer(ctx, tr)
-		c.Context = ctx
-		return f(c)
-	}
 }
 
 // mergeResources takes all the open telemetry resources and merges them in order.
@@ -100,11 +48,11 @@ func mergeResources(resources ...*resource.Resource) (*resource.Resource, error)
 }
 
 // newResource is generally where we add our identifying keys for the process
-func newResource() (*resource.Resource, error) {
+func newResource(version string, module string) (*resource.Resource, error) {
 	defaultResource := resource.NewWithAttributes(
 		semconv.SchemaURL,
-		semconv.ServiceNameKey.String(MODULE),
-		semconv.ServiceVersionKey.String(VERSION),
+		semconv.ServiceNameKey.String(module),
+		semconv.ServiceVersionKey.String(version),
 	)
 	return mergeResources(
 		resource.Default(),
@@ -116,7 +64,7 @@ func newResource() (*resource.Resource, error) {
 // newTracingProvider creates a tracer provider from CLI flags
 func newTracingProvider(c *cli.Context) (_ *sdktrace.TracerProvider, retErr error) {
 	logger := logging.Ctx(c.Context)
-	res, err := newResource()
+	res, err := newResource(c.App.Version, Module)
 	if err != nil {
 		return nil, err
 	}
