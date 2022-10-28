@@ -60,7 +60,7 @@
 							<span class="long-text">{{ $item }}</span>
 							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
 						</div>
-						<div class="download-link">{{ if $linksAvailable }}download: ({{ ($linkGen.DownloadLink $item) }}){{ end }}</div>
+						<div class="download-link">{{ if $linksAvailable }}download: (<a href="{{ ($linkGen.DownloadUrl $item) }}">http</a>){{ end }}</div>
 						{{- end }}
 						{{- end }}
 					</div>
