@@ -100,10 +100,11 @@ func TestCatalogLookup(t *testing.T) {
 				},
 			}
 			var err error
-			wss, _, err := FindWorkspace(fsys, "", "home/user/")
+			ws, _, err := FindWorkspace(fsys, "", "home/user/")
 			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, ws, qt.IsNotNil)
 
-			wareId, wareAddr, err := wss.GetCatalogWare(ref)
+			wareId, wareAddr, err := ws.GetCatalogWare(ref)
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, wareId, qt.IsNotNil)
 			qt.Assert(t, wareId.Hash, qt.Equals, "abcd")
@@ -113,6 +114,7 @@ func TestCatalogLookup(t *testing.T) {
 		})
 		t.Run("multi-catalog-lookup", func(t *testing.T) {
 			fsys := fstest.MapFS{
+				"home/user/.warpforge/root": &fstest.MapFile{Mode: 0644},
 				"home/user/.warpforge/catalogs/test/example.com/module/_module.json": &fstest.MapFile{
 					Mode: 0644,
 					Data: []byte(moduleData),
@@ -141,9 +143,10 @@ func TestCatalogLookup(t *testing.T) {
 			var err error
 			ws, _, err := FindWorkspace(fsys, "", "home/user/")
 			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, ws, qt.IsNotNil)
 
 			catName := "test"
-			cat, err := ws.OpenCatalog(&catName)
+			cat, err := ws.OpenCatalog(catName)
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, len(cat.Modules()), qt.Equals, 2)
 			qt.Assert(t, cat.Modules()[0], qt.Equals, wfapi.ModuleName("example.com/module"))
@@ -176,7 +179,10 @@ func TestCatalogLookup(t *testing.T) {
 			}
 			var err error
 			ws, _, err := FindWorkspace(fsys, "", "home/user/")
-			cat, err := ws.OpenCatalog(nil)
+			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, ws, qt.IsNotNil)
+
+			cat, err := ws.OpenCatalog("")
 			qt.Assert(t, err, qt.IsNil)
 			_, err = cat.GetReplay(ref)
 			qt.Assert(t, err, qt.IsNil)

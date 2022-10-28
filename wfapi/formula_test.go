@@ -59,9 +59,9 @@ func TestParseFormulaAndContext(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil)
 
 	ports := []SandboxPort{
-		SandboxPort{SandboxPath: func() *SandboxPath { v := SandboxPath("mount/path"); return &v }()},
-		SandboxPort{SandboxVar: func() *SandboxVar { v := SandboxVar("ENV_VAR"); return &v }()},
-		SandboxPort{SandboxPath: func() *SandboxPath { v := SandboxPath("more/mounts"); return &v }()},
+		{SandboxPath: func() *SandboxPath { v := SandboxPath("mount/path"); return &v }()},
+		{SandboxVar: func() *SandboxVar { v := SandboxVar("ENV_VAR"); return &v }()},
+		{SandboxPath: func() *SandboxPath { v := SandboxPath("more/mounts"); return &v }()},
 	}
 	inputs := frmAndCtx.Formula.Formula.Inputs
 	qt.Assert(t, inputs.Keys, qt.DeepEquals, ports)

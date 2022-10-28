@@ -9,14 +9,22 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
 	"github.com/warpfork/warpforge/pkg/formulaexec"
+	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
 )
 
 var statusCmdDef = cli.Command{
-	Name:    "status",
-	Usage:   "Get status of workspaces and installation",
-	Action:  cmdStatus,
+	Name:  "status",
+	Usage: "Get status of workspaces and installation",
+	Action: util.ChainCmdMiddleware(cmdStatus,
+		util.CmdMiddlewareLogging,
+		util.CmdMiddlewareTracingConfig,
+		util.CmdMiddlewareTracingSpan,
+	),
 	Aliases: []string{"info"},
 }
 
@@ -24,6 +32,7 @@ func cmdStatus(c *cli.Context) error {
 	fmtBold := color.New(color.Bold)
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
 	verbose := c.Bool("verbose")
+	ctx := c.Context
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -65,10 +74,13 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, "runc not found (expected at %s)\n", runcPath)
 		pluginsOk = false
 	} else {
-		runcVersionCmd := exec.Command(filepath.Join(binPath, "runc"), "--version")
+		cmdCtx, cmdSpan := tracing.Start(ctx, "exec", trace.WithAttributes(tracing.AttrFullExecNameRunc))
+		defer cmdSpan.End()
+		runcVersionCmd := exec.CommandContext(cmdCtx, filepath.Join(binPath, "runc"), "--version")
 		var runcVersionOut bytes.Buffer
 		runcVersionCmd.Stdout = &runcVersionOut
 		err = runcVersionCmd.Run()
+		tracing.EndWithStatus(cmdSpan, err)
 		if err != nil {
 			return fmt.Errorf("failed to get runc version information: %s", err)
 		}
@@ -85,9 +97,9 @@ func cmdStatus(c *cli.Context) error {
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(pwd, MODULE_FILE_NAME)); err == nil {
+	if _, err := os.Stat(filepath.Join(pwd, util.ModuleFilename)); err == nil {
 		isModule = true
-		module, err = moduleFromFile(filepath.Join(pwd, MODULE_FILE_NAME))
+		module, err = util.ModuleFromFile(filepath.Join(pwd, util.ModuleFilename))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -102,11 +114,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(pwd, PLOT_FILE_NAME))
+	_, err = os.Stat(filepath.Join(pwd, util.PlotFilename))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = plotFromFile(filepath.Join(pwd, PLOT_FILE_NAME))
+		plot, err = util.PlotFromFile(filepath.Join(pwd, util.PlotFilename))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
@@ -119,7 +131,7 @@ func cmdStatus(c *cli.Context) error {
 			len(plot.Outputs.Keys))
 
 		// check for missing catalog refs
-		wss, err := openWorkspaceSet()
+		wss, err := util.OpenWorkspaceSet()
 		if err != nil {
 			return fmt.Errorf("failed to open workspace: %s", err)
 		}
@@ -163,7 +175,7 @@ func cmdStatus(c *cli.Context) error {
 
 	// display workspace info
 	fmt.Fprintf(c.App.Writer, "\nWorkspace:\n")
-	wss, err := openWorkspaceSet()
+	wss, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return fmt.Errorf("failed to open workspace set: %s", err)
 	}
@@ -189,7 +201,7 @@ func cmdStatus(c *cli.Context) error {
 	fmt.Fprintf(c.App.Writer, ")\n")
 
 	// handle all other workspaces
-	for _, ws := range wss.Stack {
+	for _, ws := range wss {
 		fs, subPath := ws.Path()
 		path := fmt.Sprintf("%s%s", fs, subPath)
 
@@ -201,18 +213,20 @@ func cmdStatus(c *cli.Context) error {
 		labels := []string{}
 
 		// collect workspaces labels
-		if *ws == *wss.Root {
+		isRoot := ws.IsRootWorkspace()
+		isHome := ws.IsHomeWorkspace()
+		if isRoot {
 			labels = append(labels, "root workspace")
 		}
-		if *ws == *wss.Home {
+		if isHome {
 			labels = append(labels, "home workspace")
 		}
-		if *ws != *wss.Root && *ws != *wss.Home {
+		if !isRoot && !isHome {
 			labels = append(labels, "workspace")
 		}
 
 		// label if it's a git repo
-		if _, err := os.Stat(filepath.Join(path, ".git")); !os.IsNotExist(err) {
+		if isGitRepo(path) {
 			labels = append(labels, "git repo")
 		}
 
@@ -233,4 +247,9 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+func isGitRepo(path string) bool {
+	_, err := os.Stat(filepath.Join(path, ".git"))
+	return !os.IsNotExist(err)
 }

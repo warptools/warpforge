@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 
 	"github.com/ipld/go-ipld-prime"
 	ipldJson "github.com/ipld/go-ipld-prime/codec/json"
@@ -36,8 +37,14 @@ var (
 	//go:embed catalogReplay.tmpl.html
 	catalogReplayTemplate string
 
-	//go:embed css.css
-	cssBody []byte
+	//go:embed css/main.css
+	mainCssBody []byte
+
+	//go:embed css/toggle.css
+	toggleCssBody []byte
+
+	//go:embed css/tabs.css
+	tabsCssBody []byte
 
 	//go:embed js.js
 	jsBody []byte
@@ -79,6 +86,10 @@ func (cfg SiteConfig) tfuncs() map[string]interface{} {
 		"url": func(parts ...string) string {
 			return path.Join(append([]string{cfg.URLPrefix}, parts...)...)
 		},
+		"subtract": func(a, b int64) string {
+			// Very small helper function to subtract numbers in the templates
+			return strconv.FormatInt(a-b, 10)
+		},
 	}
 }
 
@@ -99,14 +110,26 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	if err := cfg.CatalogToHtml(); err != nil {
 		return err
 	}
-	// Emit the "once" stuff.
-	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "css.css"), cssBody, 0644); err != nil {
-		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
-	}
 
 	// Emit the "once" stuff.
-	if err := os.WriteFile(filepath.Join(cfg.OutputPath, "js.js"), jsBody, 0644); err != nil {
-		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", nil, err)
+	path := filepath.Join(cfg.OutputPath, "main.css")
+	if err := os.WriteFile(path, mainCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
+	}
+
+	path = filepath.Join(cfg.OutputPath, "toggle.css")
+	if err := os.WriteFile(path, toggleCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
+	}
+
+	path = filepath.Join(cfg.OutputPath, "tabs.css")
+	if err := os.WriteFile(path, tabsCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
+	}
+
+	path = filepath.Join(cfg.OutputPath, "js.js")
+	if err := os.WriteFile(path, jsBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
 
 	// Emit all modules within.
@@ -132,11 +155,11 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 //   - warpforge-error-internal -- in case of templating errors.
 func (cfg SiteConfig) doTemplate(outputPath string, tmpl string, data interface{}) error {
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0775); err != nil {
-		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", nil, err)
+		return wfapi.ErrorIo("couldn't mkdir during cataloghtml emission", outputPath, err)
 	}
 	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
 	if err != nil {
-		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", nil, err)
+		return wfapi.ErrorIo("couldn't open file for writing during cataloghtml emission", outputPath, err)
 	}
 	defer f.Close()
 

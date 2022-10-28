@@ -24,12 +24,8 @@ func getTestWorkspaceStack(t *testing.T) workspace.WorkspaceSet {
 	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
 	qt.Assert(t, err, qt.IsNil)
 
-	wss := workspace.WorkspaceSet{
-		Home: projWs,
-		Root: projWs,
-		Stack: []*workspace.Workspace{
-			projWs,
-		},
+	var wss workspace.WorkspaceSet = []*workspace.Workspace{
+		projWs,
 	}
 	return wss
 }

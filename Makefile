@@ -19,6 +19,20 @@ endif
 	go test ./...
 	@stty sane
 
+imports:
+	goimports -w ./cmd
+	goimports -w ./pkg
+	goimports -w ./wfapi
+	goimports -w ./larkdemo
+
+vet:
+	go vet ./...
+
+shadow:
+# go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+	@command -v shadow # errors if shadow is not an available command
+	go vet -vettool=$$(command -v shadow) ./...
+
 all: test install
 
-.PHONY: install test all
+.PHONY: install test all shadow vet imports

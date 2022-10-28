@@ -8,6 +8,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
+
+	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
 	"github.com/warpfork/warpforge/pkg/plotexec"
 	"github.com/warpfork/warpforge/wfapi"
 )
@@ -15,10 +17,10 @@ import (
 var ferkCmdDef = cli.Command{
 	Name:  "ferk",
 	Usage: "Starts a containerized environment for interactive use",
-	Action: chainCmdMiddleware(cmdFerk,
-		cmdMiddlewareLogging,
-		cmdMiddlewareTracingConfig,
-		cmdMiddlewareTracingSpan,
+	Action: util.ChainCmdMiddleware(cmdFerk,
+		util.CmdMiddlewareLogging,
+		util.CmdMiddlewareTracingConfig,
+		util.CmdMiddlewareTracingSpan,
 	),
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -40,47 +42,10 @@ var ferkCmdDef = cli.Command{
 	},
 }
 
-const ferkPlotTemplate = `
-{
-        "inputs": {
-                "rootfs": "catalog:min.warpforge.io/debian/rootfs:bullseye-1646092800:amd64"
-        },
-        "steps": {
-                "ferk": {
-                        "protoformula": {
-                                "inputs": {
-                                        "/": "pipe::rootfs",
-                                        "/pwd": "mount:overlay:.",
-                                },
-                                "action": {
-                                        "script": {
-												"interpreter": "/bin/bash",
-                                                "contents": [
-													"echo 'APT::Sandbox::User \"root\";' > /etc/apt/apt.conf.d/01ferk",
-													"echo 'Dir::Log::Terminal \"\";' >> /etc/apt/apt.conf.d/01ferk"
-													"/bin/bash",
-													],
-												"network": true
-                                        }
-                                },
-                                "outputs": {
-									"out": {
-										"from": "/out",
-										"packtype": "tar"
-									}
-								}
-                        }
-                }
-        },
-        "outputs": {
-			"out": "pipe:ferk:out"
-		}
-}
-`
-
 func cmdFerk(c *cli.Context) error {
+	var err error
 	ctx := c.Context
-	wss, err := openWorkspaceSet()
+	wss, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -88,15 +53,15 @@ func cmdFerk(c *cli.Context) error {
 	plot := wfapi.Plot{}
 	if c.String("plot") != "" {
 		// plot was provided, load from file
-		plot, err = plotFromFile(c.String("plot"))
+		plot, err = util.PlotFromFile(c.String("plot"))
 		if err != nil {
-			return fmt.Errorf("error loading plot from file %q: %s", c.String("plot"), err)
+			return err
 		}
 	} else {
 		// no plot provided, generate the basic default plot from json template
-		_, err = ipld.Unmarshal([]byte(ferkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+		_, err := ipld.Unmarshal([]byte(util.FerkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
 		if err != nil {
-			return fmt.Errorf("error parsing template plot: %s", err)
+			return wfapi.ErrorSerialization("error parsing template plot", err)
 		}
 
 		// convert rootfs input string to PlotInput
@@ -105,9 +70,9 @@ func cmdFerk(c *cli.Context) error {
 			// custom value provided, override default
 			rootfsStr := fmt.Sprintf("\"%s\"", c.String("rootfs"))
 			rootfs := wfapi.PlotInput{}
-			_, err = ipld.Unmarshal([]byte(rootfsStr), json.Decode, &rootfs, wfapi.TypeSystem.TypeByName("PlotInput"))
+			_, err := ipld.Unmarshal([]byte(rootfsStr), json.Decode, &rootfs, wfapi.TypeSystem.TypeByName("PlotInput"))
 			if err != nil {
-				return fmt.Errorf("error parsing rootfs input: %s", err)
+				return wfapi.ErrorSerialization("error parsing rootfs input", err)
 			}
 			plot.Inputs.Values["rootfs"] = rootfs
 		}
@@ -140,7 +105,7 @@ func cmdFerk(c *cli.Context) error {
 		// create the persist directory, if it does not exist
 		err := os.MkdirAll("wf-persist", 0755)
 		if err != nil {
-			return fmt.Errorf("failed to create persist directory: %s", err)
+			return wfapi.ErrorIo("failed to create persist directory", "wf-persist", err)
 		}
 	}
 
@@ -152,8 +117,7 @@ func cmdFerk(c *cli.Context) error {
 			Interactive:        !c.Bool("no-interactive"),
 		},
 	}
-	_, err = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
-	if err != nil {
+	if _, err := plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config); err != nil {
 		return err
 	}
 
