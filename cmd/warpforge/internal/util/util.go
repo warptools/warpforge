@@ -131,6 +131,8 @@ func ModuleFromFile(filename string) (wfapi.Module, error) {
 }
 
 // ExecModule executes the given module file with the default plot file in the same directory.
+// WARNING: This function calls Chdir and may not change back on errors
+//
 // Errors:
 //
 //    - warpforge-error-catalog-invalid --

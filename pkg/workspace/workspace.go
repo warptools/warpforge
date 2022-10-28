@@ -379,3 +379,10 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.
 	// nothing found
 	return nil, nil
 }
+
+// GetWarehouseAddress will return a URL-style path to the workspace warehouse.
+// will use the rootpath prefixed with "/"
+func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
+	path := filepath.Join("/", ws.rootPath, ".warpforge", "warehouse")
+	return wfapi.WarehouseAddr("ca+file://" + path)
+}

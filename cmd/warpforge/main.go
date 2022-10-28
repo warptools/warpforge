@@ -77,6 +77,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&quickstartCmdDef,
 		&ferkCmdDef,
 		&healthCmdDef,
+		&wareCmdDef,
 	}
 	return app
 }
