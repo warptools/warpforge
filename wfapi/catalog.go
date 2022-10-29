@@ -7,6 +7,7 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
+
 	_ "github.com/warpfork/warpforge/pkg/testutil"
 )
 

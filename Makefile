@@ -1,5 +1,6 @@
 GOBIN = $(shell go env GOPATH)/bin
 SERUM := $(shell command -v go-serum-analyzer)
+MODULE := $(shell go list -m)
 
 install:
 	@echo "Installing plugins..."
@@ -20,10 +21,11 @@ endif
 	@stty sane
 
 imports:
-	goimports -w ./cmd
-	goimports -w ./pkg
-	goimports -w ./wfapi
-	goimports -w ./larkdemo
+	goimports -local=$(MODULE) -w ./cmd ./pkg ./wfapi ./larkdemo
+
+imports-test:
+# ideally this would return a non-zero exit code when it detects output
+	goimports -local=$(MODULE) -l ./cmd ./pkg ./wfapi ./larkdemo
 
 vet:
 	go vet ./...
@@ -35,4 +37,5 @@ shadow:
 
 all: test install
 
-.PHONY: install test all shadow vet imports
+.PHONY: install test all shadow vet imports imports-test
+
