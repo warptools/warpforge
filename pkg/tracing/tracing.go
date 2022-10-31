@@ -5,10 +5,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/warpfork/warpforge/wfapi"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/warpfork/warpforge/wfapi"
 )
 
 type ctxKey struct{}

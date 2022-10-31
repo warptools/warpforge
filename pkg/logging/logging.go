@@ -13,9 +13,9 @@ import (
 	"github.com/ipld/go-ipld-prime/codec"
 	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/warpfork/warpforge/wfapi"
-
 	rfmtjson "github.com/polydawn/refmt/json"
+
+	"github.com/warpfork/warpforge/wfapi"
 )
 
 type Logger struct {

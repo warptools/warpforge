@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"sort"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/warpfork/warpforge/pkg/tracing"
 	"github.com/warpfork/warpforge/wfapi"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Return the ordered list of steps for a plot, recursing into nested plots.
