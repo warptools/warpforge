@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -33,6 +34,10 @@ var wareCmdDef = cli.Command{
 					Name:  "path",
 					Usage: "Location to place the ware contents. Defaults to current directory.",
 				},
+				&cli.BoolFlag{
+					Name:  "force",
+					Usage: "Allow overwriting the given path. Any contents of an existing directory may be lost.",
+				},
 			},
 			Action: util.ChainCmdMiddleware(cmdWareUnpack,
 				util.CmdMiddlewareLogging,
@@ -51,29 +56,43 @@ func cmdWareUnpack(c *cli.Context) error {
 		return fmt.Errorf("invalid number of arguments")
 	}
 	args := c.Args().Slice()
-	ref := args[0]
-	path := c.Path("path")
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-
-	return wareUnpack(c.Context, ref, path, pwd)
+	config := &wareUnpackConfig{
+		Ref:   args[0],
+		Path:  c.Path("path"),
+		Pwd:   pwd,
+		Force: c.Bool("force"),
+	}
+	return config.run(c.Context)
 }
 
-func wareUnpack(ctx context.Context, ref string, path string, pwd string) error {
+type wareUnpackConfig struct {
+	Ref   string
+	Path  string
+	Pwd   string
+	Force bool
+}
+
+func (c *wareUnpackConfig) run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
-	wareID, err := unpackRefDecode(ref)
+	wareID, err := wareRefDecode(c.Ref)
 	if err != nil {
 		return err
 	}
 	log.Debug("", "wareID: %s", wareID.String())
 
+	path := c.Path
 	if path == "" {
-		path = pwd
+		path = c.Pwd
+	}
+	if err := c.validatePath(); err != nil {
+		return err
 	}
 
-	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", c.Pwd[1:])
 	if err != nil {
 		return err
 	}
@@ -83,7 +102,7 @@ func wareUnpack(ctx context.Context, ref string, path string, pwd string) error 
 	return rioUnpack(ctx, wareID, path, addrs)
 }
 
-func unpackRefDecode(ref string) (wfapi.WareID, error) {
+func wareRefDecode(ref string) (wfapi.WareID, error) {
 	//TODO: check for catalog references and convert them to WareID
 
 	// It would be nice if ipld libraries had reasonable examples on how to deserialize a repr to a type
@@ -97,6 +116,37 @@ func unpackRefDecode(ref string) (wfapi.WareID, error) {
 		Hash:     refSplit[1],
 	}
 	return result, nil
+}
+
+// validatePath checks whether or not a ware can be unpacked to path
+// validation is required because the placer may delete the contents of any existing path.
+// returns nil if force is true
+// returns nil if the path does not exist
+// returns os.ErrExist if the path is not a directory or is a directory that contains any entries
+// returns other errors if os.ReadDir fails on path
+func (c *wareUnpackConfig) validatePath() error {
+	if c.Force {
+		return nil
+	}
+	path := c.Path
+	if path == "" {
+		path = c.Pwd
+	}
+	fi, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("path is not a directory: %w", os.ErrExist)
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	if len(entries) > 0 {
+		return fmt.Errorf("path is a non-empty directory: %w", os.ErrExist)
+	}
+	return nil
 }
 
 func rioUnpack(ctx context.Context, wareID wfapi.WareID, path string, addrs []wfapi.WarehouseAddr) error {
