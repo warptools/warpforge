@@ -18,12 +18,24 @@
 
 .tab-content-grid {
 	display: grid;
-	grid-template-columns: 200px auto 200px;
+	grid-template-columns: auto;
 	gap: var(--space-md);
+	padding-left: var(--space-md);
 }
 
-.tab-content-grid.col-2 {
-	grid-template-columns: 200px auto;
+@media (min-width: 768px) {
+	.tab-content-grid {
+		grid-template-columns: 150px auto 200px;
+		padding-left: 0;
+	}
+
+	.tab-content-grid.col-2 {
+		grid-template-columns: 150px auto;
+	}
+
+	.tab-content-grid .download-link {
+		justify-self: end;
+	}
 }
 
 .tab-content-grid > div {
@@ -31,7 +43,7 @@
 }
 
 .tab-content-grid .download-link {
-	justify-self: end;
+	justify-self: initial;
 }
 
 .tab-content {
@@ -47,6 +59,13 @@
 	flex-wrap: nowrap;
 	width: 100%;
 	max-width: 1200px;
+	overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+	.tabs {
+		overflow-y: hidden;
+	}
 }
 
 .tabs > label {
@@ -98,7 +117,7 @@
 	.tab-content:nth-of-type(2),
 .tab-radiobutton:nth-of-type(3):checked
 	~ .content-wrapper
-	.tab-content:nth-of-type(3)	 {
+	.tab-content:nth-of-type(3) {
 	opacity: 1;
 	height: initial;
 	pointer-events: initial;
