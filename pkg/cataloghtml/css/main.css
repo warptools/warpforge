@@ -7,7 +7,7 @@
 	--light-bg-color: #fff;
 	--light-code-bg-color: #ddddddff;
 	--light-heading-color: #292922;
-	--light-sub-heading-color: #585858;
+	--light-sub-heading-color: #777777;
 	--light-black: #333333ff;
 
 	/* Dark-mode colors */
@@ -19,7 +19,7 @@
 	--dark-bg-color: #333333ff;
 	--dark-code-bg-color: #666666ff;
 	--dark-heading-color: #818cab;
-	--dark-sub-heading-color: #ddd;
+	--dark-sub-heading-color: #ccc;
 
 	/* Color variables */
 	--primary-color: var(--light-primary-color);
@@ -104,6 +104,11 @@ h5 {
 		sans-serif;
 }
 
+h4, h5 {
+	color: var(--sub-heading-color);
+	margin: 0;
+}
+
 a {
 	color: var(--font-color);
 }
@@ -181,6 +186,7 @@ dd {
 	max-width: 1200px;
 	padding: var(--space-lg);
 	padding-bottom: var(--space-xl);
+	overflow: hidden;
 }
 
 .content-heading {
