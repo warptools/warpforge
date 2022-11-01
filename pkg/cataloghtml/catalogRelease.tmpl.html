@@ -105,7 +105,7 @@
 				<div class="tab-content">
 					{{- $module := .Module }}
 					{{- range $metadataKey := .Release.Metadata.Keys }}
-					<div class="tab-content-grid">
+					<div class="tab-content-grid col-2">
 						<div><h4>{{ $metadataKey }}</h4></dt>
 						{{- if eq $metadataKey "replay" }}
 						<div><a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">{{ index $dot.Metadata.Values $metadataKey }}</a></div>

@@ -59,7 +59,6 @@
 	flex-wrap: nowrap;
 	width: 100%;
 	max-width: 1200px;
-	overflow-y: auto;
 }
 
 @media (min-width: 768px) {
