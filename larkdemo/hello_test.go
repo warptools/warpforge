@@ -65,10 +65,16 @@ pf = Protoformula(
 )
 print(Plot(
 	inputs={
-		#"one": "ware:tar:asdf", # barfs if uncommented
+		"one": "ware:tar:asdf", # barfs if uncommented... wait, no, but it's fine if alone.
+		SandboxPort("one"): "ware:tar:asdf",  # OH BOY.  this line alone provokes it.  Something's getting tricked into holding onto the wrong assembler type.
+		# 	panic: AssembleKey called on wrong kind: a union represtation of stringprefix strategy only allows AssignString (type is "SandboxPort")
+		#	panic: AssembleKey called on wrong kind: a union represtation of stringprefix strategy only allows AssignString (type is "SandboxPort")
+		# yep.
+		# ... hang on, i also then still don't understand why we're getting THIS error.  we ARE calling assign string?!  and if it's on the repr node (and it is) that's correct??  it's an invalid string in this case, but still: that should be a different error message.
 	},
 	steps={
-		"lol": Step(pf),
+		#"lol": Step(pf), # okay but commenting this also makes it pass, somehow.  SPOOKY.
+		#"ow":  Step(pf), # oddly, two in a row here, is fine.
 	},
 	outputs={},
 ))
@@ -81,6 +87,7 @@ print(Plot(
 # - but plot inputs *doesn't* barf when using strings, below...?!?!
 # I'm at a loss.
 # Is there an outright stateful memory pointer bug somewhere here?
+# Yeah, it's gotta be.
 
 
 pt1 = Plot(
