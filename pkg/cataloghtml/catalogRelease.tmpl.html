@@ -2,7 +2,7 @@
 
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Version</title>
+	<title>Release - {{ .Module.Name }}:{{ .Release.ReleaseName }}</title>
 	<link rel="stylesheet" href="{{ (url "main.css") }}" />
 	<link rel="stylesheet" href="{{ (url "toggle.css") }}" />
 	<link rel="stylesheet" href="{{ (url "tabs.css") }}" />
@@ -12,17 +12,23 @@
 <body>
 	<input type="checkbox" id="dark-mode-checkbox">
 	<div class="container">
-		<div class="header">
+		<div class="container__heading">
 			<div>
 				<small><i><a href="{{ (url "index.html") }}">Catalog</a></i>
-					<i>&gt; <a href="{{ (url (string .Module.Name) "_module.html") }}">{{ .Module.Name }}</a></i>
+					<i>
+						&gt;
+						<a href="{{ (url (string .Module.Name) "_module.html") }}">
+							{{ .Module.Name }}
+						</a>
+					</i> 
 					&gt;
-					<i> {{ .Release.ReleaseName }} </i></small>
+					<i> {{ .Release.ReleaseName }} </i>
+				</small>
 				<h1>{{ .Module.Name }}</h1>
 			</div>
-			<div class="theme-switch-wrapper">
-				<label class="theme-switch" for="dark-mode-checkbox">
-					<div class="slider round">
+			<div class="theme-switch">
+				<label for="dark-mode-checkbox">
+					<div class="theme-switch__slider">
 						<div class="sun-ray-1"></div>
 						<div class="sun-ray-2"></div>
 					</div>
@@ -32,7 +38,7 @@
 		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-2">
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-3">
-		<div class="tabs">
+		<div class="container__tabs">
 			<label for="tab-radiobutton-1">
 				<h3>Overview</h3>
 			</label>
@@ -43,72 +49,101 @@
 				<h3>Metadata</h3>
 			</label>
 		</div>
-		<div class="content-wrapper">
-			<div class="content">
+		<div class="container__content">
+			<div class="tab-container">
 				<!-- TAB: Overview -->
-				<div class="tab-content">
+				<div class="tab-container__content">
 					{{- $linkGen := .LinkGenerator -}}
 					{{- $linksAvailable := .LinkGenerator.DownloadLinksAvailable -}}
 					<h3>Items</h3>
-					<div class="tab-content-grid">
+					<div class="tab-container__grid">
 						{{- $dot := .Release -}}
 						{{- range $i, $itemKey := .Release.Items.Keys }}
 						{{- if lt $i 3 }}
 						{{ $item := index $dot.Items.Values $itemKey }}
-						<div><h4>{{ $itemKey }}</h4></div>
-						<div class="short text-box">
-							<span class="long-text">{{ $item }}</span>
+						<div>
+							<h4>{{ $itemKey }}</h4>
+						</div>
+						<div class="grid__text-box">
+							<span>{{ $item }}</span>
 							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
 						</div>
-						<div class="download-link">{{ if $linksAvailable }}download: (<a href="{{ ($linkGen.DownloadUrl $item) }}">http</a>){{ end }}</div>
+						<div class="download-link">
+							{{ if $linksAvailable }}
+							download: (
+							<a href="{{ ($linkGen.DownloadUrl $item) }}">http</a>
+							)
+							{{ end }}
+						</div>
 						{{- end }}
 						{{- end }}
 					</div>
 					<h3 class="margin-top-xl">Metadata</h3>
-					<div class="tab-content-grid col-2">
+					<div class="tab-container__grid col-2">
 						{{- $module := .Module }}
 						{{ $keyLength := len .Release.Metadata.Keys }}
 						{{- range $i, $metadataKey := .Release.Metadata.Keys }}
 						{{- if lt $i 3 }}
-						<div><h4>{{ $metadataKey }}</h4></div>
+						<div>
+							<h4>{{ $metadataKey }}</h4>
+						</div>
 						{{- if eq $metadataKey "replay" }}
-						<div><a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">{{ index $dot.Metadata.Values $metadataKey }}</a></div>
+						<div>
+							<a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">
+								{{ index $dot.Metadata.Values $metadataKey }}
+							</a>
+						</div>
 						{{- else }}
 						<div>{{ index $dot.Metadata.Values $metadataKey }}</div>
 						{{- end }}
 						<div></div>
 						{{- if gt $keyLength 3 }}
-						<div>...{{ subtract $keyLength 3 }} less-well-known fields [<label for="tab-radiobutton-3"><a href="#">see more</a></label>]</div>
+						<div>...{{ subtract $keyLength 3 }} less-well-known fields [<label for="tab-radiobutton-3"><a
+									href="#">see more</a></label>]</div>
 						{{- end }}
 						{{- end }}
 						{{- end }}
 					</div>
 				</div>
 				<!-- TAB: Items -->
-				<div class="tab-content">
+				<div class="tab-container__content">
 					{{- $linkGen := .LinkGenerator -}}
 					{{- $linksAvailable := .LinkGenerator.DownloadLinksAvailable -}}
-					<div class="tab-content-grid">
+					<div class="tab-container__grid">
 						{{- $dot := .Release -}}
 						{{- range $itemKey := .Release.Items.Keys }}
 						{{ $item := index $dot.Items.Values $itemKey }}
-						<div><h4>{{ $itemKey }}</h4></div>
-						<div class="short text-box">
-							<span class="long-text">{{ $item }}</span>
+						<div>
+							<h4>{{ $itemKey }}</h4>
+						</div>
+						<div class="grid__text-box">
+							<span>{{ $item }}</span>
 							<button onclick="navigator.clipboard.writeText('{{ $item }}')">copy</button>
 						</div>
-						<div class="download-link">{{ if $linksAvailable }}download: (<a href="{{ ($linkGen.DownloadUrl $item) }}">http</a>){{ end }}</div>
+						<div class="download-link">
+							{{ if $linksAvailable }}
+							download: (
+							<a href="{{ ($linkGen.DownloadUrl $item) }}">http</a>
+							)
+							{{ end }}
+						</div>
 						{{- end }}
 					</div>
 				</div>
 				<!-- TAB: Metadata -->
-				<div class="tab-content">
+				<div class="tab-container__content">
 					{{- $module := .Module }}
 					{{- range $metadataKey := .Release.Metadata.Keys }}
-					<div class="tab-content-grid col-2">
-						<div><h4>{{ $metadataKey }}</h4></div>
+					<div class="tab-container__grid tab-container__grid--col-2">
+						<div>
+							<h4>{{ $metadataKey }}</h4>
+						</div>
 						{{- if eq $metadataKey "replay" }}
-						<div><a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">{{ index $dot.Metadata.Values $metadataKey }}</a></div>
+						<div>
+							<a href="{{ (url (string $module.Name) "_replays" (index $dot.Metadata.Values $metadataKey)) }}.html">
+								{{ index $dot.Metadata.Values $metadataKey }}
+							</a>
+						</div>
 						{{- else }}
 						<div>{{ index $dot.Metadata.Values $metadataKey }}</div>
 						{{- end }}

@@ -1,59 +1,4 @@
-.short {
-	max-width: 250px;
-	display: flex;
-	align-items: center;
-}
-
-.long-text {
-	display: inline-block;
-	overflow: hidden;
-	max-width: 200px;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.text-box {
-	background-color: var(--bg-color);
-}
-
-.tab-content-grid {
-	display: grid;
-	grid-template-columns: auto;
-	gap: var(--space-md);
-	padding-left: var(--space-md);
-}
-
-@media (min-width: 768px) {
-	.tab-content-grid {
-		grid-template-columns: 150px auto 200px;
-		padding-left: 0;
-	}
-
-	.tab-content-grid.col-2 {
-		grid-template-columns: 150px auto;
-	}
-
-	.tab-content-grid .download-link {
-		justify-self: end;
-	}
-}
-
-.tab-content-grid > div {
-	padding: var(--space-xs);
-}
-
-.tab-content-grid .download-link {
-	justify-self: initial;
-}
-
-.tab-content {
-	height: 0;
-	opacity: 0;
-	pointer-events: none;
-	word-break: break-all;
-}
-
-.tabs {
+.container__tabs {
 	padding: var(--space-lg);
 	display: flex;
 	flex-wrap: nowrap;
@@ -62,21 +7,90 @@
 }
 
 @media (min-width: 768px) {
-	.tabs {
+	.container__tabs {
 		overflow-y: hidden;
 	}
 }
 
-.tabs > label {
+.tab-container {
+	width: 100%;
+	max-width: 1200px;
+	padding: var(--space-lg);
+	padding-bottom: var(--space-xl);
+	overflow: hidden;
+}
+
+.tab-container__content {
+	height: 0;
+	opacity: 0;
+	pointer-events: none;
+	word-break: break-all;
+}
+
+.container__tabs > label {
 	display: inline-block;
 	cursor: pointer;
 	margin-right: var(--space-md);
 	position: relative;
 }
 
-.tabs > label > h3 {
+.container__tabs > label > h3 {
 	font-size: 20px;
 	margin: 0;
+}
+
+.tab-container__grid {
+	display: grid;
+	grid-template-columns: auto;
+	gap: var(--space-md);
+	padding-left: var(--space-md);
+}
+
+@media (min-width: 768px) {
+	.tab-container__grid {
+		grid-template-columns: 150px auto 200px;
+		padding-left: 0;
+	}
+
+	.tab-container__grid .tab-container__grid--col-2 {
+		grid-template-columns: 150px auto;
+	}
+
+	.tab-container__grid .tab-container__grid--link {
+		justify-self: end;
+	}
+}
+
+.tab-container__grid > div {
+	padding: var(--space-xs);
+}
+
+.tab-container__grid .tab-container__grid--link {
+	justify-self: initial;
+}
+
+.grid__text-box {
+	max-width: 250px;
+	display: flex;
+	align-items: center;
+	background-color: var(--bg-color);
+}
+
+.grid__text-box > span {
+	display: inline-block;
+	overflow: hidden;
+	max-width: 200px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+	.grid__text-box {
+		max-width: 500px;
+	}
+	.grid__text-box > span {
+		max-width: 450px;
+	}
 }
 
 .tab-radiobutton {
@@ -89,9 +103,15 @@
 	a simple function here since .tab-radiobutton:nth-of-type(x) 
 	needs to match .tab-content:nth-of-type(y). (x = y)
 */
-.tab-radiobutton:nth-of-type(1):checked ~ .tabs > label:nth-of-type(1):before,
-.tab-radiobutton:nth-of-type(2):checked ~ .tabs > label:nth-of-type(2):before,
-.tab-radiobutton:nth-of-type(3):checked ~ .tabs > label:nth-of-type(3):before {
+.tab-radiobutton:nth-of-type(1):checked
+	~ .container__tabs
+	> label:nth-of-type(1):before,
+.tab-radiobutton:nth-of-type(2):checked
+	~ .container__tabs
+	> label:nth-of-type(2):before,
+.tab-radiobutton:nth-of-type(3):checked
+	~ .container__tabs
+	> label:nth-of-type(3):before {
 	content: '';
 	border: 20px solid var(--code-bg-color);
 	border-left-color: transparent;
@@ -100,7 +120,7 @@
 	position: absolute;
 	top: var(--space-md);
 	left: 50%;
-	transform: translatex(-50%);
+	transform: translateX(-50%);
 	cursor: default;
 }
 
@@ -109,14 +129,14 @@
 	so for now we count manually.
 */
 .tab-radiobutton:nth-of-type(1):checked
-	~ .content-wrapper
-	.tab-content:nth-of-type(1),
+	~ .container__content
+	.tab-container__content:nth-of-type(1),
 .tab-radiobutton:nth-of-type(2):checked
-	~ .content-wrapper
-	.tab-content:nth-of-type(2),
+	~ .container__content
+	.tab-container__content:nth-of-type(2),
 .tab-radiobutton:nth-of-type(3):checked
-	~ .content-wrapper
-	.tab-content:nth-of-type(3) {
+	~ .container__content
+	.tab-container__content:nth-of-type(3) {
 	opacity: 1;
 	height: initial;
 	pointer-events: initial;

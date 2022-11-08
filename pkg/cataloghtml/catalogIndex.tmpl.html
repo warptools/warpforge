@@ -22,37 +22,40 @@ which is not available and rigged up as a convenient library yet.
 	<script src="{{ (url "js.js") }}"></script>
 </head>
 
-<input type="checkbox" id="dark-mode-checkbox" />
-<div class="container">
-	<div class="header">
-		<div>
-			<small>&nbsp;</small>
-			<h1>Catalog</h1>
+<body>
+	<input type="checkbox" id="dark-mode-checkbox" />
+	<div class="container">
+		<div class="container__heading">
+			<div>
+				<small>&nbsp;</small>
+				<h1>Catalog</h1>
+			</div>
+			<div class="theme-switch">
+				<label for="dark-mode-checkbox">
+					<div class="theme-switch__slider round">
+						<div class="sun-ray-1"></div>
+						<div class="sun-ray-2"></div>
+					</div>
+				</label>
+			</div>
 		</div>
-		<div class="theme-switch-wrapper">
-			<label class="theme-switch" for="dark-mode-checkbox">
-				<div class="slider round">
-					<div class="sun-ray-1"></div>
-					<div class="sun-ray-2"></div>
-				</div>
+		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
+		<div class="container__tabs">
+			<label for="tab-radiobutton-1">
+				<h3>Modules</h3>
 			</label>
 		</div>
-	</div>
-	<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
-	<div class="tabs">
-		<label for="tab-radiobutton-1"><h3>Modules</h3></label>
-	</div>
-	<div class="content-wrapper">
-		<div class="content">
-			<div class="tab-content">
-				<ul>
-					{{- range $moduleName := . }}
-					<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
-					{{- end }}
-				</ul>
+		<div class="container__content">
+			<div class="tab-container">
+				<div class="tab-container__content">
+					<ul>
+						{{- range $moduleName := . }}
+						<li><a href="{{ (url (string $moduleName) "_module.html") }}">{{ $moduleName }}</a></li>
+						{{- end }}
+					</ul>
+				</div>
 			</div>
 		</div>
 	</div>
-	</body>
-
+</body>
 </html>
