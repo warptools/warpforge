@@ -11,8 +11,8 @@ require (
 	github.com/frankban/quicktest v1.14.3
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/uuid v1.3.0
-	github.com/ipfs/go-cid v0.2.0
-	github.com/ipld/go-datalark v0.2.0
+	github.com/ipfs/go-cid v0.3.2
+	github.com/ipld/go-datalark v0.2.1-0.20221027214841-cced3d4155ad
 	github.com/ipld/go-ipld-prime v0.17.0
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e
@@ -41,7 +41,7 @@ require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/multiformats/go-base32 v0.0.4 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.1.1 // indirect
-	github.com/multiformats/go-multihash v0.2.0 // indirect
+	github.com/multiformats/go-multihash v0.2.1 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
