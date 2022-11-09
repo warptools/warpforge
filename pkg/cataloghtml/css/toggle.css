@@ -92,22 +92,12 @@
 	width: 18px;
 }
 
-#dark-mode-checkbox:checked
-	~ .container
-	> .header
-	> .theme-switch
-	> label
-	> .theme-switch__slider {
+#dark-mode-checkbox:checked ~ .container .theme-switch__slider {
 	background-color: var(--font-color);
 	transform: rotateZ(-45deg);
 }
 
-#dark-mode-checkbox:checked
-	~ .container
-	> .header
-	> .theme-switch
-	> label
-	> .theme-switch__slider:before {
+#dark-mode-checkbox:checked ~ .container .theme-switch__slider:before {
 	background-color: var(--bg-color);
 	transform: translateX(10px);
 }
