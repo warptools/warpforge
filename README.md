@@ -60,7 +60,7 @@ Check that you have Go 1.16+ and that `$GOPATH/bin` (by default, `$HOME/go/bin`)
 To install `warpforge` and the required plugins to your `GOPATH`, run:
 
 ```
-git clone https://github.com/warpfork/warpforge
+git clone https://github.com/warptools/warpforge
 cd warpforge
 make install
 ```

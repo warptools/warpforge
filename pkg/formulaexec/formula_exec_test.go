@@ -12,9 +12,9 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/warpfork/go-testmark"
 
-	_ "github.com/warpfork/warpforge/pkg/testutil"
-	"github.com/warpfork/warpforge/pkg/workspace"
-	"github.com/warpfork/warpforge/wfapi"
+	_ "github.com/warptools/warpforge/pkg/testutil"
+	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 // constructs a custom workspace set containing only this project's .warpforge dir (contains catalog)

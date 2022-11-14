@@ -10,7 +10,7 @@ import (
 	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/warpfork/go-testmark"
 
-	_ "github.com/warpfork/warpforge/pkg/testutil"
+	_ "github.com/warptools/warpforge/pkg/testutil"
 )
 
 func TestPlotParseFixtures(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/warpfork/go-testmark"
 
-	_ "github.com/warpfork/warpforge/pkg/testutil"
+	_ "github.com/warptools/warpforge/pkg/testutil"
 )
 
 func TestFormulaParseFixtures(t *testing.T) {

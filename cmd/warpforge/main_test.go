@@ -12,8 +12,8 @@ import (
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
 
-	"github.com/warpfork/warpforge/pkg/testutil"
-	"github.com/warpfork/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/pkg/testutil"
+	"github.com/warptools/warpforge/pkg/workspace"
 )
 
 // constructs a custom workspace stack containing only this project's .warpforge dir (contains catalog)

@@ -1,4 +1,4 @@
-module github.com/warpfork/warpforge
+module github.com/warptools/warpforge
 
 //replace github.com/ipld/go-ipld-prime => /home/eric/git/go-ipld-prime
 

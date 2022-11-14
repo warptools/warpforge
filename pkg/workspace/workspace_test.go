@@ -9,8 +9,8 @@ import (
 
 	qt "github.com/frankban/quicktest"
 
-	"github.com/warpfork/warpforge/pkg/workspace"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 func TestWorkspaceCatalogPath(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 // Return the ordered list of steps for a plot, recursing into nested plots.

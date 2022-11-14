@@ -8,7 +8,7 @@ import (
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 
-	_ "github.com/warpfork/warpforge/pkg/testutil"
+	_ "github.com/warptools/warpforge/pkg/testutil"
 )
 
 type CatalogLineage struct {

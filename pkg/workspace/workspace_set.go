@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/warpfork/warpforge/pkg/logging"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 // A WorkspaceSet is a slice of workspaces ending with a root workspace.

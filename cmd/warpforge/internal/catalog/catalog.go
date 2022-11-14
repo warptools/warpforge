@@ -5,15 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/warpfork/warpforge/pkg/logging"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/wfapi"
 
 	"github.com/go-git/go-git/v5"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const defaultCatalogUrl = "https://github.com/warpsys/catalog.git"
+const defaultCatalogUrl = "https://github.com/warptools/warpsys-catalog.git"
 
 // InstallDefaultRemoteCatalog creates the default catalog by cloning a remote catalog over network.
 // This function will do nothing if the default catalog already exists.

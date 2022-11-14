@@ -9,8 +9,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/serum-errors/go-serum"
 
-	"github.com/warpfork/warpforge/pkg/logging"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 const (

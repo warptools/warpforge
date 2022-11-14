@@ -11,10 +11,10 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 
-	"github.com/warpfork/warpforge/pkg/plotexec"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/pkg/workspace"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/plotexec"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 // special file names for plot and module files
