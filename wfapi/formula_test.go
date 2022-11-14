@@ -7,7 +7,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 
-	_ "github.com/warpfork/warpforge/pkg/testutil"
+	_ "github.com/warptools/warpforge/pkg/testutil"
 )
 
 func TestParseFormulaAndContext(t *testing.T) {

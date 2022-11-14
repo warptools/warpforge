@@ -3,7 +3,7 @@ Example Catalogs
 
 Okay -- no examples here.  You'll have to deal with the live, real content instead.
 
-Check out https://github.com/warpsys/catalog !
+Check out https://github.com/warptools/warpsys-catalog !
 
 See the [Catalogs page on Notion](https://warpforge.notion.site/Catalogs-f53f2c9a2f0b4a8ba4d55d5f52997555)
 for a primer on what Catalogs are, what they're for, etc.

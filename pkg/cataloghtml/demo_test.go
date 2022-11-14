@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/warpfork/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/pkg/workspace"
 )
 
 func TestWhee(t *testing.T) {

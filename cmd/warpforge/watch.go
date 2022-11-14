@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 var watchCmdDef = cli.Command{

@@ -8,7 +8,7 @@ import (
 	"github.com/ipld/go-ipld-prime/schema"
 	"go.starlark.net/starlark"
 
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 func ExampleHello() {

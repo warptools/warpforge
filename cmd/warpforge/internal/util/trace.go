@@ -13,15 +13,15 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
-	"github.com/warpfork/warpforge/pkg/logging"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 // The module name used for unique strings, such as tracing identifiers
 // Grab it via `go list -m` or manually. It's not available at runtime and
 // it's too trivial to generate. Might inject with LDFLAGS later.
-const Module = "github.com/warpfork/warpforge"
+const Module = "github.com/warptools/warpforge"
 
 func setSpanError(ctx context.Context, err error) {
 	wfErr, ok := err.(wfapi.Error)

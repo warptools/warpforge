@@ -5,8 +5,8 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/warpfork/warpforge/pkg/logging"
-	"github.com/warpfork/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/tracing"
 )
 
 // ChainCmdMiddleware returns a cli ActionFunc that is wrapped by the given middleware.

@@ -14,7 +14,7 @@ import (
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
 
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 const (

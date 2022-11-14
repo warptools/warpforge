@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/urfave/cli/v2"
 
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/healthcheck"
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
-	"github.com/warpfork/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/healthcheck"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/logging"
 )
 
 var healthCmdDef = cli.Command{

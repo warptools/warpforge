@@ -9,9 +9,9 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
-	"github.com/warpfork/warpforge/pkg/plotexec"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/plotexec"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 var ferkCmdDef = cli.Command{

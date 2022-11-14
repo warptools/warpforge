@@ -16,12 +16,12 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/catalog"
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
-	"github.com/warpfork/warpforge/pkg/cataloghtml"
-	"github.com/warpfork/warpforge/pkg/plotexec"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/catalog"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/cataloghtml"
+	"github.com/warptools/warpforge/pkg/plotexec"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 var catalogCmdDef = cli.Command{

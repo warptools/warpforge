@@ -6,7 +6,7 @@ import (
 
 	"github.com/serum-errors/go-serum"
 
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 )
 
 type BinCheck struct {

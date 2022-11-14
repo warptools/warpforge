@@ -20,8 +20,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	ipldJson "github.com/ipld/go-ipld-prime/codec/json"
 
-	"github.com/warpfork/warpforge/pkg/workspace"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 var (

@@ -15,7 +15,7 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 	rfmtjson "github.com/polydawn/refmt/json"
 
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 type Logger struct {

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	_ "github.com/warpfork/warpforge/pkg/testutil"
-	"github.com/warpfork/warpforge/wfapi"
+	_ "github.com/warptools/warpforge/pkg/testutil"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 type Workspace struct {
