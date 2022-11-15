@@ -12,11 +12,11 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warpfork/warpforge/cmd/warpforge/internal/util"
-	"github.com/warpfork/warpforge/pkg/logging"
-	"github.com/warpfork/warpforge/pkg/tracing"
-	"github.com/warpfork/warpforge/pkg/workspace"
-	"github.com/warpfork/warpforge/wfapi"
+	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 var wareCmdDef = cli.Command{
