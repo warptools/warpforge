@@ -3,23 +3,27 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Module</title>
-	<link rel="stylesheet" href="{{ (url "main.css") }}" />
-	<link rel="stylesheet" href="{{ (url "toggle.css") }}" />
-	<link rel="stylesheet" href="{{ (url "tabs.css") }}" />
+	<link rel="stylesheet" href="{{ (url "index.css") }}" />
 	<script src="{{ (url "js.js") }}"></script>
 </head>
 
 <body>
 	<input type="checkbox" id="dark-mode-checkbox" />
 	<div class="container">
-		<div class="header">
+		<div class="container__heading">
 			<div>
-				<small><i><a href="{{ (url "index.html") }}">Catalog</a></i>&nbsp;<i>&gt; module</i></small>
+				<small>
+					<i>
+						<a href="{{ (url "index.html") }}">Catalog</a>
+					</i>
+					&nbsp;
+					<i>&gt; module</i>
+				</small>
 				<h1>{{ .Name }}</h1>
 			</div>
-			<div class="theme-switch-wrapper">
-				<label class="theme-switch" for="dark-mode-checkbox">
-					<div class="slider round">
+			<div class="theme-switch">
+				<label for="dark-mode-checkbox">
+					<div class="theme-switch__slider">
 						<div class="sun-ray-1"></div>
 						<div class="sun-ray-2"></div>
 					</div>
@@ -28,32 +32,41 @@
 		</div>
 		<input class="tab-radiobutton" checked name="tabs" type="radio" id="tab-radiobutton-1">
 		<input class="tab-radiobutton" name="tabs" type="radio" id="tab-radiobutton-2">
-		<div class="tabs">
-			<label for="tab-radiobutton-1"><h3>Releases</h3></label>
-			<label for="tab-radiobutton-2"><h3>Metadata</h3></label>
+		<div class="container__tabs">
+			<label for="tab-radiobutton-1">
+				<h3>Releases</h3>
+			</label>
+			<label for="tab-radiobutton-2">
+				<h3>Metadata</h3>
+			</label>
 		</div>
-		<div class="content-wrapper">
-			<div class="content">
-				<div class="tab-content">
+		<div class="container__content">
+			<div class="tab-container">
+				<div class="tab-container__content">
 					<ul>
 						{{- $dot := . -}}
 						{{- range $releaseKey := .Releases.Keys }}
-						<li><a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html" )) }}">{{
-								$releaseKey }}</a>
+						<li>
+							<a href="{{ (url (string $dot.Name) "_releases" (print $releaseKey ".html" )) }}">
+								{{ $releaseKey }}
+							</a>
 							<small>(cid: {{ index $dot.Releases.Values $releaseKey }})</small>
 						</li>
 						{{- end }}
 					</ul>
 				</div>
-				<div class="tab-content">
+				<div class="tab-container__content">
 					{{- range $metadataKey := .Metadata.Keys }}
-					<dt>{{ $metadataKey }}</dt>
-					<dd>{{ index $dot.Metadata.Values $metadataKey }}</dd>
-					{{- end }}
+					<div class="tab-container__grid tab-container__grid--col-2">
+						<div>
+							<h4>{{ $metadataKey }}</h4>
+						</div>
+						<div>{{ index $dot.Metadata.Values $metadataKey }}</div>
+						{{- end }}
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 </body>
 
 </html>

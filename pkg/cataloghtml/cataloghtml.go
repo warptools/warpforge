@@ -37,6 +37,12 @@ var (
 	//go:embed catalogReplay.tmpl.html
 	catalogReplayTemplate string
 
+	//go:embed css/index.css
+	indexCssBody []byte
+
+	//go:embed css/variables.css
+	variablesCssBody []byte
+
 	//go:embed css/main.css
 	mainCssBody []byte
 
@@ -112,7 +118,12 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 	}
 
 	// Emit the "once" stuff.
-	path := filepath.Join(cfg.OutputPath, "main.css")
+	path := filepath.Join(cfg.OutputPath, "index.css")
+	if err := os.WriteFile(path, indexCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
+	}
+
+	path = filepath.Join(cfg.OutputPath, "main.css")
 	if err := os.WriteFile(path, mainCssBody, 0644); err != nil {
 		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
@@ -124,6 +135,11 @@ func (cfg SiteConfig) CatalogAndChildrenToHtml() error {
 
 	path = filepath.Join(cfg.OutputPath, "tabs.css")
 	if err := os.WriteFile(path, tabsCssBody, 0644); err != nil {
+		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
+	}
+
+	path = filepath.Join(cfg.OutputPath, "variables.css")
+	if err := os.WriteFile(path, variablesCssBody, 0644); err != nil {
 		return wfapi.ErrorIo("couldn't open file for css as part of cataloghtml emission", path, err)
 	}
 
