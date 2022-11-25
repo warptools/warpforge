@@ -16,9 +16,11 @@ type Formula struct {
 	}
 }
 
-type SandboxPort struct { // ... dude.  this isn't actually a viable map key.
-	// You're gonna need to go back into bindnode and put integer indicators back in.
-	// And then, apparently, just make the pointers here... optional.
+type SandboxPort struct {
+	// FIXME: although golang has permitted us to use this as a map key... we shouldn't; it's trouble.
+	// The pointers here mean that constructing an equal value is nearly possible, which is unintended and unpleasant to use.
+	// Fixing this may require some work upstream in go-ipld-prime's bindnode package:
+	// in order to stop using pointers here, it will need to support integer indicators instead.
 	SandboxPath *SandboxPath
 	SandboxVar  *SandboxVar
 }

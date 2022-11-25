@@ -3,7 +3,11 @@
 # This document defines the Warpforge API schema using the IPLD schema DSL.
 # For more info, see the IPLD schema docs: https://ipld.io/specs/schemas/.
 
-# Layer 0
+
+
+###
+### Layer 0 -- content snapshot identification
+###
 
 # The Layer 0 API is just content, represented as WareIDs.
 
@@ -24,7 +28,11 @@ type WareID struct {
 # rather than enum because fileset packing is regarded as a plugin-style system.
 type Packtype string
 
-# Layer 1
+
+
+###
+### Layer 1 -- computation atoms
+###
 
 # The Layer 1 API consists of the things we need to do execution. This provides
 # the minimal set of features needed to define inputs, an action, and outputs.
@@ -91,7 +99,6 @@ type FormulaInputSimple union {
 	| Mount   "mount:"    # not hermetic!  we'll warn about the use of these.
 	| Literal "literal:"  # a fun escape valve, isn't it.
 } representation stringprefix
-
 
 type FormulaInputComplex struct {
 	basis FormulaInputSimple
@@ -216,18 +223,23 @@ type ApiOutput union {
 	| PlotResults "plotresults"
 } representation keyed
 
-# Layer 2
+
+
+###
+### Layer 2 -- group A: evaluation graphs
+###
 
 type ModuleCapsule union {
 	| Module "module.v1"
 } representation keyed
 
-
 type Module struct {
 	name ModuleName
-	# semantically: "plot optional Plot"... but practically: it's in a sibling file.
+	# note: "Module" is the info in the local workspace; "CatalogModule" is a distinct type.
+	# semantically: also contains `plot optional Plot`... but practically speaking: that's in a sibling file.
 	# future: other optional fields used by "override modules".
 	# future: maybe something about recommended update patterns for any catalog inputs in the plot?
+	# future: maybe something about a gadget that can be invoked to generate the plot?
 }
 
 # ModuleName strings tend to look a bit like URLs.
@@ -241,16 +253,22 @@ type PlotCapsule union {
 	| Plot "plot.v1"
 } representation keyed
 
-type Plot struct { # has previously had many names: protoformula, module, etc.
-	inputs {LocalLabel:PlotInput}
+# Plot is the type that outlines a series of steps of related computations.
+# It has inputs and outputs itself, which label things relative to the plot;
+# and the steps can be more plots (recursively, for namespacing),
+# or Protoformulas (which are resolvable to Formulas, and are how work gets done).
+type Plot struct {
+	inputs {LocalLabel:PlotInput} # note: contrast to Protoformula, which is `inputs {SandboxPort:PlotInput}`.
 	steps {StepName:Step}
 	outputs {LocalLabel:PlotOutput}
 }
 
 # StepName is for assigning string names to Steps in a Plot.
-# StepNames will be part of wiring things together using Pipes.
+# StepName values also appear as part of wiring things together using Pipes.
 #
-# Must not contain ':' charaters or unprintables or whitespace.
+# Must not contain ':' characters or unprintables or whitespace.
+# (LocalLabel is used in types with a stringjoin represention,
+# such as Pipe, which use the ':' character as a separator.)
 type StepName string
 
 # LocalLabel is for referencing data within a Plot.
@@ -263,7 +281,9 @@ type StepName string
 # gets casted to being considered a LocalLabel when a Formula's results are hoisted
 # into the Plot.)
 #
-# Must not contain ':' charaters or unprintables or whitespace.
+# Must not contain ':' characters or unprintables or whitespace.
+# (LocalLabel is used in types with a stringjoin represention,
+# such as Pipe, which use the ':' character as a separator.)
 type LocalLabel string
 
 type PlotInput union {
@@ -318,7 +338,13 @@ type Protoformula struct {
 	outputs {LocalLabel:GatherDirective} # same as Formula -- but key is LocalLabel.
 }
 
-# Ingest Types
+# Ingests are a special kind of of PlotInput.
+# They look at the host filesystem and derive a Ware from it.
+#
+# Ingests are only contextually allowed.  Using one in a Plot will cause
+# Warpforge to warn users about evaluting that Plot, and may require more flags
+# to be used in the CLI in order to make that Plot actually be evaluted.
+# Ingests are also not permissible in Replays, because they're not reproducible.
 type Ingest union {
 	| GitIngest "git:"
 } representation stringprefix
@@ -330,14 +356,32 @@ type GitIngest struct {
 	join ":"
 }
 
-# Catalog Types
+
+
+###
+### Layer 2 -- group B: catalog exchange datatypes
+###
+
+type ReleaseName string
+type ItemLabel string
+
+# CatalogRef is a tuple that allows lookup of a WareID in a Catalog.
+#
+# A typical value might look something like "foobar.org/frob:v1.2.3:linux-amd64-zapp".
+# CatalogRef values are often seen in serialized documents with a "catalog:" prefix,
+# in the same way that WareIDs are often seen with a "ware:" prefix;
+# they're usually used with a wrapper type with that prefix for clarity purposes.
 type CatalogRef struct {
 	moduleName ModuleName
-	releaseName String
-	itemName String
+	releaseName ReleaseName
+	itemName ItemLabel
 } representation stringjoin {
 	join ":"
 }
+
+# Not currently defined in the schema: a proper type for the Catalog as a whole.
+# If we could: it should be something like:
+# `type Catalog {ModuleName:&CatalogModuleCapsule} using ADL "prollytree"`
 
 type CatalogModuleCapsule union {
 	| CatalogModule "catalogmodule.v1"
@@ -349,15 +393,25 @@ type CatalogModule struct {
 	metadata {String:String}
 }
 
+# CatalogReleaseCID probably ought to just be `&CatalogRelease` if we were doing IPLD properly.
+# Unfortunately, it's not, because we're using JSON, and not DAG-JSON
+# (which in turn is because because DAG-JSON has unsolved escaping problems),
+# so we've been forced into treating CIDs as strings and handling them at the application level.
+# This is the result.
+type CatalogReleaseCID string
+
+# CatalogRelease is part of a Catalog's tree structure, and the root type in one of the blocks within a Catalog.
+# It is pointed to by the CatalogModule type.
+# The releaseName value here reiterates the same name indicated in the CatalogModule pointing at this.
+#
+# There's a lack of "capsule" type for versioning this structure because we assume that if this part
+# of the protocol evolves, it will do so in tandem with the CatalogModule type,
+# and therefore the CatalogModuleCapsule type provides enough versioning hints for this area too.
 type CatalogRelease struct {
 	releaseName ReleaseName
 	items {ItemLabel:WareID}
 	metadata {String:String}
 }
-
-type ItemLabel string
-type ReleaseName string
-type CatalogReleaseCID string
 
 type CatalogMirrorsCapsule union {
 	| CatalogMirrors "catalogmirrors.v1"
