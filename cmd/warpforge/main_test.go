@@ -58,7 +58,7 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 			}
 			// we want to run the contents of the `/net` dir
 			testName = dir.Name + "/net"
-			testDir = *dir.Children["net"]
+			testDir = dir.Children["net"]
 		}
 		t.Run(testName, func(t *testing.T) {
 			test := testexec.Tester{
