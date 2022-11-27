@@ -12,13 +12,13 @@ require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-cid v0.2.0
-	github.com/ipld/go-datalark v0.2.0
+	github.com/ipld/go-datalark v0.4.0
 	github.com/ipld/go-ipld-prime v0.17.0
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e
 	github.com/serum-errors/go-serum v0.7.0
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/warpfork/go-testmark v0.10.0
+	github.com/warpfork/go-testmark v0.11.0
 	go.opentelemetry.io/otel v1.9.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.9.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.9.0
