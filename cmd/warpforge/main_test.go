@@ -171,7 +171,12 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 		if err != nil {
 			panic("failed to set WARPFORGE_WAREHOUSE")
 		}
-
+		if args[0] == "cd" {
+			if err := os.Chdir(args[1]); err != nil {
+				return 1, err
+			}
+			return 0, nil
+		}
 		err = makeApp(stdin, stdout, stderr).Run(args)
 		if err != nil {
 			return 1, err

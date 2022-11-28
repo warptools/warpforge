@@ -515,7 +515,7 @@ this file creates directories for a local workspace
 ```
 
 
-[testmark]:# (base-workspace/then-bundle/script)
+[testmark]:# (base-workspace/then-bundle/sequence)
 ```
 cd workspace
 warpforge -v catalog bundle module.wf
