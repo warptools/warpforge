@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
@@ -55,7 +56,7 @@ func cmdFerk(c *cli.Context) error {
 		// plot was provided, load from file
 		plot, err = util.PlotFromFile(c.String("plot"))
 		if err != nil {
-			return err
+			return serum.Error(wfapi.CodePlotInvalid, serum.WithMessageTemplate("plot file {{file}} not parsed"), serum.WithCause(err), serum.WithDetail("file", c.String("plot")))
 		}
 	} else {
 		// no plot provided, generate the basic default plot from json template
@@ -76,6 +77,10 @@ func cmdFerk(c *cli.Context) error {
 			}
 			plot.Inputs.Values["rootfs"] = rootfs
 		}
+	}
+
+	if _, exists := plot.Steps.Values["ferk"]; !exists {
+		return wfapi.ErrorPlotInvalid(`requires a step named "ferk"`)
 	}
 
 	// set command to execute

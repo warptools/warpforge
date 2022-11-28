@@ -545,6 +545,50 @@ Check that `ferk` ran successfully, no outputs are expected.
 { "plotresults": { "out": "tar:-" } } 
 ```
 
+[testmark]:# (base-workspace/then-ferk-with-plot/fs/plot.wf)
+```
+{
+  "plot.v1": {
+    "inputs": {
+      "rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
+    },
+    "steps": {
+      "ferk": {
+        "protoformula": {
+          "inputs": {
+            "/": "pipe::rootfs"
+          },
+          "action": {
+            "script": {
+              "interpreter": "/bin/bash",
+              "contents": [
+                "echo 'APT::Sandbox::User \"root\";' > /etc/apt/apt.conf.d/01ferk",
+                "echo 'Dir::Log::Terminal \"\";' >> /etc/apt/apt.conf.d/01ferk",
+                "/bin/bash"
+              ],
+              "network": true
+            }
+          },
+          "outputs": {}
+        }
+      }
+    },
+    "outputs": {}
+  }
+}
+```
+
+[testmark]:# (base-workspace/then-ferk-with-plot/sequence)
+```
+warpforge --json --quiet ferk --plot ./plot.wf --cmd /bin/echo --no-interactive
+```
+
+[testmark]:# (base-workspace/then-ferk-with-plot/stdout)
+```
+{ "runrecord": { "guid": "5217c90a-ac1e-413a-8d55-3eac762d81e1", "time": 1669691979, "formulaID": "zM5K3YWRYqSgvxgMkAA9KbzPpqtRPbufF2z397SNJ1mKTkp9SpmxA8jD3YmTPu3EWvijMSv", "exitcode": 0, "results": {} } } 
+{ "plotresults": {} } 
+```
+
 # Quickstart
 
 The `quickstart` command creates a minimal Plot and Module. This requires content from

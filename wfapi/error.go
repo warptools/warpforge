@@ -12,6 +12,8 @@ const (
 	errCodeAlreadyExists = "warpforge-error-already-exists"
 	CodeSyscall          = "warpforge-error-syscall"
 	CodePlotExecution    = "warpforge-error-plot-execution-failed"
+	CodeSerialization    = "warpforge-error-serialization"
+	CodePlotInvalid      = "warpforge-error-plot-invalid"
 )
 
 // Error is a grouping interface for wfapi errors.
@@ -198,7 +200,7 @@ func ErrorIo(context string, path string, cause error) Error {
 //    - warpforge-error-serialization --
 func ErrorSerialization(context string, cause error) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-serialization",
+		CodeString: CodeSerialization,
 		Message:    fmt.Sprintf("serialization error: %s: %s", context, cause),
 		Details: [][2]string{
 			{"context", context},
@@ -290,7 +292,7 @@ func ErrorFormulaExecutionFailed(cause error) Error {
 //    - warpforge-error-plot-invalid --
 func ErrorPlotInvalid(reason string) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-plot-invalid",
+		CodeString: CodePlotInvalid,
 		Message:    fmt.Sprintf("invalid plot: %s", reason),
 		Details: [][2]string{
 			{"reason", reason},

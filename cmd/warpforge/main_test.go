@@ -70,6 +70,11 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
+	defer func() {
+		if *testmark.Regen {
+			patches.WriteFileWithPatches(doc, fileName)
+		}
+	}()
 	for _, dir := range doc.DirEnt.ChildrenList {
 		testName := dir.Name
 		testDir := dir
