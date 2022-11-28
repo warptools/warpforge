@@ -655,6 +655,10 @@ ls
 
 [testmark]:# (unpack/then-ls/output)
 ```
+bin
+linuxrc
+sbin
+usr
 ```
 
 [testmark]:# (unpack/then-unpack-again/sequence)
@@ -689,4 +693,8 @@ ls tmp
 
 [testmark]:# (unpack/then-unpack-to-path/then-ls/output)
 ```
+bin
+linuxrc
+sbin
+usr
 ```

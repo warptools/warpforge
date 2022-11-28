@@ -96,6 +96,9 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 			test.Test(t, testDir)
 		})
 	}
+	if *testmark.Regen {
+		patches.WriteFileWithPatches(doc, fileName)
+	}
 }
 
 // getTags will return the tagset for the first child it finds with the prefix `tags=`
