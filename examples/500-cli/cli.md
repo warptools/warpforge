@@ -428,7 +428,7 @@ cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 	"catalogmirrors.v1": {
 		"byWare": {
 			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": [
-				"file://.warpforge/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
+				"https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"
 			]
 		}
 	}
@@ -489,31 +489,39 @@ cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_mirro
 
 Test module that uses a catalog input:
 
-[testmark]:# (catalog/then-add/then-bundle/fs/module.wf)
+[testmark]:# (base-workspace/then-bundle/fs/workspace/.warpforge/notrelevant)
+```
+this file creates directories for a local workspace
+```
+
+[testmark]:# (base-workspace/then-bundle/fs/workspace/module.wf)
 ```
 {
 	"name": "bundle-test",
 }
 ```
 
-[testmark]:# (catalog/then-add/then-bundle/fs/plot.wf)
+[testmark]:# (base-workspace/then-bundle/fs/workspace/plot.wf)
 ```
 {
-	"inputs": {
-		"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
-	},
-	"steps": {},
-	"outputs": {}
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
+		},
+		"steps": {},
+		"outputs": {}
+	}
 }
 ```
 
 
-[testmark]:# (catalog/then-add/then-bundle/sequence)
+[testmark]:# (base-workspace/then-bundle/script)
 ```
+cd workspace
 warpforge -v catalog bundle module.wf
 ```
 
-[testmark]:# (catalog/then-add/then-bundle/stdout)
+[testmark]:# (base-workspace/then-bundle/output)
 ```
 bundled "warpsys.org/busybox:v1.35.0:amd64-static"
 ```
@@ -525,16 +533,16 @@ The `ferk` command rapidly spawns a container in interactive mode. If the direct
 
 Run `ferk` using Busybox as the rootfs and invoke `/bin/echo`.
 
-[testmark]:# (catalog/then-add/then-ferk/sequence)
+[testmark]:# (base-workspace/then-ferk/sequence)
 ```
 warpforge --json --quiet ferk --rootfs catalog:warpsys.org/busybox:v1.35.0:amd64-static --cmd /bin/echo --no-interactive
 ```
 
 Check that `ferk` ran successfully, no outputs are expected.
 
-[testmark]:# (catalog/then-add/then-ferk/stdout)
+[testmark]:# (base-workspace/then-ferk/stdout)
 ```
-{ "runrecord": { "guid": "055a7ca6-4ea8-49d1-8053-e01e05202495", "time": 1648067779, "formulaID": "bafyrgqa3vklfqcqd6pjj6roc6vzny4p2rx4cqnptgo3rgze3qvemajrlpraiutycb2bebfk2lobgcmvaqpdnoip6zsfwooaulqqoraweyln6k", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
+{ "runrecord": { "guid": "055a7ca6-4ea8-49d1-8053-e01e05202495", "time": 1648067779, "formulaID": "zM5K3V1fXVjExjfVd8d7ByUQ7HP16QAcZcoRd1bh3X4uvms1Xbpb87c1a7WNaw8Hw2B3uF6", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
 { "plotresults": { "out": "tar:-" } } 
 ```
 
@@ -543,23 +551,23 @@ Check that `ferk` ran successfully, no outputs are expected.
 The `quickstart` command creates a minimal Plot and Module. This requires content from
 the default catalog, which was installed and updated in the previous section.
 
-[testmark]:# (catalog/then-update/then-quickstart/sequence)
+[testmark]:# (base-workspace/then-quickstart/sequence)
 ```
 warpforge --quiet quickstart warpforge.org/my-quickstart-module
 ```
 
-[testmark]:# (catalog/then-update/then-quickstart/stdout)
+[testmark]:# (base-workspace/then-quickstart/output)
 ```
 ```
 
 This "hello world" example can the be run normally.
 
-[testmark]:# (catalog/then-update/then-quickstart/then-run/sequence)
+[testmark]:# (base-workspace/then-quickstart/then-run/sequence)
 ```
 warpforge --json run
 ```
 
-[testmark]:# (catalog/then-update/then-quickstart/then-run/stdout)
+[testmark]:# (base-workspace/then-quickstart/then-run/stdout)
 ```
 { "log": { "Msg": "inputs:" } } 
 { "log": { "Msg": "type = catalog ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static" } } 
