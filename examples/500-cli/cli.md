@@ -633,3 +633,60 @@ this file marks the workspace as a root workspace
 [testmark]:# (base-workspace/stdout)
 ```
 ```
+
+# Unpack
+
+This shows the general usage of unpacking a ware.
+Without the `--path` flag, unpack targets the current working directory.
+
+[testmark]:# (unpack/sequence)
+```
+warpforge ware unpack tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
+```
+
+[testmark]:# (unpack/output)
+```
+```
+
+[testmark]:# (unpack/then-ls/script)
+```
+ls
+```
+
+[testmark]:# (unpack/then-ls/output)
+```
+```
+
+[testmark]:# (unpack/then-unpack-again/sequence)
+```
+warpforge ware unpack tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
+```
+
+[testmark]:# (unpack/then-unpack-again/output)
+```
+error: path is a non-empty directory: file already exists
+```
+
+[testmark]:# (unpack/then-unpack-again/exitcode)
+```
+1
+```
+Adding a `--path` flag will create a directory if required before unpacking inside it.
+
+[testmark]:# (unpack/then-unpack-to-path/sequence)
+```
+warpforge ware unpack --path tmp tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
+```
+
+[testmark]:# (unpack/then-unpack-to-path/output)
+```
+```
+
+[testmark]:# (unpack/then-unpack-to-path/then-ls/script)
+```
+ls tmp
+```
+
+[testmark]:# (unpack/then-unpack-to-path/then-ls/output)
+```
+```

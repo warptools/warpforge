@@ -51,6 +51,7 @@ var wareCmdDef = cli.Command{
 }
 
 func cmdWareUnpack(c *cli.Context) error {
+	log := logging.Ctx(c.Context)
 	if c.Args().Len() != 1 {
 		cli.ShowCommandHelp(c, "unpack")
 		return fmt.Errorf("invalid number of arguments")
@@ -60,20 +61,29 @@ func cmdWareUnpack(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	extraWarehouses := []string{}
+	warehouse := os.Getenv("WARPFORGE_WAREHOUSE")
+	log.Debug("", "WARPFORGE_WAREHOUSE=%q", warehouse)
+	if warehouse != "" {
+		extraWarehouses = append(extraWarehouses, "ca+file://"+warehouse)
+	}
+
 	config := &wareUnpackConfig{
-		Ref:   args[0],
-		Path:  c.Path("path"),
-		Pwd:   pwd,
-		Force: c.Bool("force"),
+		Ref:        args[0],
+		Path:       c.Path("path"),
+		Pwd:        pwd,
+		Force:      c.Bool("force"),
+		Warehouses: extraWarehouses,
 	}
 	return config.run(c.Context)
 }
 
 type wareUnpackConfig struct {
-	Ref   string
-	Path  string
-	Pwd   string
-	Force bool
+	Ref        string
+	Path       string
+	Pwd        string
+	Force      bool
+	Warehouses []string
 }
 
 func (c *wareUnpackConfig) run(ctx context.Context) error {
@@ -92,14 +102,26 @@ func (c *wareUnpackConfig) run(ctx context.Context) error {
 		return err
 	}
 
-	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", c.Pwd[1:])
+	addrs, err := c.sources()
 	if err != nil {
 		return err
 	}
-	//TODO: check the workspaces for additional mirrors to a ware.
-	addrs := wss.GetWarehouseAddresses()
 	log.Debug("", "sources: %v", addrs)
 	return rioUnpack(ctx, wareID, path, addrs)
+}
+
+func (c *wareUnpackConfig) sources() ([]wfapi.WarehouseAddr, error) {
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", c.Pwd[1:])
+	if err != nil {
+		return nil, err
+	}
+	addrs := wss.GetWarehouseAddresses()
+	sources := make([]wfapi.WarehouseAddr, 0, len(c.Warehouses))
+	for _, w := range c.Warehouses {
+		sources = append(sources, wfapi.WarehouseAddr(w))
+	}
+	sources = append(sources, addrs...)
+	return sources, nil
 }
 
 func wareRefDecode(ref string) (wfapi.WareID, error) {

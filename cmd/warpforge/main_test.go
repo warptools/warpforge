@@ -149,7 +149,7 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 		}
 		err = makeApp(stdin, stdout, stderr).Run(args)
 		if err != nil {
-			return 1, err
+			return 1, nil
 		}
 		return 0, nil
 	}
