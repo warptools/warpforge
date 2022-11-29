@@ -28,6 +28,28 @@ func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
 	return wss
 }
 
+type tagset map[string]struct{}
+
+func newTagSet(tags ...string) tagset {
+	result := tagset(make(map[string]struct{}))
+	for _, s := range tags {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		result[s] = struct{}{}
+	}
+	return result
+}
+
+func (t tagset) has(tag string) bool {
+	if t == nil {
+		return false
+	}
+	_, ok := t[tag]
+	return ok
+}
+
 func testFile(t *testing.T, fileName string, workDir *string) {
 	doc, err := testmark.ReadFile(fileName)
 	if err != nil {
@@ -51,16 +73,21 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	for _, dir := range doc.DirEnt.ChildrenList {
 		testName := dir.Name
 		testDir := dir
-		if _, hasNetTests := dir.Children["net"]; hasNetTests {
-			if *testutil.FlagOffline {
-				t.Log("skipping test", dir.Name, "due to offline flag")
+		tags := getTags(testDir)
+		if tags != nil {
+			if len(testDir.Children) != 1 {
+				t.Run(testName, func(t *testing.T) {
+					t.Fatal("tagged tests must place children after the /tag=.../ dir")
+				})
 				continue
 			}
-			// we want to run the contents of the `/net` dir
-			testName = dir.Name + "/net"
-			testDir = dir.Children["net"]
+			testDir = testDir.ChildrenList[0]
+			testName = testName + "/" + testDir.Name
 		}
 		t.Run(testName, func(t *testing.T) {
+			if tags.has("net") && *testutil.FlagOffline {
+				t.Skip("skipping test", t.Name(), "due to offline flag")
+			}
 			test := testexec.Tester{
 				ExecFn:   execFn,
 				Patches:  &patches,
@@ -71,8 +98,21 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	}
 }
 
+// getTags will return the tagset for the first child it finds with the prefix `tags=`
+// The tags following the prefix are expected to be comma separated strings.
+func getTags(dir *testmark.DirEnt) tagset {
+	for _, child := range dir.ChildrenList {
+		if strings.HasPrefix(child.Name, "tags=") {
+			return newTagSet(strings.Split(child.Name[len("tags="):], ",")...)
+		}
+	}
+	return nil
+}
+
 func TestExecFixtures(t *testing.T) {
-	testFile(t, "../../examples/500-cli/cli.md", nil)
+	file := "../../examples/500-cli/cli.md"
+	t.Logf("loading test file: %q", file)
+	testFile(t, file, nil)
 }
 
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
@@ -101,7 +141,12 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 		if err != nil {
 			panic("failed to set WARPFORGE_WAREHOUSE")
 		}
-
+		if args[0] == "cd" {
+			if err := os.Chdir(args[1]); err != nil {
+				return 1, err
+			}
+			return 0, nil
+		}
 		err = makeApp(stdin, stdout, stderr).Run(args)
 		if err != nil {
 			return 1, err
