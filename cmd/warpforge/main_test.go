@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,6 +28,25 @@ func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
 	return wss
 }
 
+type tagset map[string]struct{}
+
+func newTagSet(tags ...string) tagset {
+	result := tagset(make(map[string]struct{}))
+	for _, s := range tags {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		result[s] = struct{}{}
+	}
+	return result
+}
+
+func (t tagset) has(tag string) bool {
+	_, ok := t[tag]
+	return ok
+}
+
 func testFile(t *testing.T, fileName string, workDir *string) {
 	doc, err := testmark.ReadFile(fileName)
 	if err != nil {
@@ -49,37 +67,28 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
+outer:
 	for _, dir := range doc.DirEnt.ChildrenList {
 		testName := dir.Name
+		tags := newTagSet()
 		testDir := dir
-		if testDir, hasNetTests := dir.Children["net"]; hasNetTests {
-			// copy the non "then-*" children to the "net" dir
-			// this duplicates some work but ensures that any prerequisite
-			// commands are executed and files are placed.
-			// Implicitly this means that a "net" dir and its parent cannot
-			// both have executable statements and/or "fs" nodes.
-			if err := inheritChildren(dir, "net"); err != nil {
-				t.Fatal(err)
-			}
-			t.Run(testName+"/net", func(t *testing.T) {
-				if *testutil.FlagOffline {
-					t.Skip("skipping test", t.Name(), "due to offline flag")
+		for _, x := range dir.ChildrenList {
+			//iterating on children just to find out if it has tags sucks but it's the only way
+			// to get reasonable errors; otherwise you end up with `"tags=net" does not begin with "then-"`
+			if strings.HasPrefix(x.Name, "tags=") {
+				if len(dir.Children) != 1 {
+					t.Run(dir.Name, func(t *testing.T) {
+						t.Fatal("tagged tests cannot have other children")
+					})
+					continue outer
 				}
-				test := testexec.Tester{
-					ExecFn:   execFn,
-					Patches:  &patches,
-					AssertFn: assertFn,
-				}
-				test.Test(t, testDir)
-			})
-			removeChildByName(dir, "net")
-			if len(dir.Children) == 0 {
-				continue
+				testDir = dir.ChildrenList[0]
+				testName = testName + "/" + testDir.Name
+				tags = newTagSet(strings.Split(testDir.Name[len("tags="):], ",")...)
 			}
 		}
-		// non-net tests
 		t.Run(testName, func(t *testing.T) {
-			if strings.HasSuffix(t.Name(), "net") && *testutil.FlagOffline {
+			if tags.has("net") && *testutil.FlagOffline {
 				t.Skip("skipping test", t.Name(), "due to offline flag")
 			}
 			test := testexec.Tester{
@@ -98,45 +107,6 @@ func names(dirs []*testmark.DirEnt) []string {
 		result = append(result, d.Name)
 	}
 	return result
-}
-
-// inheritChildren will copy pointers to dir's children to the named child.
-// Copying excludes the named child itself and any child beginning with "then-"
-func inheritChildren(dir *testmark.DirEnt, childName string) error {
-	target := dir.Children[childName]
-	inherited := []*testmark.DirEnt{}
-	for _, child := range dir.ChildrenList {
-		if child.Name == childName {
-			continue
-		}
-		if strings.HasPrefix(child.Name, "then-") {
-			continue
-		}
-		if _, exists := target.Children[child.Name]; exists {
-			return fmt.Errorf("cannot copy child %q from %q to %q: %w", child.Name, dir.Name, target.Name, os.ErrExist)
-		}
-		target.Children[child.Name] = child
-		inherited = append(inherited, child)
-	}
-	target.ChildrenList = append(inherited, target.ChildrenList...)
-	return nil
-}
-
-// removeChildByName removes references to the named child
-// from the given testmark.DirEnt
-func removeChildByName(dir *testmark.DirEnt, name string) {
-	n := 0
-	for _, child := range dir.ChildrenList {
-		if child.Name != name {
-			dir.ChildrenList[n] = child
-			n++
-		}
-	}
-	dir.ChildrenList = dir.ChildrenList[:n]
-	delete(dir.Children, name)
-	if len(dir.ChildrenList) != len(dir.Children) {
-		panic(`we messed up: removing child should not make list/map of children have different lengths`)
-	}
 }
 
 func TestExecFixtures(t *testing.T) {

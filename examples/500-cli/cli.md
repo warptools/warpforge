@@ -168,7 +168,7 @@ Because it was successfully checked, the output is nothing:
 Excuting a formula is done with the `warpforge run` command.
 When given a formula file, it knows what to do:
 
-[testmark]:# (runformula/net/sequence)
+[testmark]:# (runformula/tags=net/sequence)
 ```
 warpforge --json --quiet run formula.json
 ```
@@ -176,7 +176,7 @@ warpforge --json --quiet run formula.json
 We'll run this in a filesystem that contains a `formula.json`
 (the same one we used in the check example earlier).
 
-[testmark]:# (runformula/net/fs/formula.json)
+[testmark]:# (runformula/tags=net/fs/formula.json)
 ```
 {
     "formula": {
@@ -210,7 +210,7 @@ We'll run this in a filesystem that contains a `formula.json`
 
 The result of this will be a `RunRecord` object printed to stdout:
 
-[testmark]:# (runformula/net/stdout)
+[testmark]:# (runformula/tags=net/stdout)
 ```
 { "runrecord": { "guid": "389c442f-5343-497e-b74d-d31fd487af53", "time": "22222222222", "formulaID": "zM5K3Zz8R3ioVVWZ6o6GocxPKvubAJfv4iQmDH3GCq9UjtDjHtRWrry4DRoEBPvfUEYFx1D", "exitcode": 0, "results": {} } } 
 ```
@@ -364,21 +364,21 @@ there's only one record in this map.
 
 ## Catalog Operations
 
-[testmark]:# (catalog/fs/.warpforge/root)
+[testmark]:# (catalog/tags=net/fs/.warpforge/root)
 ```
 this file marks the workspace as a root workspace
 ```
 
 ### Initialize a Catalog
 
-[testmark]:# (catalog/sequence)
+[testmark]:# (catalog/tags=net/sequence)
 ```
 warpforge catalog init my-catalog
 ```
 
 ### List Catalogs
 
-[testmark]:# (catalog/then-ls/sequence)
+[testmark]:# (catalog/tags=net/then-ls/sequence)
 ```
 warpforge catalog ls
 ```
@@ -393,20 +393,19 @@ warpforge catalog --name=test generate-html
 ### Add an Item to a Catalog
 
 #### tar
-
-[testmark]:# (catalog/net/then-add-tar/sequence)
+[testmark]:# (catalog/tags=net/then-add-tar/sequence)
 ```
 warpforge catalog --name my-catalog add tar warpsys.org/busybox:v1.35.0:amd64-static https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9
 ```
 
-[testmark]:# (catalog/net/then-add-tar/then-check/script)
+[testmark]:# (catalog/tags=net/then-add-tar/then-check/script)
 ```
 cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_module.json
 cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_releases/v1.35.0.json
 cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 ```
 
-[testmark]:# (catalog/net/then-add-tar/then-check/output)
+[testmark]:# (catalog/tags=net/then-add-tar/then-check/output)
 ```
 {
 	"catalogmodule.v1": {
@@ -437,24 +436,24 @@ cat .warpforge/catalogs/my-catalog/warpsys.org/busybox/_mirrors.json
 
 #### git
 
-[testmark]:# (catalog-git/net/fs/.warpforge/root)
+[testmark]:# (catalog-git/tags=net/fs/.warpforge/root)
 ```
 this file marks the workspace as a root workspace
 ```
 
-[testmark]:# (catalog-git/net/sequence)
+[testmark]:# (catalog-git/tags=net/sequence)
 ```
 warpforge catalog add git github.com/githubtraining/training-manual:v1.0:src https://github.com/githubtraining/training-manual v1.0
 ```
 
-[testmark]:# (catalog-git/net/then-check/script)
+[testmark]:# (catalog-git/tags=net/then-check/script)
 ```
 cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_module.json
 cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_releases/v1.0.json
 cat .warpforge/catalogs/default/github.com/githubtraining/training-manual/_mirrors.json
 ```
 
-[testmark]:# (catalog-git/net/then-check/output)
+[testmark]:# (catalog-git/tags=net/then-check/output)
 ```
 {
 	"catalogmodule.v1": {
