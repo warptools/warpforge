@@ -43,6 +43,9 @@ func newTagSet(tags ...string) tagset {
 }
 
 func (t tagset) has(tag string) bool {
+	if t == nil {
+		return false
+	}
 	_, ok := t[tag]
 	return ok
 }
@@ -67,25 +70,19 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 
 	doc.BuildDirIndex()
 	patches := testmark.PatchAccumulator{}
-outer:
 	for _, dir := range doc.DirEnt.ChildrenList {
 		testName := dir.Name
-		tags := newTagSet()
 		testDir := dir
-		for _, x := range dir.ChildrenList {
-			//iterating on children just to find out if it has tags sucks but it's the only way
-			// to get reasonable errors; otherwise you end up with `"tags=net" does not begin with "then-"`
-			if strings.HasPrefix(x.Name, "tags=") {
-				if len(dir.Children) != 1 {
-					t.Run(dir.Name, func(t *testing.T) {
-						t.Fatal("tagged tests cannot have other children")
-					})
-					continue outer
-				}
-				testDir = dir.ChildrenList[0]
-				testName = testName + "/" + testDir.Name
-				tags = newTagSet(strings.Split(testDir.Name[len("tags="):], ",")...)
+		tags := getTags(testDir)
+		if tags != nil {
+			if len(testDir.Children) != 1 {
+				t.Run(testName, func(t *testing.T) {
+					t.Fatal("tagged tests must place children after the /tag=.../ dir")
+				})
+				continue
 			}
+			testDir = testDir.ChildrenList[0]
+			testName = testName + "/" + testDir.Name
 		}
 		t.Run(testName, func(t *testing.T) {
 			if tags.has("net") && *testutil.FlagOffline {
@@ -101,12 +98,15 @@ outer:
 	}
 }
 
-func names(dirs []*testmark.DirEnt) []string {
-	result := make([]string, 0, len(dirs))
-	for _, d := range dirs {
-		result = append(result, d.Name)
+// getTags will return the tagset for the first child it finds with the prefix `tags=`
+// The tags following the prefix are expected to be comma separated strings.
+func getTags(dir *testmark.DirEnt) tagset {
+	for _, child := range dir.ChildrenList {
+		if strings.HasPrefix(child.Name, "tags=") {
+			return newTagSet(strings.Split(child.Name[len("tags="):], ",")...)
+		}
 	}
-	return result
+	return nil
 }
 
 func TestExecFixtures(t *testing.T) {
