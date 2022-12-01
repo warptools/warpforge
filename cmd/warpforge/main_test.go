@@ -118,6 +118,12 @@ func TestExecFixtures(t *testing.T) {
 	testFile(t, file, nil)
 }
 
+func TestHelpFixtures(t *testing.T) {
+	file := "../../examples/500-cli/help.md"
+	t.Logf("loading test file: %q", file)
+	testFile(t, file, nil)
+}
+
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
 func cleanRunRecord(str string) string {
 	// replace guid
