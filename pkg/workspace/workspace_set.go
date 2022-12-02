@@ -122,6 +122,15 @@ func (wsSet WorkspaceSet) Tidy(ctx context.Context, plot wfapi.Plot, force bool)
 	return nil
 }
 
+// GetWarehouses returns a set of warehouse addresses for all the warehouses in the workspace stack
+func (wsSet WorkspaceSet) GetWarehouseAddresses() []wfapi.WarehouseAddr {
+	result := make([]wfapi.WarehouseAddr, 0, len(wsSet))
+	for _, ws := range wsSet {
+		result = append(result, ws.GetWarehouseAddress())
+	}
+	return result
+}
+
 func gatherCatalogRefs(plot wfapi.Plot) []wfapi.CatalogRef {
 	refs := []wfapi.CatalogRef{}
 

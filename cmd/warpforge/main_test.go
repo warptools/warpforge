@@ -101,6 +101,9 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 			test.Test(t, testDir)
 		})
 	}
+	if *testmark.Regen {
+		patches.WriteFileWithPatches(doc, fileName)
+	}
 }
 
 // getTags will return the tagset for the first child it finds with the prefix `tags=`
@@ -116,6 +119,12 @@ func getTags(dir *testmark.DirEnt) tagset {
 
 func TestExecFixtures(t *testing.T) {
 	file := "../../examples/500-cli/cli.md"
+	t.Logf("loading test file: %q", file)
+	testFile(t, file, nil)
+}
+
+func TestHelpFixtures(t *testing.T) {
+	file := "../../examples/500-cli/help.md"
 	t.Logf("loading test file: %q", file)
 	testFile(t, file, nil)
 }
@@ -154,7 +163,7 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 		}
 		err = makeApp(stdin, stdout, stderr).Run(args)
 		if err != nil {
-			return 1, err
+			return 1, nil
 		}
 		return 0, nil
 	}
