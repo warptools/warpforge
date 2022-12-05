@@ -253,7 +253,11 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		//
 		// since the cache dir will be populated before formula exec occurs, the rio unpack step will
 		// be skipped for this input.
-		ws, _ := workspace.OpenHomeWorkspace(os.DirFS("/"))
+		ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+		if err != nil {
+			//FIXME: You probably want to _make_ this workspace if it doesn't exist.
+			return input, nil, err
+		}
 
 		// resolve the revision of the git ingest to a hash
 		gitCtx, gitSpan := tracing.Start(ctx, "clone git repository", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
