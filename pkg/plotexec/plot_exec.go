@@ -63,6 +63,7 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
+//    - warpforge-error-workspace -- when home workspace is missing or cannot open
 func plotInputToFormulaInput(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
@@ -103,6 +104,7 @@ func plotInputToFormulaInput(ctx context.Context,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
+//    - warpforge-error-workspace -- when home workspace is missing or cannot open
 func plotInputToFormulaInputSimple(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
@@ -253,7 +255,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		//
 		// since the cache dir will be populated before formula exec occurs, the rio unpack step will
 		// be skipped for this input.
-		ws, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+		homeWs, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
 		if err != nil {
 			//FIXME: You probably want to _make_ this workspace if it doesn't exist.
 			return input, nil, err
@@ -280,8 +282,9 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		input.WareID.Packtype = "git"
 
 		// checkout the git repository to the cache path
-		cachePath, err := ws.CachePath(*input.WareID)
-		if err != nil {
+		cachePath, _err := homeWs.CachePath(*input.WareID)
+		if _err != nil {
+			// Error Codes -= warpforge-error-wareid-invalid
 			return input, nil, wfapi.ErrorPlotInvalid(fmt.Sprintf("plot contains invalid WareID %q", *input.WareID))
 		}
 		if _, errRaw = os.Stat(cachePath); os.IsNotExist(errRaw) {
@@ -326,6 +329,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
 //    - warpforge-error-serialization -- when serialization or deserialization of a memo fails
+//    - warpforge-error-workspace -- when home workspace is missing or cannot open
 func execProtoformula(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
@@ -386,6 +390,7 @@ func execProtoformula(ctx context.Context,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
+//    - warpforge-error-workspace -- when home workspace is missing or cannot be opened
 func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execPlot")
 	defer span.End()
@@ -514,6 +519,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
+//    - warpforge-error-workspace -- when home workspace is missing or cannot be opened
 func Exec(ctx context.Context, wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "Exec")
 	defer span.End()
