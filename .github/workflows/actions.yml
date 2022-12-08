@@ -1,6 +1,11 @@
 name: warpforge
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - 'master'
+      - 'main'
+  pull_request:
 
 jobs:
   test:
