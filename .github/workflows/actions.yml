@@ -29,6 +29,15 @@ jobs:
       run: go-serum-analyzer -strict ./...
     - name: Run Tests
       run: go test ./...
+    - name: Clone warplark
+      uses: actions/checkout@v3
+      with:
+        repository: warptools/warplark
+        ref: master
+        path: warplark
+    - name: Install Serum Analyzer
+      working-directory: warplark
+      run: go install ./...
   build:
     runs-on: ubuntu-latest
     steps:

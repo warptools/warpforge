@@ -490,5 +490,5 @@ func ErrorPlotExecutionFailed(cause error) error {
 //
 //    - warpforge-error-generator-failed --
 func ErrorGeneratorFailed(generatorName string, inputFile string, details string) error {
-	return serum.Errorf(CodeGeneratorFailed, "execution of external generator %q for file %q failed:\n%s", generatorName, inputFile, details)
+	return serum.Errorf(CodeGeneratorFailed, "execution of external generator %q for file %q failed: %s", generatorName, inputFile, details)
 }

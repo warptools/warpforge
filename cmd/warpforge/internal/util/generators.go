@@ -21,7 +21,11 @@ func starlarkGenerator(file string) ([]byte, error) {
 	cmd := exec.Command("warplark", file)
 	out, err := cmd.Output()
 	if err != nil {
-		return []byte{}, wfapi.ErrorGeneratorFailed("warplark", file, string(err.(*exec.ExitError).Stderr))
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return []byte{}, wfapi.ErrorGeneratorFailed("warplark", file, "\n"+string(exitErr.Stderr))
+		} else {
+			return []byte{}, wfapi.ErrorGeneratorFailed("warplark", file, "failed to run warplark")
+		}
 	}
 	return out, nil
 }
@@ -67,9 +71,10 @@ func GenerateDir(path string) (map[string][]byte, error) {
 // Errors:
 //
 //    - warpforge-error-generator-failed -- when the external generator fails
+//    - warpforge-error-io -- when the dir walk fails
 func GenerateDirRecusive(startPath string) (map[string][]byte, error) {
 	results := map[string][]byte{}
-	errRaw := filepath.Walk(startPath,
+	err := filepath.Walk(startPath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return wfapi.ErrorIo("walking directory", path, err)
@@ -84,11 +89,6 @@ func GenerateDirRecusive(startPath string) (map[string][]byte, error) {
 			return nil
 		})
 
-	var err wfapi.Error = nil
-	if errRaw != nil {
-		err = errRaw.(wfapi.Error)
-	}
-
-	// Error Codes = warpforge-error-generator-failed
+	// Error Codes = warpforge-error-generator-failed, warpforge-error-io
 	return results, err
 }
