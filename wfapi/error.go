@@ -14,6 +14,7 @@ const (
 	CodePlotExecution    = "warpforge-error-plot-execution-failed"
 	CodeSerialization    = "warpforge-error-serialization"
 	CodePlotInvalid      = "warpforge-error-plot-invalid"
+	CodeGeneratorFailed  = "warpforge-error-generator-failed"
 )
 
 // Error is a grouping interface for wfapi errors.
@@ -481,4 +482,13 @@ func ErrorSyscall(fmtPattern string, args ...interface{}) error {
 //    - warpforge-error-plot-execution-failed --
 func ErrorPlotExecutionFailed(cause error) error {
 	return serum.Errorf(CodePlotExecution, "plot execution failed: %w", cause)
+}
+
+// ErrorGeneratorFailed is returned when an external generator fails
+//
+// Errors:
+//
+//    - warpforge-error-generator-failed --
+func ErrorGeneratorFailed(generatorName string, inputFile string, details string) error {
+	return serum.Errorf(CodeGeneratorFailed, "execution of external generator %q for file %q failed: %s", generatorName, inputFile, details)
 }

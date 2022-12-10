@@ -742,3 +742,152 @@ linuxrc
 sbin
 usr
 ```
+
+# Plan
+
+The `plan` subcommand is used to generate Warpforge input files from higher
+level languages.
+
+## Generate
+
+The `generate` subcommand performs generation on a directory. This example
+uses warplark to create an empty plot.
+
+This command supports operations on a single file, a single directory,
+the working directory (default with no arguments), or a whole directory
+tree (with `...`). This tests each usage.
+
+Use on a single file:
+
+[testmark]:# (plan-generate/sequence)
+```
+warpforge plan generate plot.star
+```
+
+(note, we setup the fs for all the generate tests here to avoid repetition)
+
+[testmark]:# (plan-generate/fs/plot.star)
+``
+result = {"inputs": {}, "steps": {}, "outputs": {}}
+```
+
+[testmark]:# (plan-generate/fs/a/plot.star)
+```
+result = {"inputs": {}, "steps": {}, "outputs": {}}
+```
+
+[testmark]:# (plan-generate/fs/b/plot.star)
+```
+result = {"inputs": {}, "steps": {}, "outputs": {}}
+```
+
+[testmark]:# (plan-generate/output)
+```
+```
+
+[testmark]:# (plan-generate/then-cat/script)
+```
+cat plot.wf
+```
+
+[testmark]:# (plan-generate/then-cat/output)
+```
+{
+	"plot.v1": {
+		"inputs": {},
+		"outputs": {},
+		"steps": {}
+	}
+}
+```
+
+Use on specific directory:
+
+[testmark]:# (plan-generate/then-dir/sequence)
+```
+warpforge plan generate a
+```
+
+[testmark]:# (plan-generate/then-dir/output)
+```
+```
+
+[testmark]:# (plan-generate/then-dir/then-cat/script)
+```
+cat a/plot.wf
+```
+
+[testmark]:# (plan-generate/then-dir/then-cat/output)
+```
+{
+	"plot.v1": {
+		"inputs": {},
+		"outputs": {},
+		"steps": {}
+	}
+}
+```
+
+Use on working directory (no args):
+
+[testmark]:# (plan-generate/then-pwd/sequence)
+```
+warpforge plan generate
+```
+
+[testmark]:# (plan-generate/then-pwd/output)
+```
+```
+
+[testmark]:# (plan-generate/then-pwd/then-cat/script)
+```
+cat plot.wf
+```
+
+[testmark]:# (plan-generate/then-pwd/then-cat/output)
+```
+{
+	"plot.v1": {
+		"inputs": {},
+		"outputs": {},
+		"steps": {}
+	}
+}
+```
+
+Recursive usage (`...`):
+
+
+[testmark]:# (plan-generate/then-recursive/sequence)
+```
+warpforge plan generate ./...
+```
+
+[testmark]:# (plan-generate/then-recursive/output)
+```
+```
+
+[testmark]:# (plan-generate/then-recursive/then-cat/script)
+```
+cat a/plot.wf
+cat b/plot.wf
+```
+
+[testmark]:# (plan-generate/then-recursive/then-cat/output)
+```
+{
+	"plot.v1": {
+		"inputs": {},
+		"outputs": {},
+		"steps": {}
+	}
+}
+{
+	"plot.v1": {
+		"inputs": {},
+		"outputs": {},
+		"steps": {}
+	}
+}
+```
+
