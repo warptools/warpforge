@@ -10,7 +10,6 @@ require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-cid v0.3.2
-	github.com/ipld/go-datalark v0.4.0
 	github.com/ipld/go-ipld-prime v0.17.0
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e
@@ -23,7 +22,6 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.9.0
 	go.opentelemetry.io/otel/sdk v1.9.0
 	go.opentelemetry.io/otel/trace v1.9.0
-	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd
 )
 
 require (
