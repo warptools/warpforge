@@ -1,3 +1,59 @@
+<<<<<<< Updated upstream
+=======
+/* Variables */
+/* Color profile: https://coolors.co/f7fff7-343434-2f3061-ffe66d-6ca6c1 */
+:root {
+	/* Light-mode colors */
+	--light-primary-color: #FFE66D;
+	--light-font-color: #141633;
+	--light-bg-color: #F7FFF7;
+	--light-code-bg-color: #6CA6C1;
+	--light-heading-color: #000000;
+	--light-sub-heading-color: #00364F90;
+	--light-black: #333333ff;
+
+	/* Dark-mode colors */
+	--dark-black: #000000ff;
+	--dark-primary-color: #FFE66D;
+	--dark-tertiary-color: #a5e1ad;
+	--dark-font-color: #F7FFF7;
+	--dark-bg-color: #2F3061;
+	--dark-code-bg-color: #272932;
+	--dark-heading-color: #818cab;
+	--dark-sub-heading-color: #ccc;
+
+	/* Color variables */
+	--primary-color: var(--light-primary-color);
+	--font-color: var(--light-font-color);
+	--bg-color: var(--light-bg-color);
+	--code-bg-color: var(--light-code-bg-color);
+	--heading-color: var(--light-heading-color);
+	--sub-heading-color: var(--light-sub-heading-color);
+	--black: var(--light-black);
+
+	/* Space */
+	--space-xs: 4px;
+	--space-sm: 8px;
+	--space-md: 16px;
+	--space-lg: 32px;
+	--space-xl: 64px;
+	--space-xxl: 128px;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--primary-color: var(--dark-primary-color);
+		--secondary-color: var(--dark-secondary-color);
+		--font-color: var(--dark-font-color);
+		--bg-color: var(--dark-bg-color);
+		--code-bg-color: var(--dark-code-bg-color);
+		--heading-color: var(--dark-heading-color);
+		--sub-heading-color: var(--dark-sub-heading-color);
+		--black: var(--dark-black);
+	}
+}
+
+>>>>>>> Stashed changes
 /* Global fonts and styles */
 * {
 	box-sizing: border-box;
@@ -29,6 +85,11 @@ h5 {
 	margin-top: var(--space-sm);
 	font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS',
 		sans-serif;
+}
+
+h1 {
+	text-decoration: underline;
+	text-decoration-color: var(--primary-color);
 }
 
 h4, h5 {
