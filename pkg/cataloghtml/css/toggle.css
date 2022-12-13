@@ -79,13 +79,8 @@
 	transition: 0.3s;
 }
 
-<<<<<<< Updated upstream
 .theme-switch__slider:before {
-	background-color: #fff;
-=======
-.slider:before {
 	background-color: var(--bg-color);
->>>>>>> Stashed changes
 	bottom: 2px;
 	content: '';
 	height: 18px;
