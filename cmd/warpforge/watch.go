@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -31,6 +32,7 @@ var watchCmdDef = cli.Command{
 	Action: util.ChainCmdMiddleware(cmdWatch,
 		util.CmdMiddlewareLogging,
 		util.CmdMiddlewareTracingConfig,
+		util.CmdMiddlewareCancelOnInterrupt,
 	),
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -62,27 +64,16 @@ func (c *watchCfg) handle(ctx context.Context, conn net.Conn) error {
 	return nil
 }
 
-//serve will create and listen to a unix socket on the given socket path
-func (c *watchCfg) serve(ctx context.Context, sockPath string) error {
+func (c *watchCfg) serveLoop(ctx context.Context, l net.Listener) error {
 	log := logging.Ctx(ctx)
-	l, err := net.Listen("unix", sockPath)
-	if err != nil {
-		return err
-	}
-	// unix socks: they have permissions systems.
-	os.Chmod(sockPath, 0777) // ignore err?
-
-	ul := l.(*net.UnixListener)
-	ul.SetUnlinkOnClose(true) // this mostly doesn't do anything, we need to handle SIGINT to remove these gracefully
-	defer l.Close()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	for {
-		conn, err := l.Accept()
+		conn, err := l.Accept() // blocks, doesn't accept a context.
 		if err != nil {
 			return err
 		}
 		go func() {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			defer func() {
 				r := recover()
 				if r != nil {
@@ -95,10 +86,32 @@ func (c *watchCfg) serve(ctx context.Context, sockPath string) error {
 		}()
 		select {
 		case <-ctx.Done():
+			log.Info("", "socket no longer accepting connections")
 			return nil
 		default:
 		}
 	}
+}
+
+//serve will create and listen to a unix socket on the given socket path
+func (c *watchCfg) serve(ctx context.Context, sockPath string) error {
+	log := logging.Ctx(ctx)
+	cfg := net.ListenConfig{}
+	l, err := cfg.Listen(ctx, "unix", sockPath)
+	if err != nil {
+		return err
+	}
+	// unix socks: they have permissions systems.
+	os.Chmod(sockPath, 0777) // ignore err?
+
+	result := make(chan error)
+	go func() {
+		result <- c.serveLoop(ctx, l)
+	}()
+	<-ctx.Done()
+	l.Close()
+	log.Info("", "listener closed")
+	return <-result
 }
 
 func isSocket(m fs.FileMode) bool {
@@ -182,17 +195,17 @@ func (c *watchCfg) run(ctx context.Context) error {
 		if err := c.rmUnixSocket(sockPath); err != nil {
 			log.Info("", "removing socket %q: %s", sockPath, err.Error())
 		}
-		serveCtx, cancel := context.WithCancel(ctx)
-		ctx = serveCtx
 		go func() {
+			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			if err := c.serve(serveCtx, sockPath); err != nil {
+			if err := c.serve(ctx, sockPath); err != nil {
 				log.Info("", "socket server closed: %s", err.Error())
 			}
 		}()
 		log.Info("", "serving to %q\n", sockPath)
 		runtime.Gosched()
 		time.Sleep(time.Second) // give user a second to realize that there's info here.
+		defer runtime.Gosched() // give server a chance to close on context cancel
 	}
 	for {
 		select {
@@ -258,5 +271,9 @@ func cmdWatch(c *cli.Context) error {
 			},
 		},
 	}
-	return cfg.run(c.Context)
+	err := cfg.run(c.Context)
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	return err
 }
