@@ -1,0 +1,73 @@
+## API types for the Warpforge workspace API.
+##
+## This API is concerned with a local workspace.
+## It has operations like asking about the state of modules -- and in doing so,
+## it freely discusses local filesystem paths,
+## and sometimes even "most recent" operations,
+## which are not conversations that can be generalized beyond a single-user/local workspace.
+##
+## This is a demo prototype and entirely subject to change.
+##
+
+## This file builds upon the types in the '../wfapi/wfapi.ipldsch' schema.
+## You'll have to parse both.
+
+## There's no use of the "capsule" types convention for versioning here.
+## This is a local-only protocol; there's no real sense in versioning it,
+## because both parties speaking it are expected to come from the same build.
+
+type Ping struct {
+	callID String
+}
+
+type PingAck struct {
+	callID String
+}
+
+type ModuleStatusQuery struct {
+	## Path to module within the workspace is the primary identifier.
+	## (This saves the workspace daemon from having to find all modules in advance and cache a name->path lookup.)
+	path String
+
+	## Mappings from some inputs (usually, ingests) to a resolved WareID can be specified.
+	## Using this enables stories like "replace 'ingest:git:.:HEAD' with 'ware:git:071283c'".
+	## (This is useful for e.g. the CI usecase,
+	## where the `wf spark` command wants to ask if we've successfully built a plot for some specific git hash.)
+	inputReplacements optional {PlotInput:WareID}
+
+	## Set the interest level to "query" if you only want to ask about existing knowledge.
+	## Set it to something higher if you want the workspace daemon to go discover something if it's not already known.
+	interestLevel ModuleInterestLevel
+}
+
+type ModuleInterestLevel enum {
+	| Query ("query") # Means: just ask; don't run something if you wouldn't have already.
+	| Run ("run")     # Means: still answer with what you know now, but also please run this if you haven't already.
+	# Consider: maybe an option that means "eval now please, and also add this to a set of things polled (for the next hour or so, with some decay function)"?  User story: "wf spark" can be both a display tool and an unobtrusive attention indicator.
+}
+
+type ModuleStatusAnswer struct {
+	## Matches what was submitted in ModuleStatusQuery, in case you have more than one outstanding request.
+	path String
+	# FIXME: since we have other fields like inputReplacements, this should probably have seq numbers or some other id.
+
+	status ModuleStatus
+}
+
+type ModuleStatus union {
+	| ModuleStatus_NoInfo "noinfo"
+	| ModuleStatus_Queuing "queuing"
+	| ModuleStatus_InProgress "inprogress"
+	| ModuleStatus_FailedProvisioning "failed_provisioning"
+	| ModuleStatus_ExecutedSuccess "executed_success"
+	| ModuleStatus_ExecutedFailed "executed_failed"
+} representation keyed
+
+# TODO most of the below surely deserve some more body content; wip.
+
+type ModuleStatus_NoInfo struct {}
+type ModuleStatus_Queuing struct {}
+type ModuleStatus_InProgress struct {}
+type ModuleStatus_FailedProvisioning struct {}
+type ModuleStatus_ExecutedSuccess struct {}
+type ModuleStatus_ExecutedFailed struct {}
