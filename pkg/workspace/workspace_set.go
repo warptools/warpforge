@@ -2,7 +2,9 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 
 	"github.com/serum-errors/go-serum"
 
@@ -39,6 +41,9 @@ func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *
 	// traverse workspace stack
 	for _, ws := range wsSet {
 		wareId, wareAddr, err := ws.GetCatalogWare(ref)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		if err != nil {
 			if serum.Code(err) == wfapi.ECodeCatalogMissingEntry {
 				continue

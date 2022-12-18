@@ -12,6 +12,7 @@ import (
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
 
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/testutil"
 	"github.com/warptools/warpforge/pkg/workspace"
 )
@@ -59,10 +60,6 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
 
-	// build an exec function with a pointer to this project's git root
-	execFn := buildExecFn(filepath.Join(pwd, "../../"))
-	qt.Assert(t, err, qt.IsNil)
-
 	if workDir != nil {
 		err = os.Chdir(*workDir)
 		qt.Assert(t, err, qt.IsNil)
@@ -93,6 +90,10 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 			if tags.has("net") && *testutil.FlagOffline {
 				t.Skip("skipping test", t.Name(), "due to offline flag")
 			}
+			// build an exec function with a pointer to this project's git root
+			execFn := buildExecFn(t, filepath.Join(pwd, "../../"))
+			qt.Assert(t, err, qt.IsNil)
+
 			test := testexec.Tester{
 				ExecFn:   execFn,
 				Patches:  &patches,
@@ -143,10 +144,11 @@ func cleanRunRecord(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
+func buildExecFn(t *testing.T, projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
 		// override the path to required binaries
-		err := os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
+		pluginPath := filepath.Join(projPath, "plugins")
+		err := os.Setenv("WARPFORGE_PATH", pluginPath)
 		if err != nil {
 			panic("failed to set WARPFORGE_PATH")
 		}
@@ -161,8 +163,13 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 			}
 			return 0, nil
 		}
+		if err := config.ReloadGlobalState(); err != nil {
+			// This will reset values loaded from environment variables
+			panic("failed to reset global state")
+		}
 		err = makeApp(stdin, stdout, stderr).Run(args)
 		if err != nil {
+			t.Logf("Exec Error: %s", err)
 			return 1, nil
 		}
 		return 0, nil

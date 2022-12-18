@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/logging"
 )
 
@@ -29,17 +30,16 @@ var planCmdDef = cli.Command{
 
 func cmdPlanGenerate(c *cli.Context) error {
 	logger := logging.Ctx(c.Context)
-	pwd, err := os.Getwd()
+	state, err := config.NewState()
 	if err != nil {
 		return fmt.Errorf("could not get current directory")
 	}
-
 	input := c.Args().First()
 
 	results := map[string][]byte{}
 	if !c.Args().Present() {
 		// no args, generate on current directory
-		results, err = util.GenerateDir(pwd)
+		results, err = util.GenerateDir(state.WorkingDirectory)
 	} else if filepath.Base(input) == "..." {
 		// recursively generate plots
 		results, err = util.GenerateDirRecusive(filepath.Dir(c.Args().First()))

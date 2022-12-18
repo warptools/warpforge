@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
+	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/serum-errors/go-serum"
@@ -20,6 +20,7 @@ import (
 	"github.com/warptools/warpforge/cmd/warpforge/internal/catalog"
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/cataloghtml"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/mirroring"
@@ -191,13 +192,12 @@ func cmdCatalogInit(c *cli.Context) error {
 	}
 	catalogName := c.Args().First()
 	var err error
-	// open the workspace set and get the catalog path
-	wsSet, err := util.OpenWorkspaceSet()
+	state, err := config.NewState()
 	if err != nil {
 		return err
 	}
-	root := wsSet.Root()
-	catalogPath, err := root.CatalogPath(catalogName)
+	wss, err := config.DefaultWorkspaceStack(state)
+	catalogPath, err := wss.Root().CatalogPath(catalogName)
 	if err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func cmdCatalogAdd(c *cli.Context) error {
 		refStr := c.Args().Get(3)
 
 		// open the remote and list all references
-		remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		remote := git.NewRemote(memory.NewStorage(), &gitconfig.RemoteConfig{
 			Name: "origin",
 			URLs: []string{url},
 		})
@@ -462,20 +462,22 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return fmt.Errorf("invalid input. usage: warpforge catalog release [release name]")
 	}
 	catalogName := c.String("name")
-
-	// open the workspace set
-	wsSet, err := util.OpenWorkspaceSet()
+	state, err := config.NewState()
 	if err != nil {
 		return err
 	}
-
+	wss, err := config.DefaultWorkspaceStack(state)
+	if err != nil {
+		return err
+	}
+	rootWs := wss.Root()
 	// create the catalog if it does not exist
-	exists, err := wsSet.Root().HasCatalog(catalogName)
+	exists, err := rootWs.HasCatalog(catalogName)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		err := wsSet.Root().CreateCatalog(catalogName)
+		err := rootWs.CreateCatalog(catalogName)
 		if err != nil {
 			return err
 		}
@@ -496,15 +498,13 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return err
 	}
 
-	config := wfapi.PlotExecConfig{
-		Recursive: false,
-	}
-	results, err := plotexec.Exec(ctx, wsSet, wfapi.PlotCapsule{Plot: &plot}, config)
+	execCfg := config.PlotExecConfig(state)
+	results, err := plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: &plot}, wfapi.PlotExecConfig{Recursive: false})
 	if err != nil {
 		return err
 	}
 
-	cat, err := wsSet.Root().OpenCatalog(catalogName)
+	cat, err := rootWs.OpenCatalog(catalogName)
 	if err != nil {
 		return err
 	}
@@ -548,7 +548,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 	itemName := c.Args().Get(2)
 
 	// open the remote and list all references
-	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+	remote := git.NewRemote(memory.NewStorage(), &gitconfig.RemoteConfig{
 		Name: "origin",
 		URLs: []string{url},
 	})

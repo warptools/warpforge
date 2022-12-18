@@ -9,9 +9,11 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/serum-errors/go-serum"
+	"go.opentelemetry.io/otel/codes"
 
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
-	"github.com/warptools/warpforge/pkg/formulaexec"
+	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
@@ -24,9 +26,22 @@ import (
 //
 //    - warpforge-error-io -- When the path to this executable can't be found
 func BinPath(bin string) (string, error) {
-	path, err := formulaexec.GetBinPath()
+	path, override := os.LookupEnv(config.EnvWarpforgePath)
+	if override {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", serum.Error(wfapi.ECodeIo,
+				serum.WithMessageTemplate("failed to canonicalize {{env}}: {{path}}"),
+				serum.WithDetail("path", path),
+				serum.WithCause(err),
+				serum.WithDetail("env", config.EnvWarpforgePath),
+			)
+		}
+		return filepath.Join(abs, bin), nil
+	}
+	path, err := os.Executable()
 	if err != nil {
-		return "", err
+		return "", wfapi.ErrorIo("failed to locate binary path", "", err)
 	}
 	return filepath.Join(path, bin), nil
 }
@@ -80,7 +95,6 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 }
 
 // ExecModule executes the given module file with the default plot file in the same directory.
-// WARNING: This function calls Chdir and may not change back on errors
 //
 // Errors:
 //
@@ -94,15 +108,25 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-workspace -- when opening the workspace set fails
-//    - warpforge-error-datatoonew -- when module or plot data version is unrecognized
-func ExecModule(ctx context.Context, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
-	ctx, span := tracing.Start(ctx, "execModule")
-	defer span.End()
-	result := wfapi.PlotResults{}
+//    - warpforge-error-datatoonew -- when error is too new
+//    - warpforge-error-searching-filesystem -- unexpected error traversing filesystem
+func ExecModule(ctx context.Context, state config.State, wss workspace.WorkspaceSet, pltCfg wfapi.PlotExecConfig, fileName string) (result wfapi.PlotResults, err error) {
+	ctx, span := tracing.StartFn(ctx, "execModule")
+	defer func() { tracing.EndWithStatus(span, err) }()
+	logger := logging.Ctx(ctx)
+	logger.Debug("", "state; %#v", state)
 
 	fsys := os.DirFS("/")
+
+	if wss == nil {
+		_wss, err := config.DefaultWorkspaceStack(state)
+		if err != nil {
+			return result, err
+		}
+		wss = _wss
+	}
+
 	// parse the module, even though it is not currently used
 	if _, err := dab.ModuleFromFile(fsys, fileName); err != nil {
 		return result, err
@@ -113,32 +137,14 @@ func ExecModule(ctx context.Context, config wfapi.PlotExecConfig, fileName strin
 		return result, werr
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return result, serum.Errorf(wfapi.ECodeUnknown, "unable to get pwd: %w", err)
-	}
-
-	wss, err := OpenWorkspaceSet()
-	if err != nil {
-		return result, wfapi.ErrorWorkspace(pwd, err)
-	}
-
-	tmpDir := filepath.Dir(fileName)
-	// FIXME: it would be nice if we could avoid changing directories.
-	//  This generally means removing Getwd calls from pkg libs
-	if err := os.Chdir(tmpDir); err != nil {
-		return result, wfapi.ErrorIo("cannot change directory", tmpDir, err)
-	}
-
-	result, werr = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
-
-	if err := os.Chdir(pwd); err != nil {
-		return result, wfapi.ErrorIo("cannot return to pwd", pwd, err)
-	}
+	execCfg := config.PlotExecConfig(state)
+	execCfg.WorkingDirectory = filepath.Dir(fileName)
+	result, werr = plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
 
 	if werr != nil {
 		return result, wfapi.ErrorPlotExecutionFailed(werr)
 	}
 
+	span.SetStatus(codes.Ok, "")
 	return result, nil
 }

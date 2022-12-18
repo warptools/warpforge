@@ -208,3 +208,22 @@ func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) error {
 	}
 	return nil
 }
+
+// CreateOrOpenHomeWorkspace will attempt to create the home workspace if it does not exist
+//
+// Errors:
+//
+//    - warpforge-error-io -- when creating the workspace fails
+//    - warpforge-error-workspace -- when workspace directory fails to open
+func CreateOrOpenHomeWorkspace() (*Workspace, error) {
+	hws, err := OpenHomeWorkspace(os.DirFS("/"))
+	if err == nil {
+		return hws, nil
+	}
+
+	path := filepath.Join("/", homedir, magicWorkspaceDirname)
+	if err := PlaceWorkspace(path, SetRootWorkspaceOpt()); err != nil {
+		return nil, err
+	}
+	return OpenHomeWorkspace(os.DirFS("/"))
+}

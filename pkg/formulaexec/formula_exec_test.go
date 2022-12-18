@@ -18,25 +18,20 @@ import (
 )
 
 // constructs a custom workspace set containing only this project's .warpforge dir (contains catalog)
-func getTestWorkspaceStack(t *testing.T) workspace.WorkspaceSet {
+func newTestConfig(t *testing.T) (ExecConfig, *workspace.Workspace) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
+
 	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
 	qt.Assert(t, err, qt.IsNil)
 
-	var wss workspace.WorkspaceSet = []*workspace.Workspace{
-		projWs,
-	}
-	return wss
-}
-
-func configureEnvironment(t *testing.T) {
-	pwd, err := os.Getwd()
-	qt.Assert(t, err, qt.IsNil)
-	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
-	qt.Assert(t, err, qt.IsNil)
-	err = os.Setenv("HOME", filepath.Join(pwd, "../../"))
-	qt.Assert(t, err, qt.IsNil)
+	return ExecConfig{
+		BinPath:          filepath.Join(pwd, "../../plugins"),
+		KeepRunDir:       false,
+		RunPathBase:      os.TempDir(),
+		WhPathOverride:   nil,
+		WorkingDirectory: pwd,
+	}, projWs
 }
 
 func evaluateDoc(t *testing.T, doc *testmark.Document) {
@@ -53,18 +48,13 @@ func evaluateDoc(t *testing.T, doc *testmark.Document) {
 
 				t.Run("exec-formula", func(t *testing.T) {
 					ctx := context.Background()
+					wfCfg, rootWs := newTestConfig(t)
+
 					frmAndCtx := wfapi.FormulaAndContext{}
 					_, err := ipld.Unmarshal(serial, json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 					qt.Assert(t, err, qt.IsNil)
 
-					config := wfapi.FormulaExecConfig{}
-
-					pwd, err := os.Getwd()
-					qt.Assert(t, err, qt.IsNil)
-					projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
-					qt.Assert(t, err, qt.IsNil)
-
-					rr, err := Exec(ctx, projWs, frmAndCtx, config)
+					rr, err := Exec(ctx, wfCfg, rootWs, frmAndCtx, wfapi.FormulaExecConfig{})
 					qt.Assert(t, err, qt.IsNil)
 
 					rrSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
@@ -100,7 +90,6 @@ func TestFormulaExecFixtures(t *testing.T) {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
 
-	configureEnvironment(t)
 	evaluateDoc(t, doc)
 }
 
@@ -110,6 +99,5 @@ func TestFormulaScriptFixtures(t *testing.T) {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
 
-	configureEnvironment(t)
 	evaluateDoc(t, doc)
 }

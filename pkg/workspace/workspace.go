@@ -1,12 +1,15 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/dab"
@@ -439,4 +442,76 @@ func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
 // 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
 func (ws *Workspace) GetMirroringConfig() (wfapi.MirroringConfig, error) {
 	return dab.MirroringConfigFromFile(ws.fsys, filepath.Join(ws.InternalPath(), dab.MagicFilename_MirroringConfig))
+}
+
+// StoreMemo will save a run record to the workspace
+//
+// Errors:
+//
+//   - warpforge-error-io -- when unable to read memo file
+//   - warpforge-error-serialization -- when unable to parse memo file
+func (ws *Workspace) StoreMemo(rr wfapi.RunRecord) error {
+	// create the memo path, if it does not exist
+	memoBasePath := ws.MemoBasePath()
+	err := os.MkdirAll(ws.MemoBasePath(), 0755)
+	if err != nil {
+		return wfapi.ErrorIo("failed to create memo dir", memoBasePath, err)
+	}
+
+	// serialize the memo
+	memoSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
+	if err != nil {
+		return wfapi.ErrorSerialization("failed to serialize memo", err)
+	}
+
+	// write the memo
+	memoPath := ws.MemoPath(rr.FormulaID)
+	err = os.WriteFile(memoPath, memoSerial, 0644)
+	if err != nil {
+		return wfapi.ErrorIo("failed to write memo file", memoPath, err)
+	}
+
+	return nil
+}
+
+// LoadMemo will attempt to find and return a run record from the workspace
+//
+// Errors:
+//
+//   - warpforge-error-io -- when unable to read memo file
+//   - warpforge-error-serialization -- when unable to parse memo file
+func (ws *Workspace) LoadMemo(fid string) (*wfapi.RunRecord, error) {
+	// if no workspace is provided, there can be no memos
+	if ws == nil {
+		return nil, nil
+	}
+
+	memoPath := ws.MemoPath(fid)
+	if len(memoPath) > 0 && memoPath[0] == '/' {
+		memoPath = memoPath[1:]
+	}
+
+	_, err := fs.Stat(ws.fsys, memoPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		// couldn't find a memo file, return nil to indicate there is no memo
+		return nil, nil
+	}
+	if err != nil {
+		// found memo file, but error reading, return error
+		return nil, wfapi.ErrorIo("failed to stat memo file", memoPath, err)
+	}
+
+	// read the file
+	f, err := fs.ReadFile(ws.fsys, memoPath)
+	if err != nil {
+		return nil, wfapi.ErrorIo("failed to read memo file", memoPath, err)
+	}
+
+	memo := wfapi.RunRecord{}
+	_, err = ipld.Unmarshal(f, json.Decode, &memo, wfapi.TypeSystem.TypeByName("RunRecord"))
+	if err != nil {
+		return nil, wfapi.ErrorSerialization(fmt.Sprintf("failed to deserialize memo file %q", memoPath), err)
+	}
+
+	return &memo, nil
 }

@@ -18,16 +18,23 @@ import (
 )
 
 // constructs a custom workspace set containing only this project's .warpforge dir (contains catalog)
-func getTestWorkspaceStack(t *testing.T) workspace.WorkspaceSet {
+func newTestConfig(t *testing.T) (ExecConfig, workspace.WorkspaceSet) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
+
 	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
 	qt.Assert(t, err, qt.IsNil)
-
 	var wss workspace.WorkspaceSet = []*workspace.Workspace{
 		projWs,
 	}
-	return wss
+
+	return ExecConfig{
+		BinPath:          filepath.Join(pwd, "../../plugins"),
+		KeepRunDir:       false,
+		RunPathBase:      os.TempDir(),
+		WhPathOverride:   nil,
+		WorkingDirectory: pwd,
+	}, wss
 }
 
 // Test example plots.
@@ -36,12 +43,6 @@ func TestFormulaExecFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("spec file parse failed?!: %s", err)
 	}
-
-	// override the path to required binaries
-	pwd, err := os.Getwd()
-	qt.Assert(t, err, qt.IsNil)
-	err = os.Setenv("WARPFORGE_PATH", filepath.Join(pwd, "../../plugins"))
-	qt.Assert(t, err, qt.IsNil)
 
 	// Data hunk in this spec file are in "directories" of a test scenario each.
 	doc.BuildDirIndex()
@@ -54,8 +55,9 @@ func TestFormulaExecFixtures(t *testing.T) {
 
 				t.Run("exec-plot", func(t *testing.T) {
 					ctx := context.Background()
+
 					plotCapsule := wfapi.PlotCapsule{}
-					_, err := ipld.Unmarshal(serial, json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
+					_, err = ipld.Unmarshal(serial, json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 					qt.Assert(t, err, qt.IsNil)
 					qt.Assert(t, plotCapsule.Plot, qt.IsNotNil)
 
@@ -66,11 +68,11 @@ func TestFormulaExecFixtures(t *testing.T) {
 						qt.Assert(t, string(dir.Children["order"].Hunk.Body), qt.CmpEquals(), fmt.Sprintf("%s\n", steps))
 					}
 
-					wss := getTestWorkspaceStack(t)
+					wfCfg, wss := newTestConfig(t)
 					config := wfapi.PlotExecConfig{
 						Recursive: true,
 					}
-					results, err := Exec(ctx, wss, plotCapsule, config)
+					results, err := Exec(ctx, wfCfg, wss, plotCapsule, config)
 					qt.Assert(t, err, qt.IsNil)
 
 					// print the serialized results, this can be copied into the testmark file

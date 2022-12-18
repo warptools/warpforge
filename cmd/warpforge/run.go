@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/logging"
@@ -42,20 +43,23 @@ var runCmdDef = cli.Command{
 func cmdRun(c *cli.Context) error {
 	ctx := c.Context
 	logger := logging.Ctx(ctx)
-	config := wfapi.PlotExecConfig{
+	pltCfg := wfapi.PlotExecConfig{
 		Recursive: c.Bool("recursive"),
 		FormulaExecConfig: wfapi.FormulaExecConfig{
 			DisableMemoization: c.Bool("force"),
 		},
 	}
 
+	state, err := config.NewState()
+	if err != nil {
+		return err
+	}
+	logger.Debug("", "state: %#v", state)
+
 	if !c.Args().Present() {
-		// execute the module in the current directory
-		pwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("could not get current directory")
-		}
-		_, err = util.ExecModule(ctx, config, filepath.Join(pwd, dab.MagicFilename_Module))
+		filename := filepath.Join(state.WorkingDirectory, dab.MagicFilename_Module) // execute the module in the current directory
+		logger.Debug("", "working directory module: %s", filename)
+		_, err = util.ExecModule(ctx, state, nil, pltCfg, filename)
 		if err != nil {
 			return err
 		}
@@ -73,7 +77,12 @@ func cmdRun(c *cli.Context) error {
 					if c.Bool("verbose") {
 						logger.Debug("", "executing %q", path)
 					}
-					_, err = util.ExecModule(ctx, config, path)
+					absPath, err := filepath.Abs(path)
+					if err != nil {
+						return err
+					}
+					state.WorkingDirectory = absPath
+					_, err = util.ExecModule(ctx, state, nil, pltCfg, path)
 					if err != nil {
 						return err
 					}
@@ -92,8 +101,7 @@ func cmdRun(c *cli.Context) error {
 			return err
 		}
 		if info.IsDir() {
-			// directory provided, execute module if it exists
-			_, err := util.ExecModule(ctx, config, filepath.Join(fileName, dab.MagicFilename_Module))
+			_, err := util.ExecModule(ctx, state, nil, pltCfg, filepath.Join(fileName, dab.MagicFilename_Module))
 			if err != nil {
 				return err
 			}
@@ -117,20 +125,19 @@ func cmdRun(c *cli.Context) error {
 					return err
 				}
 
-				wsSet, err := util.OpenWorkspaceSet()
-				if err != nil {
-					return fmt.Errorf("failed to open workspace set: %s", err)
-				}
-
 				// run formula
-				config := wfapi.FormulaExecConfig{}
-				_, err = formulaexec.Exec(ctx, wsSet.Root(), frmAndCtx, config)
+				frmCfg := wfapi.FormulaExecConfig{}
+				wss, err := config.DefaultWorkspaceStack(state)
 				if err != nil {
+					return err
+				}
+				frmExecCfg := config.FormulaExecConfig(state)
+				if _, err := formulaexec.Exec(ctx, frmExecCfg, wss.Root(), frmAndCtx, frmCfg); err != nil {
 					return err
 				}
 			case dab.FileType_Module:
 				logger.Debug("", "executing module")
-				_, err := util.ExecModule(ctx, config, fileName)
+				_, err := util.ExecModule(ctx, state, nil, pltCfg, fileName)
 				if err != nil {
 					return err
 				}

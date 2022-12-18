@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -51,10 +52,6 @@ var ferkCmdDef = cli.Command{
 func cmdFerk(c *cli.Context) error {
 	var err error
 	ctx := c.Context
-	wss, err := util.OpenWorkspaceSet()
-	if err != nil {
-		return err
-	}
 
 	plot := wfapi.Plot{}
 	if c.String("plot") != "" {
@@ -121,13 +118,23 @@ func cmdFerk(c *cli.Context) error {
 
 	// set up interactive based on flags
 	// disable memoization to force the formula to run
-	config := wfapi.PlotExecConfig{
+	pltCfg := wfapi.PlotExecConfig{
 		FormulaExecConfig: wfapi.FormulaExecConfig{
 			DisableMemoization: true,
 			Interactive:        !c.Bool("no-interactive"),
 		},
 	}
-	if _, err := plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config); err != nil {
+
+	state, err := config.NewState()
+	if err != nil {
+		return err
+	}
+	wss, err := config.DefaultWorkspaceStack(state)
+	if err != nil {
+		return err
+	}
+	exCfg := config.PlotExecConfig(state)
+	if _, err := plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg); err != nil {
 		return err
 	}
 

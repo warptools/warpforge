@@ -12,8 +12,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
-	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -34,10 +34,9 @@ func cmdStatus(c *cli.Context) error {
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
 	verbose := c.Bool("verbose")
 	ctx := c.Context
-
-	pwd, err := os.Getwd()
+	state, err := config.NewState()
 	if err != nil {
-		return fmt.Errorf("could not get current directory")
+		return err
 	}
 
 	// display version
@@ -52,15 +51,11 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, "\nPlugin Info:\n")
 	}
 
-	binPath, err := formulaexec.GetBinPath()
-	if err != nil {
-		return fmt.Errorf("could not get binPath: %s", err)
-	}
 	if verbose {
-		fmt.Fprintf(c.App.Writer, "binPath = %s\n", binPath)
+		fmt.Fprintf(c.App.Writer, "binPath = %s\n", config.BinPath(state))
 	}
 
-	rioPath := filepath.Join(binPath, "rio")
+	rioPath := filepath.Join(config.BinPath(state), "rio")
 	if _, err := os.Stat(rioPath); os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, "rio not found (expected at %s)\n", rioPath)
 		pluginsOk = false
@@ -70,14 +65,14 @@ func cmdStatus(c *cli.Context) error {
 		}
 	}
 
-	runcPath := filepath.Join(binPath, "runc")
+	runcPath := filepath.Join(config.BinPath(state), "runc")
 	if _, err := os.Stat(runcPath); os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, "runc not found (expected at %s)\n", runcPath)
 		pluginsOk = false
 	} else {
 		cmdCtx, cmdSpan := tracing.Start(ctx, "exec", trace.WithAttributes(tracing.AttrFullExecNameRunc))
 		defer cmdSpan.End()
-		runcVersionCmd := exec.CommandContext(cmdCtx, filepath.Join(binPath, "runc"), "--version")
+		runcVersionCmd := exec.CommandContext(cmdCtx, filepath.Join(config.BinPath(state), "runc"), "--version")
 		var runcVersionOut bytes.Buffer
 		runcVersionCmd.Stdout = &runcVersionOut
 		err = runcVersionCmd.Run()
@@ -99,9 +94,9 @@ func cmdStatus(c *cli.Context) error {
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(pwd, dab.MagicFilename_Module)); err == nil {
+	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, dab.MagicFilename_Module)); err == nil {
 		isModule = true
-		module, err = dab.ModuleFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Module))
+		module, err = dab.ModuleFromFile(fsys, filepath.Join(state.WorkingDirectory, dab.MagicFilename_Module))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -116,11 +111,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(pwd, dab.MagicFilename_Plot))
+	_, err = os.Stat(filepath.Join(state.WorkingDirectory, dab.MagicFilename_Plot))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = util.PlotFromFile(filepath.Join(pwd, dab.MagicFilename_Plot))
+		plot, err = util.PlotFromFile(filepath.Join(state.WorkingDirectory, dab.MagicFilename_Plot))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
@@ -183,20 +178,20 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	// handle special case for pwd
-	fmt.Fprintf(c.App.Writer, "\t%s (pwd", pwd)
+	fmt.Fprintf(c.App.Writer, "\t%s (pwd", state.WorkingDirectory)
 	if isModule {
 		fmt.Fprintf(c.App.Writer, ", module")
 	}
 	// check if it's a workspace
-	if _, err := os.Stat(filepath.Join(pwd, ".warpforge")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, ".warpforge")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", workspace")
 	}
 	// check if it's a root workspace
-	if _, err := os.Stat(filepath.Join(pwd, ".warpforge/root")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, ".warpforge/root")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", root workspace")
 	}
 	// check if it's a git repo
-	if _, err := os.Stat(filepath.Join(pwd, ".git")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, ".git")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", git repo")
 	}
 
@@ -207,7 +202,7 @@ func cmdStatus(c *cli.Context) error {
 		fs, subPath := ws.Path()
 		path := fmt.Sprintf("%s%s", fs, subPath)
 
-		if path == pwd {
+		if path == state.WorkingDirectory {
 			// we handle pwd earlier, ignore
 			continue
 		}
