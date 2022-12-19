@@ -15,6 +15,7 @@ const (
 	CodeSerialization    = "warpforge-error-serialization"
 	CodePlotInvalid      = "warpforge-error-plot-invalid"
 	CodeGeneratorFailed  = "warpforge-error-generator-failed"
+	CodeGit              = "warpforge-error-git"
 )
 
 // Error is a grouping interface for wfapi errors.
@@ -348,7 +349,7 @@ func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) Error {
 //    - warpforge-error-git --
 func ErrorGit(context string, cause error) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-git",
+		CodeString: CodeGit,
 		Message:    fmt.Sprintf("git error: %s: %s", context, cause),
 		Details: [][2]string{
 			{"context", context},

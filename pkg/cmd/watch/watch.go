@@ -3,6 +3,7 @@ package watch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -116,7 +117,7 @@ func (s *server) listen(ctx context.Context, sockPath string) (err error) {
 	cfg := net.ListenConfig{}
 	l, err := cfg.Listen(ctx, "unix", sockPath)
 	if err != nil {
-		return err
+		return wfapi.ErrorIo("could not create socket", sockPath, err)
 	}
 	s.listener = l
 	return nil
@@ -157,6 +158,11 @@ func (s *server) rmUnixSocket(path string) error {
 	return nil
 }
 
+// generateSocketPath converts the path of the module to a path where the socket will be created
+//
+// Errors:
+//
+//   - warpforge-error-io -- when socket path is too long
 func generateSocketPath(path string) (string, error) {
 	// This socket path generation is dumb. and also one of the simplest thing to do right now
 	sockPath := fmt.Sprintf("/tmp/warpforge-%s", url.PathEscape(path))
@@ -180,7 +186,7 @@ func generateSocketPath(path string) (string, error) {
 		//       char        sun_path[108];            /* Pathname */
 		//   };
 		// The sun_family field always contains AF_UNIX.  On Linux, sun_path is 108 bytes in size; ...
-		return sockPath, serum.Error("warpforge-error-situation",
+		return sockPath, serum.Error("warpforge-error-io",
 			serum.WithMessageTemplate("cannot establish unix socket because of path length: unix socket filenames have a length limit of 108; the computed socket file name for the module at {{path|q}} is {{socketPath|q}}, which is {{socketPathLen}} long."),
 			serum.WithDetail("modulePath", path),
 			serum.WithDetail("socketPath", sockPath),
@@ -190,6 +196,17 @@ func generateSocketPath(path string) (string, error) {
 	return sockPath, nil
 }
 
+// Run will execute the watch command
+//
+// Errors:
+//
+//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
+//    - warpforge-error-git --
+//    - warpforge-error-io -- when socket path is too long
+//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
+//    - warpforge-error-serialization -- when the module or plot cannot be parsed
+//    - warpforge-error-unknown -- when changing directories fails
+//    - warpforge-error-unknown -- when context ends for reasons other than being canceled
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 	// TODO: currently we read the module/plot from the provided path.
@@ -224,9 +241,9 @@ func (c *Config) Run(ctx context.Context) error {
 
 	srv := server{status: statusRunning}
 	if c.Socket {
-		absPath, err := filepath.Abs(c.Path)
-		if err != nil {
-			return err
+		absPath, absErr := filepath.Abs(c.Path)
+		if absErr != nil {
+			return wfapi.ErrorIo("could not get absolute path", c.Path, absErr)
 		}
 		sockPath, err := generateSocketPath(absPath)
 		if err != nil {
@@ -249,7 +266,10 @@ func (c *Config) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return nil
+			}
+			return wfapi.ErrorUnknown("context error", ctx.Err())
 		default:
 		}
 		outerCtx, outerSpan := tracing.Start(ctx, "watch-loop")
@@ -267,25 +287,33 @@ func (c *Config) Run(ctx context.Context) error {
 			})
 			tracing.EndWithStatus(gitSpan, err)
 			if err != nil {
-				return fmt.Errorf("failed to checkout git repository at %q to memory: %s", path, err)
+				return serum.Error(wfapi.CodeGit,
+					serum.WithMessageTemplate("failed to checkout git repository {{ repository | q }} to memory"),
+					serum.WithDetail("repository", path),
+					serum.WithCause(err),
+				)
 			}
 
 			hashBytes, err := r.ResolveRevision(plumbing.Revision(rev))
 			if err != nil {
-				return fmt.Errorf("failed to resolve git hash: %s", err)
+				return serum.Error(wfapi.CodeGit,
+					serum.WithMessageTemplate("failed to resolve git hash for revision {{ revision | q }}"),
+					serum.WithDetail("revision", rev),
+					serum.WithCause(err),
+				)
 			}
 			hash := hashBytes.String()
 
 			if ingestCache[path] != hash {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
-				fmt.Println("path", path, "changed, new hash", hash)
+				log.Info("", "path %q changed; new hash %q", path, hash)
 				ingestCache[path] = hash
 				srv.status = statusRunning
 
 				modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
 				_, err := execModule(innerCtx, c.PlotConfig, modulePath)
 				if err != nil {
-					fmt.Printf("exec failed: %s\n", err)
+					log.Info("", "exec failed: %s", err)
 					srv.status = statusFailed
 				} else {
 					srv.status = statusOkay
@@ -306,10 +334,10 @@ func (c *Config) Run(ctx context.Context) error {
 //
 //    - warpforge-error-catalog-invalid --
 //    - warpforge-error-catalog-parse --
+//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
 //    - warpforge-error-git --
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
 //    - warpforge-error-missing-catalog-entry --
-//    - warpforge-error-module-invalid -- when the module data is invalid
 //    - warpforge-error-plot-execution-failed --
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
