@@ -206,17 +206,18 @@ func (c *Config) Run(ctx context.Context) error {
 		if err := srv.rmUnixSocket(sockPath); err != nil {
 			log.Info("", "removing socket %q: %s", sockPath, err.Error())
 		}
+		ctx, cancel := context.WithCancel(ctx)
+		defer func() {
+			cancel()
+			runtime.Gosched() // give server a chance to close on context cancel
+		}()
 		go func() {
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
 			if err := srv.listen(ctx, sockPath); err != nil {
 				log.Info("", "socket server closed: %s", err.Error())
 			}
 		}()
 		log.Info("", "serving to %q\n", sockPath)
-		runtime.Gosched()
-		time.Sleep(time.Second) // give user a second to realize that there's info here.
-		defer runtime.Gosched() // give server a chance to close on context cancel
+		time.Sleep(time.Second) // give user a second to realize that there's info here. FIXME: Consider literally anything other than a hardcoded sleep.
 	}
 	for {
 		select {
