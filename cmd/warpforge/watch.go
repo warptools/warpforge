@@ -22,8 +22,8 @@ var watchCmdDef = cli.Command{
 	),
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "socket",
-			Usage: "Experimental flag for getting execution status of the watched plot externally via unix socket",
+			Name:  "disable-socket",
+			Usage: "Disable unix socket server. Use this if you are having problems due to socket creation.",
 		},
 	},
 }
@@ -34,7 +34,7 @@ func cmdWatch(c *cli.Context) error {
 	}
 	cfg := &watch.Config{
 		Path:   c.Args().First(),
-		Socket: c.Bool("socket"),
+		Socket: !c.Bool("disable-socket"),
 		PlotConfig: wfapi.PlotExecConfig{
 			Recursive: c.Bool("recursive"),
 			FormulaExecConfig: wfapi.FormulaExecConfig{
