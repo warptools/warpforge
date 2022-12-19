@@ -12,6 +12,7 @@ import (
 	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/dab"
+	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
@@ -35,27 +36,19 @@ func GetFileType(name string) (string, error) {
 	return strings.TrimSuffix(filepath.Base(name), ext), nil
 }
 
+
+
 // BinPath is a helper function for finding the path to internally used binaries (e.g, rio, runc)
 //
 // Errors:
 //
-//    - warpforge-error-unknown -- When the path to this executable can't be found
+//    - warpforge-error-io -- When the path to this executable can't be found
 func BinPath(bin string) (string, error) {
-	path, override := os.LookupEnv("WARPFORGE_PATH")
-	if override {
-		abs, err := filepath.Abs(path)
-		if err != nil {
-			return "", wfapi.ErrorIo("failed to canonicalize WARPFORGE_PATH", path, err)
-		}
-		return filepath.Join(abs, bin), nil
-	}
-
-	path, err := os.Executable()
+	path, err := formulaexec.GetBinPath()
 	if err != nil {
-		return "", serum.Errorf(wfapi.ECodeUnknown, "unable to get path of warpforge executable: %w", err)
+		return "", err
 	}
-
-	return filepath.Join(filepath.Dir(path), bin), nil
+	return filepath.Join(path, bin), nil
 }
 
 // OpenWorkspaceSet opens the default WorkspaceSet.
