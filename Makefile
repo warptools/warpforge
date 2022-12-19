@@ -4,6 +4,7 @@ MODULE := $(shell go list -m)
 
 install:
 	@echo "Installing plugins..."
+	mkdir -p $(GOBIN)
 	cp ./plugins/* $(GOBIN)
 	@echo "Building and installing warpforge..."
 	go install ./...
