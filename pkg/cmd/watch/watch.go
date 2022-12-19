@@ -35,10 +35,26 @@ type Config struct {
 }
 
 type server struct {
-	status int
+	status   int
+	listener net.Listener
 }
 
+// handle is expected to respond to client connections.
+// This function should recover from panics and log errors before returning.
+// It is expected that handle is run as a goroutine and that errors may not be handled.
+//
+// handle emits the current status of the watch command over the connection
 func (s *server) handle(ctx context.Context, conn net.Conn) error {
+	log := logging.Ctx(ctx)
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Info("", "socket handler panic: %s", r)
+			return
+		}
+	}()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	// in lieu of doing anything complicated, shoving a status int down the pipe is sufficient
 	// for the unix socket implementation we can now use netcat or similar for a status.
 	// I.E. nc -U ./sock
@@ -47,31 +63,32 @@ func (s *server) handle(ctx context.Context, conn net.Conn) error {
 	enc := json.NewEncoder(conn)
 	err := enc.Encode(s.status)
 	if err != nil {
+		log.Info("", "socket handler: %s", err.Error())
 		return err
 	}
 	return nil
 }
 
-func (s *server) serveLoop(ctx context.Context, l net.Listener) error {
+// serve will call Accept and block until the listener is closed.
+// context will only be checked between accepted connections
+// serve should not return under normal circumstances, however if an error occurs during accept then it will log that error and return it
+// will log and return immediately if listen was not called
+// It is expected that serve will be called as a goroutine and the returned error may not be handled.
+// Any errors should be logged before returning.
+func (s *server) serve(ctx context.Context) error {
 	log := logging.Ctx(ctx)
+	if s.listener == nil {
+		err := fmt.Errorf("did not call listen on server")
+		log.Info("", err.Error())
+		return err
+	}
 	for {
-		conn, err := l.Accept() // blocks, doesn't accept a context.
+		conn, err := s.listener.Accept() // blocks, doesn't accept a context.
 		if err != nil {
+			log.Info("", "socket error on accept: %s", err.Error())
 			return err
 		}
-		go func() {
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			defer func() {
-				r := recover()
-				if r != nil {
-					log.Info("", "socket handler panic: %s", r)
-				}
-			}()
-			if err := s.handle(ctx, conn); err != nil {
-				log.Info("", "socket handler: %s", err.Error())
-			}
-		}()
+		go s.handle(ctx, conn)
 		select {
 		case <-ctx.Done():
 			log.Info("", "socket no longer accepting connections")
@@ -81,23 +98,16 @@ func (s *server) serveLoop(ctx context.Context, l net.Listener) error {
 	}
 }
 
-//serve will create and listen to a unix socket on the given socket path
-func (s *server) listen(ctx context.Context, sockPath string) error {
-	log := logging.Ctx(ctx)
+// listen will create a unix socket on the given path
+// listen should be called before "serve"
+func (s *server) listen(ctx context.Context, sockPath string) (err error) {
 	cfg := net.ListenConfig{}
 	l, err := cfg.Listen(ctx, "unix", sockPath)
 	if err != nil {
 		return err
 	}
-
-	result := make(chan error)
-	go func() {
-		result <- s.serveLoop(ctx, l)
-	}()
-	<-ctx.Done()
-	l.Close()
-	log.Info("", "listener closed")
-	return <-result
+	s.listener = l
+	return nil
 }
 
 func isSocket(m fs.FileMode) bool {
@@ -213,16 +223,14 @@ func (c *Config) Run(ctx context.Context) error {
 		if err := srv.rmUnixSocket(sockPath); err != nil {
 			log.Info("", "removing socket %q: %s", sockPath, err.Error())
 		}
+		defer runtime.Gosched() // give server a chance to close on context cancel/close
 		ctx, cancel := context.WithCancel(ctx)
-		defer func() {
-			cancel()
-			runtime.Gosched() // give server a chance to close on context cancel
-		}()
-		go func() {
-			if err := srv.listen(ctx, sockPath); err != nil {
-				log.Info("", "socket server closed: %s", err.Error())
-			}
-		}()
+		defer cancel()
+		if err := srv.listen(ctx, sockPath); err != nil {
+			return err
+		}
+		defer srv.listener.Close()
+		go srv.serve(ctx)
 		log.Info("", "serving to %q\n", sockPath)
 		time.Sleep(time.Second) // give user a second to realize that there's info here. FIXME: Consider literally anything other than a hardcoded sleep.
 	}
