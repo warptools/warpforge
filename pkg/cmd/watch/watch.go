@@ -105,6 +105,13 @@ func isSocket(m fs.FileMode) bool {
 }
 
 // rmUnixSocket will perform a racy, lockless "liveness" check on the socket before removing it.
+// If socket does not exist then rmUnixSocket will return nil.
+// If a non-socket file exists at the given path, an error will be returned.
+// If socket exists and a listener responds then we do nothing and the return nil on the assumption that something in the future will return a bind error.
+// If the socket exists and a listener does not respond to a dial then the file will be removed.
+//
+// NOTE: If for some reason the socket exists and the listener is alive but does not respond, the file will still be removed.
+// This will likely result in errors for whoever is expecting that socket file to exist, however the listener holds an open file descriptor and will not likely detect any problems.
 func (s *server) rmUnixSocket(path string) error {
 	fi, err := os.Stat(path)
 	if os.IsNotExist(err) {
