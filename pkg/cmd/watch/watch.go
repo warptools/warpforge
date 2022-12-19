@@ -89,8 +89,6 @@ func (s *server) listen(ctx context.Context, sockPath string) error {
 	if err != nil {
 		return err
 	}
-	// unix socks: they have permissions systems.
-	os.Chmod(sockPath, 0777) // ignore err?
 
 	result := make(chan error)
 	go func() {
