@@ -28,16 +28,28 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
+// Configuration for the watch command
 type Config struct {
-	Path       string
-	Socket     bool
+	// Path is the path to the directory containing the module you want to watch
+	Path string
+	// Socket will enable a unix socket that emits watch result status
+	Socket bool
+	// PlotConfig customizes the plot execution
 	PlotConfig wfapi.PlotExecConfig
 }
 
+// server stores the current status of the plot execution and responds to clients
 type server struct {
 	status   int
 	listener net.Listener
 }
+
+// Extremely basic status responses for the watch server
+const (
+	statusRunning = -1
+	statusOkay    = 0
+	statusFailed  = 1
+)
 
 // handle is expected to respond to client connections.
 // This function should recover from panics and log errors before returning.
@@ -210,7 +222,7 @@ func (c *Config) Run(ctx context.Context) error {
 		ingestCache[k] = v
 	}
 
-	srv := server{status: -1}
+	srv := server{status: statusRunning}
 	if c.Socket {
 		absPath, err := filepath.Abs(c.Path)
 		if err != nil {
@@ -268,15 +280,15 @@ func (c *Config) Run(ctx context.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
-				srv.status = -1
+				srv.status = statusRunning
 
 				modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
 				_, err := execModule(innerCtx, c.PlotConfig, modulePath)
 				if err != nil {
 					fmt.Printf("exec failed: %s\n", err)
-					srv.status = 1
+					srv.status = statusFailed
 				} else {
-					srv.status = 0
+					srv.status = statusOkay
 				}
 			}
 			innerSpan.End()
