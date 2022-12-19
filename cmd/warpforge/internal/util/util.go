@@ -43,7 +43,11 @@ func GetFileType(name string) (string, error) {
 func BinPath(bin string) (string, error) {
 	path, override := os.LookupEnv("WARPFORGE_PATH")
 	if override {
-		return filepath.Join(path, bin), nil
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", wfapi.ErrorIo("failed to canonicalize WARPFORGE_PATH", path, err)
+		}
+		return filepath.Join(abs, bin), nil
 	}
 
 	path, err := os.Executable()

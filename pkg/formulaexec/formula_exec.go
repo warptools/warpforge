@@ -593,7 +593,11 @@ func GetBinPath() (string, error) {
 	// other binaries (runc, rio) will be located here as well
 	path, override := os.LookupEnv("WARPFORGE_PATH")
 	if override {
-		return path, nil
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", wfapi.ErrorIo("failed to canonicalize WARPFORGE_PATH", path, err)
+		}
+		return abs, nil
 	} else {
 		binPath, err := os.Executable()
 		if err != nil {
