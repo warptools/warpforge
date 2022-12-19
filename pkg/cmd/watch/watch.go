@@ -134,9 +134,25 @@ func generateSocketPath(path string) (string, error) {
 	// This socket path generation is dumb. and also one of the simplest thing to do right now
 	sockPath := fmt.Sprintf("/tmp/warpforge-%s", url.PathEscape(path))
 	if len(sockPath) > 108 {
-		// There is a 108 char limit on socket paths. This is also dumb, but not our fault.
+		// There is a 108 char limit on socket paths.
+		// This is problematic, but originates in the linux kernel, so options for addressing it are limited.
+		// Currently we do not take any special action to avoid this problem.
+		// Future work could include either name mangles (e.g. hashing or truncating paths), introducing additional
+		// config for customizing socket path in workspaces, or moving directories
+		// to affect how the path appears to the dial call relative to the execution context.
+		//
+		// We would like to put sockets _in_ workspace directories but placing them in /tmp for now seems
+		// like a cheap, low effort solution to the problem at the moment.
 		// Hopefully you don't run into this as a problem
-		// See: man unix -> sockaddr_un.sun_path (i.e. [108]char)
+		//
+		// See `man unix`:
+		//
+		// A UNIX domain socket address is represented in the following structure:
+		//   struct sockaddr_un {
+		//       sa_family_t sun_family;               /* AF_UNIX */
+		//       char        sun_path[108];            /* Pathname */
+		//   };
+		// The sun_family field always contains AF_UNIX.  On Linux, sun_path is 108 bytes in size; ...
 		return sockPath, serum.Error("warpforge-error-situation",
 			serum.WithMessageTemplate("cannot establish unix socket because of path length: unix socket filenames have a length limit of 108; the computed socket file name for the module at {{path|q}} is {{socketPath|q}}, which is {{socketPathLen}} long."),
 			serum.WithDetail("modulePath", path),
