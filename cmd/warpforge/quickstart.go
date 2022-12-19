@@ -74,7 +74,7 @@ func cmdQuickstart(c *cli.Context) error {
 
 	if !c.Bool("quiet") {
 		fmt.Fprintf(c.App.Writer, "Successfully created %s and %s for module %q.\n", util.ModuleFilename, util.PlotFilename, moduleName)
-		fmt.Fprintf(c.App.Writer, "Ensure your catalogs are up to date by running `%s catalog update.`.\n", os.Args[0])
+		fmt.Fprintf(c.App.Writer, "Ensure your catalogs are up to date by running `%s catalog update`.\n", os.Args[0])
 		fmt.Fprintf(c.App.Writer, "You can check status of this module with `%s status`.\n", os.Args[0])
 		fmt.Fprintf(c.App.Writer, "You can run this module with `%s run`.\n", os.Args[0])
 		fmt.Fprintf(c.App.Writer, "Once you've run the Hello World example, edit the 'script' section of %s to customize what happens.\n", util.PlotFilename)
