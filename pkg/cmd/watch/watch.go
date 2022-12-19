@@ -151,7 +151,7 @@ func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 	// TODO: currently we read the module/plot from the provided path.
 	// instead, we should read it from the git cache dir
-	plot, err := dab.PlotFromFile(os.DirFS("/"), filepath.Join(c.Path, dab.MagicFilename_Plot))
+	plot, err := dab.PlotFromFile(os.DirFS(c.Path), dab.MagicFilename_Plot)
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,9 @@ func (c *Config) Run(ctx context.Context) error {
 				fmt.Println("path", path, "changed, new hash", hash)
 				ingestCache[path] = hash
 				srv.status = -1
-				_, err := execModule(innerCtx, c.PlotConfig, filepath.Join(c.Path, dab.MagicFilename_Module))
+
+				modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
+				_, err := execModule(innerCtx, c.PlotConfig, modulePath)
 				if err != nil {
 					fmt.Printf("exec failed: %s\n", err)
 					srv.status = 1
@@ -272,24 +274,28 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-workspace -- when opening the workspace set fails
-func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
+func execModule(ctx context.Context, config wfapi.PlotExecConfig, modulePath string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()
 	result := wfapi.PlotResults{}
 
-	// parse the module, even though it is not currently used
-	if _, werr := dab.ModuleFromFile(os.DirFS("/"), fileName); werr != nil {
-		return result, werr
-	}
-
-	plot, werr := dab.PlotFromFile(os.DirFS("/"), filepath.Join(filepath.Dir(fileName), dab.MagicFilename_Plot))
-	if werr != nil {
-		return result, werr
-	}
-
 	pwd, nerr := os.Getwd()
 	if nerr != nil {
 		return result, wfapi.ErrorUnknown("unable to get pwd", nerr)
+	}
+
+	modulePathAbs, err := filepath.Abs(modulePath)
+	if err != nil {
+		return result, wfapi.ErrorIo("unable to get absolute path", modulePathAbs, err)
+	}
+	// parse the module, even though it is not currently used
+	if _, werr := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs[1:]); werr != nil {
+		return result, werr
+	}
+
+	plot, werr := dab.PlotFromFile(os.DirFS("/"), filepath.Join(filepath.Dir(modulePathAbs), dab.MagicFilename_Plot)[1:])
+	if werr != nil {
+		return result, werr
 	}
 
 	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
@@ -297,7 +303,7 @@ func execModule(ctx context.Context, config wfapi.PlotExecConfig, fileName strin
 		return result, wfapi.ErrorWorkspace(pwd, err)
 	}
 
-	tmpDir := filepath.Dir(fileName)
+	tmpDir := filepath.Dir(modulePathAbs)
 	// FIXME: it would be nice if we could avoid changing directories.
 	//  This generally means removing Getwd calls from pkg libs
 	if nerr := os.Chdir(tmpDir); nerr != nil {
