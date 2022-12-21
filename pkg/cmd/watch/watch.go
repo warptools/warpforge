@@ -82,13 +82,12 @@ func (s *server) handle(ctx context.Context, conn net.Conn) error {
 	return nil
 }
 
-// serve will call Accept and block until the listener is closed.
-// context will only be checked between accepted connections
-// serve should not return under normal circumstances, however if an error occurs during accept then it will log that error and return it
-// will log and return immediately if listen was not called
-// It is expected that serve will be called as a goroutine and the returned error may not be handled.
-// Any errors should be logged before returning.
+// serve accepts and handles connections to the server.
+// Serve should not return under normal circumstances, however if an error occurs then it will log that error and return it.
+// Context will only be checked between accepted connections, canceling this function while it's blocking requires the server's listener to be closed.
 func (s *server) serve(ctx context.Context) error {
+	// It is expected that serve will be called as a goroutine and the returned error may not be handled.
+	// Any errors should be logged before returning.
 	log := logging.Ctx(ctx)
 	if s.listener == nil {
 		err := fmt.Errorf("did not call listen on server")
