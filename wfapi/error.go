@@ -15,6 +15,7 @@ const (
 	CodeSerialization    = "warpforge-error-serialization"
 	CodePlotInvalid      = "warpforge-error-plot-invalid"
 	CodeGeneratorFailed  = "warpforge-error-generator-failed"
+	CodeGit              = "warpforge-error-git"
 )
 
 // Error is a grouping interface for wfapi errors.
@@ -348,7 +349,7 @@ func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) Error {
 //    - warpforge-error-git --
 func ErrorGit(context string, cause error) Error {
 	return &ErrorVal{
-		CodeString: "warpforge-error-git",
+		CodeString: CodeGit,
 		Message:    fmt.Sprintf("git error: %s: %s", context, cause),
 		Details: [][2]string{
 			{"context", context},
@@ -491,4 +492,22 @@ func ErrorPlotExecutionFailed(cause error) error {
 //    - warpforge-error-generator-failed --
 func ErrorGeneratorFailed(generatorName string, inputFile string, details string) error {
 	return serum.Errorf(CodeGeneratorFailed, "execution of external generator %q for file %q failed: %s", generatorName, inputFile, details)
+}
+
+// ErrorDataTooNew is returned when some data was (partially) deserialized,
+// but only enough that we could recognize it as being a newer version of message
+// than this application supports.
+//
+// Errors:
+//
+//    - warpforge-error-datatoonew -- if some data is too new to parse completely.
+func ErrorDataTooNew(context string, cause error) Error {
+	return &ErrorVal{
+		CodeString: "warpforge-error-datatoonew",
+		Message:    fmt.Sprintf("while %s, encountered data from an unknown version: %s", context, cause),
+		Details: [][2]string{
+			{"context", context},
+		},
+		Cause: wrapErr(cause),
+	}
 }

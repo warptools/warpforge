@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/wfapi"
 )
 
 const (
-	magicWorkspaceDirname = ".warpforge"
+	magicWorkspaceDirname = dab.MagicFilename_Workspace
 )
 
 var homedir string

@@ -11,17 +11,19 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
 
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
 
+// DEPRECATED: use dab package
 // special file names for plot and module files
 // these are json files with special formatting for detection
 const (
-	PlotFilename   = "plot.wf"
-	ModuleFilename = "module.wf"
+	PlotFilename   = dab.MagicFilename_Plot
+	ModuleFilename = dab.MagicFilename_Module
 )
 
 // GetFileType returns the file type, which is the file name without extension
@@ -82,6 +84,7 @@ func OpenWorkspaceSet() (workspace.WorkspaceSet, wfapi.Error) {
 	return wss, nil
 }
 
+// DEPRECATED: use dab package
 // PlotFromFile takes a path to a plot file, returns a plot
 // Errors:
 //
@@ -106,6 +109,7 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 	return *plotCapsule.Plot, nil
 }
 
+// DEPRECATED: use dab package
 // ModuleFromFile takes a path to a module file, returns a module
 // Errors:
 //

@@ -1,7 +1,10 @@
 package util
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
 
 	"github.com/urfave/cli/v2"
 
@@ -78,4 +81,23 @@ func CmdMiddlewareTracingConfig(f cli.ActionFunc) cli.ActionFunc {
 		c.Context = ctx
 		return f(c)
 	}
+}
+
+// CmdMiddlewareCancelOnInterrupt will cause the function context to be canceled on receiving an os.Interrupt signal
+func CmdMiddlewareCancelOnInterrupt(f cli.ActionFunc) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		ctx := c.Context
+		ctx, cancel := context.WithCancel(ctx)
+		c.Context = ctx
+		go CancelOnInterrupt(cancel)
+		return f(c)
+	}
+}
+
+// CancelOnInterrupt blocks until a os.Interrupt is received, then calls cancel.
+func CancelOnInterrupt(cancel context.CancelFunc) {
+	signalChan := make(chan os.Signal)
+	signal.Notify(signalChan, os.Interrupt)
+	<-signalChan
+	cancel()
 }
