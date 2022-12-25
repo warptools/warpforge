@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/serum-errors/go-serum"
+
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -38,6 +40,10 @@ func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *
 	for _, ws := range wsSet {
 		wareId, wareAddr, err := ws.GetCatalogWare(ref)
 		if err != nil {
+			if serum.Code(err) == wfapi.ECodeCatalogMissingEntry {
+				continue
+			}
+			// Error Codes -= warpforge-error-missing-catalog-entry
 			return nil, nil, err
 		}
 		if wareId != nil {

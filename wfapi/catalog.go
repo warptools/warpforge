@@ -85,7 +85,7 @@ func (rel *CatalogRelease) Cid() CatalogReleaseCID {
 
 	// compute CID of parsed release data
 	lsys := cidlink.DefaultLinkSystem()
-	lnk, errRaw := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+	lnk, errRaw := lsys.ComputeLink(cidlink.LinkPrototype{Prefix: cid.Prefix{
 		Version:  1,    // Usually '1'.
 		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
 		MhType:   0x20, // 0x20 means "sha2-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/

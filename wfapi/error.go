@@ -46,6 +46,23 @@ const (
 	ECodeWorkspace     = "warpforge-error-workspace"
 )
 
+// IsCode reports whether any error in err's chain matches the given code string.
+//
+// The chain consists of err itself followed by the sequence of errors obtained
+// by repeatedly calling serum.Cause which is similar to calling Unwrap.
+//
+// An error is considered to match the code string if the result of
+// serum.Code(err) is equal to the code string.
+func IsCode(err error, code string) bool {
+	for err != nil {
+		if serum.Code(err) == code {
+			return true
+		}
+		err = serum.Cause(err)
+	}
+	return false
+}
+
 // TerminalError emits an error on stdout as json, and halts immediately.
 // In most cases, you should not use this method, and there will be a better place to send errors
 // that will be more guaranteed to fit any protocols and scripts better;

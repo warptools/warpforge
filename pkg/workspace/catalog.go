@@ -202,7 +202,8 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 //
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
-//     - warpforge-error-catalog-invalid -- when catalog files or entries are not found
+//     - warpforge-error-catalog-invalid -- when catalog files are not found
+//     - warpforge-error-missing-catalog-entry -- when catalog item is not found
 func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	release, err := cat.GetRelease(ref)
 	if err != nil {
@@ -216,9 +217,8 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	// valid release found found, now try find the item
 	wareId, itemFound := release.Items.Values[ref.ItemName]
 	if !itemFound {
-		return nil, nil, wfapi.ErrorCatalogInvalid(
-			cat.releaseFilePath(ref),
-			fmt.Sprintf("release %q does not contain the requested item %q", release.ReleaseName, ref.ItemName))
+		// it doesn't make sense to check for a replay when we don't have an ID
+		return nil, nil, wfapi.ErrorMissingCatalogEntry(ref, false)
 	}
 
 	// item found, check for a matching mirror
