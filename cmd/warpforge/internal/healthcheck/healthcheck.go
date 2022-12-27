@@ -139,11 +139,11 @@ func Status(err error) HealthCheckStatus {
 	if err == nil {
 		return StatusNone
 	}
-	e, ok := err.(serum.ErrorInterface)
+	_, ok := err.(serum.ErrorInterface)
 	if !ok {
 		return StatusNone
 	}
-	switch e.Code() {
+	switch serum.Code(err) {
 	case CodeRunFailure:
 		return StatusFail
 	case CodeRunOkay:

@@ -1018,14 +1018,13 @@ func Exec(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndConte
 	logger := logging.Ctx(ctx)
 	rr, err := execFormula(ctx, ws, fc, formulaConfig, *logger)
 	if err != nil {
-		serr := err.(serum.ErrorInterface)
-		switch serr.Code() {
+		switch serum.Code(err) {
 		case "warpforge-error-io":
 			err := wfapi.ErrorFormulaExecutionFailed(err)
-			tracing.SetSpanError(ctx, serr)
+			tracing.SetSpanError(ctx, err)
 			return rr, err
 		default:
-			tracing.SetSpanError(ctx, serr)
+			tracing.SetSpanError(ctx, err)
 			// Error Codes -= warpforge-error-io
 			return rr, err
 		}

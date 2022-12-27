@@ -7,14 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/serum-errors/go-serum"
+
 	_ "github.com/warptools/warpforge/pkg/testutil"
 	"github.com/warptools/warpforge/wfapi"
 )
-
-type codedError interface {
-	error
-	Code() string
-}
 
 type Workspace struct {
 	fsys            fs.FS  // the fs.  (Most of the application is expected to use just one of these, but it's always configurable, largely for tests.)
@@ -244,7 +241,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 	for _, c := range cats {
 		cat, err := ws.OpenCatalog(c)
 		if err != nil {
-			switch err.(codedError).Code() {
+			switch serum.Code(err) {
 			case "warpforge-error-catalog-name":
 				panic(err)
 			default:
@@ -330,7 +327,7 @@ func (ws *Workspace) CreateCatalog(name string) error {
 func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, error) {
 	err := ws.CreateCatalog(name)
 	if err != nil {
-		switch err.(codedError).Code() {
+		switch serum.Code(err) {
 		case "warpforge-error-already-exists":
 			return ws.OpenCatalog(name)
 		default:
@@ -360,7 +357,7 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error)
 	for _, c := range cats {
 		cat, err := ws.OpenCatalog(c)
 		if err != nil {
-			switch err.(codedError).Code() {
+			switch serum.Code(err) {
 			case "warpforge-error-catalog-name":
 				// This shouldn't happen
 				panic(err)
