@@ -71,7 +71,7 @@ func BinPath(bin string) (string, error) {
 //
 //    - warpforge-error-workspace -- could not load workspace stack
 //    - warpforge-error-unknown -- failed to get working directory
-func OpenWorkspaceSet() (workspace.WorkspaceSet, wfapi.Error) {
+func OpenWorkspaceSet() (workspace.WorkspaceSet, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return workspace.WorkspaceSet{}, wfapi.ErrorUnknown("failed to get working directory: %s", err)

@@ -23,6 +23,7 @@ import (
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/serum-errors/go-serum"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -167,7 +168,7 @@ func getNetworkMounts(wsPath string) []specs.Mount {
 //
 //    - warpforge-error-io -- when file reads, writes, and dir creation fails
 //    - warpforge-error-executor-failed -- when generation of the base spec by runc fails
-func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runConfig, wfapi.Error) {
+func getBaseConfig(ctx context.Context, wsPath, runPath, binPath string) (runConfig, error) {
 	rc := runConfig{
 		runPath:     runPath,
 		wsPath:      wsPath,
@@ -299,7 +300,7 @@ func makeWareMount(ctx context.Context,
 	dest string,
 	context *wfapi.FormulaContext,
 	filters wfapi.FilterMap,
-	logger logging.Logger) (specs.Mount, wfapi.Error) {
+	logger logging.Logger) (specs.Mount, error) {
 	// default warehouse to unpack from
 	src := "ca+file://" + containerWarehousePath()
 
@@ -430,7 +431,7 @@ func makeWareMount(ctx context.Context,
 // Errors:
 //
 //     - warpforge-error-io -- when creation of dirs fails
-func makeOverlayPathMount(ctx context.Context, config runConfig, path string, dest string) (specs.Mount, wfapi.Error) {
+func makeOverlayPathMount(ctx context.Context, config runConfig, path string, dest string) (specs.Mount, error) {
 	mountId := strings.Replace(path, "/", "-", -1)
 	mountId = strings.Replace(mountId, ".", "-", -1)
 	upperdirPath := filepath.Join(config.runPath, "overlays/upper-", mountId)
@@ -461,7 +462,7 @@ func makeOverlayPathMount(ctx context.Context, config runConfig, path string, de
 // Creates an overlay mount for a path on the host filesystem
 //
 // Errors: none -- this function only adds an entry to the runc config and cannot fail
-func makeBindPathMount(ctx context.Context, config runConfig, path string, dest string, readOnly bool) (specs.Mount, wfapi.Error) {
+func makeBindPathMount(ctx context.Context, config runConfig, path string, dest string, readOnly bool) (specs.Mount, error) {
 	options := []string{"rbind"}
 	if readOnly {
 		options = append(options, "ro")
@@ -480,7 +481,7 @@ func makeBindPathMount(ctx context.Context, config runConfig, path string, dest 
 //
 //    - warpforge-error-executor-failed -- invocation of runc caused an error
 //    - warpforge-error-io -- i/o error occurred during setup of runc invocation
-func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (string, wfapi.Error) {
+func invokeRunc(ctx context.Context, config runConfig, logWriter io.Writer) (string, error) {
 	ctx, span := tracing.Start(ctx, "invokeRunc")
 	defer span.End()
 
@@ -587,7 +588,7 @@ func rioPack(ctx context.Context, config runConfig, path string) (wfapi.WareID, 
 // Errors:
 //
 //     - warpforge-error-io -- when locating path of this executable fails
-func GetBinPath() (string, wfapi.Error) {
+func GetBinPath() (string, error) {
 	// determine the path of the running executable
 	// other binaries (runc, rio) will be located here as well
 	path, override := os.LookupEnv("WARPFORGE_PATH")
@@ -613,7 +614,7 @@ func GetBinPath() (string, wfapi.Error) {
 // - warpforge-error-workspace -- when an invalid workspace is provided
 // - warpforge-error-formula-invalid -- when an invalid formula is provided
 // - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, wfapi.Error) {
+func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig, logger logging.Logger) (wfapi.RunRecord, error) {
 	ctx, span := tracing.Start(ctx, "execFormula")
 	defer span.End()
 	rr := wfapi.RunRecord{}
@@ -1011,19 +1012,20 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 //     - warpforge-error-workspace -- when an invalid workspace is provided
 //     - warpforge-error-formula-invalid -- when an invalid formula is provided
 //     - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-func Exec(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig) (wfapi.RunRecord, wfapi.Error) {
+func Exec(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaAndContext, formulaConfig wfapi.FormulaExecConfig) (wfapi.RunRecord, error) {
 	ctx, span := tracing.Start(ctx, "Exec")
 	defer span.End()
 	logger := logging.Ctx(ctx)
 	rr, err := execFormula(ctx, ws, fc, formulaConfig, *logger)
 	if err != nil {
-		switch err.(*wfapi.ErrorVal).Code() {
+		serr := err.(serum.ErrorInterface)
+		switch serr.Code() {
 		case "warpforge-error-io":
 			err := wfapi.ErrorFormulaExecutionFailed(err)
-			tracing.SetSpanError(ctx, err)
+			tracing.SetSpanError(ctx, serr)
 			return rr, err
 		default:
-			tracing.SetSpanError(ctx, err)
+			tracing.SetSpanError(ctx, serr)
 			// Error Codes -= warpforge-error-io
 			return rr, err
 		}

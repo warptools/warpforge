@@ -5,11 +5,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/serum-errors/go-serum"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/warptools/warpforge/wfapi"
 )
 
 type ctxKey struct{}
@@ -56,13 +55,12 @@ func Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) 
 }
 
 // SetSpanError is a helper function to set the span error based on a wfapi.Error
-func SetSpanError(ctx context.Context, err wfapi.Error) {
-	e := err.(*wfapi.ErrorVal)
+func SetSpanError(ctx context.Context, err serum.ErrorInterface) {
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
-		attribute.String(AttrKeyWarpforgeErrorCode, e.Code()),
+		attribute.String(AttrKeyWarpforgeErrorCode, err.Code()),
 	)
-	span.SetStatus(codes.Error, e.Error())
+	span.SetStatus(codes.Error, err.Error())
 }
 
 func EndWithStatus(span trace.Span, err error) {

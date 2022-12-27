@@ -45,7 +45,7 @@ type Catalog struct {
 //
 // 	- warpforge-error-io -- when building the module list fails due to I/O error
 // 	- warpforge-error-catalog-invalid -- when the catalog does not exist
-func OpenCatalog(fsys fs.FS, path string) (Catalog, wfapi.Error) {
+func OpenCatalog(fsys fs.FS, path string) (Catalog, error) {
 	// check that the catalog path exists
 	// FUTURE: We should add more indicator files here, to help avoid some forms of possible user error and give better messages.
 	if _, errRaw := fs.Stat(fsys, path); os.IsNotExist(errRaw) {
@@ -93,7 +93,7 @@ func (cat *Catalog) releaseFilePath(ref wfapi.CatalogRef) string {
 
 // Get the path for a CatalogReplay file.
 // This will be [catalog path]/[module name]/_replays/[release name].json
-func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) (string, wfapi.Error) {
+func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) (string, error) {
 	base := filepath.Dir(cat.moduleFilePath(ref))
 	release, err := cat.GetRelease(ref)
 	if err != nil {
@@ -106,7 +106,7 @@ func (cat *Catalog) replayFilePath(ref wfapi.CatalogRef) (string, wfapi.Error) {
 
 // Update a Catalog's list of modules.
 // This will be called when opening the catalog, and after updating the filesystem.
-func (cat *Catalog) updateModuleList() wfapi.Error {
+func (cat *Catalog) updateModuleList() error {
 	// clear the list
 	cat.moduleList = []wfapi.ModuleName{}
 
@@ -116,7 +116,7 @@ func (cat *Catalog) updateModuleList() wfapi.Error {
 	return recurseModuleDir(cat, cat.path, "")
 }
 
-func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName) wfapi.Error {
+func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName) error {
 	// list the directory
 	thisDir := filepath.Join(basePath, string(moduleName))
 	files, errRaw := fs.ReadDir(cat.fsys, thisDir)
@@ -153,7 +153,7 @@ func recurseModuleDir(cat *Catalog, basePath string, moduleName wfapi.ModuleName
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when catalog files or entries are not found
-func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, wfapi.Error) {
+func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, error) {
 	// try to find a module in this catalog
 	mod, err := cat.GetModule(ref)
 	if err != nil {
@@ -203,7 +203,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, wfa
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when catalog files or entries are not found
-func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
+func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	release, err := cat.GetRelease(ref)
 	if err != nil {
 		return nil, nil, err
@@ -254,7 +254,7 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 //
 //    - warpforge-error-io -- when reading lineage file fails
 //    - warpforge-error-catalog-parse -- when ipld parsing of mirror file fails
-func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, wfapi.Error) {
+func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, error) {
 	// open lineage file
 	mirrorPath := cat.mirrorFilePath(ref)
 	var mirrorFile fs.File
@@ -289,7 +289,7 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, wfap
 //
 //    - warpforge-error-io -- when reading module file fails
 //    - warpforge-error-catalog-parse -- when ipld unmarshaling fails
-func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi.Error) {
+func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, error) {
 	// open module file
 	modPath := cat.moduleFilePath(ref)
 	var modFile fs.File
@@ -331,7 +331,7 @@ func (cat *Catalog) GetModule(ref wfapi.CatalogRef) (*wfapi.CatalogModule, wfapi
 func (cat *Catalog) AddItem(
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID,
-	overwrite bool) wfapi.Error {
+	overwrite bool) error {
 
 	// determine paths for the module, release, and the corresponding files
 	moduleFilePath := filepath.Join("/", cat.moduleFilePath(ref))
@@ -462,7 +462,7 @@ func (cat *Catalog) AddItem(
 func (cat *Catalog) AddByWareMirror(
 	ref wfapi.CatalogRef,
 	wareId wfapi.WareID,
-	addr wfapi.WarehouseAddr) wfapi.Error {
+	addr wfapi.WarehouseAddr) error {
 	// load mirrors file, or create it if it doesn't exist
 	mirrorsPath := cat.mirrorFilePath(ref)
 
@@ -542,7 +542,7 @@ func (cat *Catalog) AddByWareMirror(
 func (cat *Catalog) AddByModuleMirror(
 	ref wfapi.CatalogRef,
 	packType wfapi.Packtype,
-	addr wfapi.WarehouseAddr) wfapi.Error {
+	addr wfapi.WarehouseAddr) error {
 	// load mirrors file, or create it if it doesn't exist
 	mirrorsPath := cat.mirrorFilePath(ref)
 
@@ -634,7 +634,7 @@ func (cat *Catalog) Modules() []wfapi.ModuleName {
 //    - warpforge-error-catalog-invalid -- when the contents of the catalog is invalid
 //    - warpforge-error-catalog-parse -- when parsing of catalog data fails
 //    - warpforge-error-io -- when an io error occurs while opening the catalog
-func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
+func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error) {
 	release, err := cat.GetRelease(ref)
 	if err != nil {
 		return nil, err
@@ -689,7 +689,7 @@ func (cat *Catalog) GetReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
 //    - warpforge-error-catalog-parse -- when parsing of catalog data fails
 //    - warpforge-error-io -- when an io error occurs while opening the catalog
 //    - warpforge-error-serialization -- when the updated structures fail to serialize
-func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite bool) wfapi.Error {
+func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite bool) error {
 	// first, update the CatalogRelease to add the replay CID
 	// note: this must be done first, since we read this file to determine the replay file name!
 

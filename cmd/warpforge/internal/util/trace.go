@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -24,9 +25,9 @@ import (
 const Module = "github.com/warptools/warpforge"
 
 func setSpanError(ctx context.Context, err error) {
-	wfErr, ok := err.(wfapi.Error)
+	wfErr, ok := err.(serum.ErrorInterface)
 	if !ok {
-		wfErr = wfapi.ErrorUnknown("command failed", err)
+		wfErr = wfapi.ErrorUnknown("command failed", err).(serum.ErrorInterface)
 	}
 	tracing.SetSpanError(ctx, wfErr)
 }

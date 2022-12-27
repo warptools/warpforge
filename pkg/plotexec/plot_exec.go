@@ -31,7 +31,7 @@ type pipeMap map[wfapi.StepName]map[wfapi.LocalLabel]wfapi.FormulaInput
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the requested step does not exist
-func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, wfapi.Error) {
+func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, error) {
 	if step, ok := m[stepName]; ok {
 		if input, ok := step[label]; ok {
 			// located a valid input
@@ -68,7 +68,7 @@ func plotInputToFormulaInput(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
+	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, error) {
 	ctx, span := tracing.Start(ctx, "plotInputToFormulaInput")
 	defer span.End()
 
@@ -109,7 +109,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 	wsSet workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
+	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, error) {
 	ctx, span := tracing.Start(ctx, "plotInputToFormulaInputSimple")
 	defer span.End()
 	logger := logging.Ctx(ctx)
@@ -335,7 +335,7 @@ func execProtoformula(ctx context.Context,
 	pf wfapi.Protoformula,
 	formulaCtx wfapi.FormulaContext,
 	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.RunRecord, wfapi.Error) {
+	pipeCtx pipeMap) (wfapi.RunRecord, error) {
 	ctx, span := tracing.Start(ctx, "execProtoformula")
 	defer span.End()
 

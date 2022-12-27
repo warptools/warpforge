@@ -22,7 +22,7 @@ var quickstartCmdDef = cli.Command{
 	),
 }
 
-func createQuickstartFiles(moduleName string) wfapi.Error {
+func createQuickstartFiles(moduleName string) error {
 	moduleCapsule := wfapi.ModuleCapsule{
 		Module: &wfapi.Module{
 			Name: wfapi.ModuleName(moduleName),
