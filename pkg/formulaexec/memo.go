@@ -1,8 +1,9 @@
 package formulaexec
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 
 	"github.com/ipld/go-ipld-prime"
@@ -42,17 +43,20 @@ func loadMemo(ws *workspace.Workspace, fid string) (*wfapi.RunRecord, wfapi.Erro
 		return nil, nil
 	}
 
-	memoPath := ws.MemoPath(fid)
-	if _, err := os.Stat(memoPath); os.IsNotExist(err) {
+	memoPath := ws.MemoPath(fid)[1:]
+	fsys, _ := ws.Path()
+	_, err := fs.Stat(fsys, memoPath)
+	if errors.Is(err, fs.ErrNotExist) {
 		// couldn't find a memo file, return nil to indicate there is no memo
 		return nil, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		// found memo file, but error reading, return error
 		return nil, wfapi.ErrorIo("failed to stat memo file", memoPath, err)
 	}
 
 	// read the file
-	f, err := ioutil.ReadFile(memoPath)
+	f, err := fs.ReadFile(fsys, memoPath)
 	if err != nil {
 		return nil, wfapi.ErrorIo("failed to read memo file", memoPath, err)
 	}
