@@ -286,7 +286,7 @@ func (c *Config) Run(ctx context.Context) error {
 			})
 			tracing.EndWithStatus(gitSpan, err)
 			if err != nil {
-				return serum.Error(wfapi.CodeGit,
+				return serum.Error(wfapi.ECodeGit,
 					serum.WithMessageTemplate("failed to checkout git repository {{ repository | q }} to memory"),
 					serum.WithDetail("repository", path),
 					serum.WithCause(err),
@@ -295,7 +295,7 @@ func (c *Config) Run(ctx context.Context) error {
 
 			hashBytes, err := r.ResolveRevision(plumbing.Revision(rev))
 			if err != nil {
-				return serum.Error(wfapi.CodeGit,
+				return serum.Error(wfapi.ECodeGit,
 					serum.WithMessageTemplate("failed to resolve git hash for revision {{ revision | q }}"),
 					serum.WithDetail("revision", rev),
 					serum.WithCause(err),

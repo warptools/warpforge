@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
@@ -30,20 +28,10 @@ const (
 // GetFileType returns the file type, which is the file name without extension
 // e.g., formula.wf -> formula, module.wf -> module, etc...
 //
-// Errors:
-//
-//   - warpforge-error-invalid -- when extension is unsupported
+// Errors: none
 func GetFileType(name string) (string, error) {
-	split := strings.Split(filepath.Base(name), ".")
-	if len(split) != 2 {
-		// ignore files without extensions
-		//TODO: pick a better error code
-		return "", serum.Error(wfapi.ECodeInvalid,
-			serum.WithMessageTemplate("unsupported file: {{name|q}}"),
-			serum.WithDetail("name", name),
-		)
-	}
-	return split[0], nil
+	ext := filepath.Ext(name)
+	return strings.TrimSuffix(filepath.Base(name), ext), nil
 }
 
 // BinPath is a helper function for finding the path to internally used binaries (e.g, rio, runc)
