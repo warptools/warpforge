@@ -16,6 +16,7 @@ const (
 	CodePlotInvalid      = "warpforge-error-plot-invalid"
 	CodeGeneratorFailed  = "warpforge-error-generator-failed"
 	CodeGit              = "warpforge-error-git"
+	ECodeInvalid         = "warpforge-error-invalid"
 )
 
 // TerminalError emits an error on stdout as json, and halts immediately.
@@ -62,22 +63,6 @@ func ErrorSearchingFilesystem(searchingFor string, cause error) error {
 		// the cause is presumed to have any path(s) relevant.
 	})
 	return result
-}
-
-// ErrorInvalid is returned when something is invalid.
-// In most cases, prefer to use more specific errors.`
-// The caller must format the message string.
-//
-// Errors:
-//
-//  - warpforge-error-invalid --
-func ErrorInvalid(message string, deets ...[2]string) error {
-	opts := make([]serum.WithConstruction, 0, len(deets))
-	for _, d := range deets {
-		opts = append(opts, serum.WithDetail(d[0], d[1]))
-	}
-	opts = append(opts, serum.WithMessageLiteral(message))
-	return serum.Error("warpforge-error-invalid", opts...)
 }
 
 // ErrorWorkspace is returned when an error occurs when handling a workspace

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
@@ -37,7 +38,10 @@ func GetFileType(name string) (string, error) {
 	if len(split) != 2 {
 		// ignore files without extensions
 		//TODO: pick a better error code
-		return "", wfapi.ErrorInvalid(fmt.Sprintf("unsupported file: %q", name), [2]string{"name", name})
+		return "", serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageTemplate("unsupported file: {{name|q}}"),
+			serum.WithDetail("name", name),
+		)
 	}
 	return split[0], nil
 }
