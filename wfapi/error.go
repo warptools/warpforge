@@ -8,7 +8,10 @@ import (
 	"github.com/serum-errors/go-serum"
 )
 
+// TODO: Add comments for reasons to use or not use particular codes
 const (
+	// ECodeAlreadyExists may be used when _something_ already exists.
+	// Prefer to use a more specific error code or specify _what_ is missing.
 	ECodeAlreadyExists          = "warpforge-error-already-exists"
 	ECodeCatalogInvalid         = "warpforge-error-catalog-invalid"
 	ECodeCatalogMissingEntry    = "warpforge-error-missing-catalog-entry"
@@ -20,22 +23,27 @@ const (
 	ECodeFormulaInvalid         = "warpforge-error-formula-invalid"
 	ECodeGeneratorFailed        = "warpforge-error-generator-failed"
 	ECodeGit                    = "warpforge-error-git"
-	ECodeInternal               = "warpforge-error-internal"
-	ECodeInvalid                = "warpforge-error-invalid"
-	ECodeIo                     = "warpforge-error-io"
-	ECodeMissing                = "warpforge-error-missing"
-	ECodeModuleInvalid          = "warpforge-error-module-invalid"
-	ECodePlotExecution          = "warpforge-error-plot-execution-failed"
-	ECodePlotInvalid            = "warpforge-error-plot-invalid"
-	ECodePlotStepFailed         = "warpforge-error-plot-step-failed"
-	ECodeSearchingFilesystem    = "warpforge-error-searching-filesystem"
-	ECodeSerialization          = "warpforge-error-serialization"
-	ECodeSyscall                = "warpforge-error-syscall"
-	ECodeUnknown                = "warpforge-error-unknown"
-	ECodeWareIdInvalid          = "warpforge-error-wareid-invalid"
-	ECodeWarePack               = "warpforge-error-ware-pack"
-	ECodeWareUnpack             = "warpforge-error-ware-unpack"
-	ECodeWorkspace              = "warpforge-error-workspace"
+	// ECodeInternal is used for errors that are internal and cannot be handled by users.
+	// Try to pick something more specific.
+	ECodeInternal = "warpforge-error-internal"
+	// ECodeInvalid is used when something is invalid.
+	// Prefer to choose a more specific error code.
+	ECodeInvalid             = "warpforge-error-invalid"
+	ECodeIo                  = "warpforge-error-io"
+	ECodeMissing             = "warpforge-error-missing"
+	ECodeModuleInvalid       = "warpforge-error-module-invalid"
+	ECodePlotExecution       = "warpforge-error-plot-execution-failed"
+	ECodePlotInvalid         = "warpforge-error-plot-invalid"
+	ECodePlotStepFailed      = "warpforge-error-plot-step-failed"
+	ECodeSearchingFilesystem = "warpforge-error-searching-filesystem"
+	ECodeSerialization       = "warpforge-error-serialization"
+	ECodeSyscall             = "warpforge-error-syscall"
+	// ECodeUnknown is used for unknown errors. Avoid whenever possible.
+	ECodeUnknown       = "warpforge-error-unknown"
+	ECodeWareIdInvalid = "warpforge-error-wareid-invalid"
+	ECodeWarePack      = "warpforge-error-ware-pack"
+	ECodeWareUnpack    = "warpforge-error-ware-unpack"
+	ECodeWorkspace     = "warpforge-error-workspace"
 )
 
 // TerminalError emits an error on stdout as json, and halts immediately.
@@ -47,26 +55,6 @@ func TerminalError(err serum.ErrorInterface, exitCode int) {
 		Error serum.ErrorInterface `json:"error"`
 	}{err})
 	os.Exit(exitCode)
-}
-
-// ErrorUnknown is returned when an unknown error occurs
-//
-// Errors:
-//
-// - warpforge-error-unknown --
-func ErrorUnknown(msgTmpl string, cause error) error {
-	return serum.Errorf(ECodeUnknown, "%s: %w", msgTmpl, cause)
-}
-
-// ErrorInternal is for miscellaneous errors that should be handled internally.
-// In most cases, prefer to use more specific errors.
-// Can be used when an end user is not expected to have viable intervention strategies.
-//
-// Errors:
-//
-// - warpforge-error-internal --
-func ErrorInternal(msgTmpl string, cause error) error {
-	return serum.Errorf(ECodeInternal, "%s: %w", msgTmpl, cause)
 }
 
 // ErrorSearchingFilesystem is returned when an error occurs during search

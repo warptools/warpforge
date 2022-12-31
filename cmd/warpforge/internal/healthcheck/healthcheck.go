@@ -99,7 +99,9 @@ func (h *HealthCheck) Run(ctx context.Context) error {
 //     - warpforge-error-internal -- when the health check was not run before printing results
 func (h *HealthCheck) Fprint(w io.Writer) error {
 	if len(h.Runners) != len(h.Results) {
-		return wfapi.ErrorInternal("HealtCheck must run before printing results", nil)
+		return serum.Error(wfapi.ECodeInternal,
+			serum.WithMessageLiteral("HealtCheck must run before printing results"),
+		)
 	}
 	headers := make([]string, 0, len(h.Runners))
 	maxHeaderLen := 0

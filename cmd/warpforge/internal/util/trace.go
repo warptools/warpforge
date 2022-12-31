@@ -27,7 +27,7 @@ const Module = "github.com/warptools/warpforge"
 func setSpanError(ctx context.Context, err error) {
 	wfErr, ok := err.(serum.ErrorInterface)
 	if !ok {
-		wfErr = wfapi.ErrorUnknown("command failed", err).(serum.ErrorInterface)
+		wfErr = serum.Errorf(wfapi.ECodeUnknown, "command failed: %w", err).(serum.ErrorInterface)
 	}
 	tracing.SetSpanError(ctx, wfErr)
 }
@@ -129,7 +129,7 @@ func (e *fileSpanExporter) Shutdown(ctx context.Context) error {
 	}
 	defer e.Closer.Close() // consume file close errors
 	if err := e.SpanExporter.Shutdown(ctx); err != nil {
-		return wfapi.ErrorInternal("tracing shutdown failed", err)
+		return serum.Errorf(wfapi.ECodeInternal, "tracing shutdown failed; %w", err)
 	}
 	return nil
 }
