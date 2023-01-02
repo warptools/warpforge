@@ -136,7 +136,7 @@ func ModuleFromFile(filename string) (wfapi.Module, error) {
 //    - warpforge-error-catalog-parse --
 //    - warpforge-error-git --
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
-//    - warpforge-error-missing-catalog-entry --
+//    - warpforge-error-catalog-missing-entry --
 //    - warpforge-error-module-invalid -- when the module data is invalid
 //    - warpforge-error-plot-execution-failed --
 //    - warpforge-error-plot-invalid -- when the plot data is invalid

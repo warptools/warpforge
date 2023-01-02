@@ -336,7 +336,7 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
 //    - warpforge-error-git --
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
-//    - warpforge-error-missing-catalog-entry --
+//    - warpforge-error-catalog-missing-entry --
 //    - warpforge-error-plot-execution-failed --
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --

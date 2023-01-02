@@ -14,7 +14,7 @@ const (
 	// Prefer to use a more specific error code or specify _what_ is missing.
 	ECodeAlreadyExists          = "warpforge-error-already-exists"
 	ECodeCatalogInvalid         = "warpforge-error-catalog-invalid"
-	ECodeCatalogMissingEntry    = "warpforge-error-missing-catalog-entry"
+	ECodeCatalogMissingEntry    = "warpforge-error-catalog-missing-entry"
 	ECodeCatalogName            = "warpforge-error-catalog-name"
 	ECodeCatalogParse           = "warpforge-error-catalog-parse"
 	ECodeDataTooNew             = "warpforge-error-datatoonew"
@@ -237,7 +237,7 @@ func ErrorModuleInvalid(reason string) error {
 //
 // Errors:
 //
-//    - warpforge-error-missing-catalog-entry --
+//    - warpforge-error-catalog-missing-entry --
 func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) error {
 	var msg string
 	var available string

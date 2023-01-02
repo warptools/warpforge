@@ -203,7 +203,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when catalog files are not found
-//     - warpforge-error-missing-catalog-entry -- when catalog item is not found
+//     - warpforge-error-catalog-missing-entry -- when catalog item is not found
 func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	release, err := cat.GetRelease(ref)
 	if err != nil {

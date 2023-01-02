@@ -43,7 +43,7 @@ func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *
 			if serum.Code(err) == wfapi.ECodeCatalogMissingEntry {
 				continue
 			}
-			// Error Codes -= warpforge-error-missing-catalog-entry
+			// Error Codes -= warpforge-error-catalog-missing-entry
 			return nil, nil, err
 		}
 		if wareId != nil {
@@ -87,7 +87,7 @@ func (wsSet WorkspaceSet) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, e
 //
 //    - warpforge-error-catalog-invalid -- a catalog in this workspace set is invalid
 //    - warpforge-error-catalog-parse -- a catalog in this workspace set can't be parsed
-//    - warpforge-error-missing-catalog-entry -- a dependency can't be found
+//    - warpforge-error-catalog-missing-entry -- a dependency can't be found
 //    - warpforge-error-catalog-name -- honestly, shouldn't happen
 //    - warpforge-error-workspace -- workspace stack missing a non-root workspace
 //    - warpforge-error-io -- reading/writing catalog fails
