@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
@@ -559,7 +560,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 	}
 
 	for _, ref := range refs {
-		var err wfapi.Error
+		var err error
 		if ref.Name().IsTag() {
 			catalogRef := wfapi.CatalogRef{
 				ModuleName:  wfapi.ModuleName(moduleName),
@@ -571,7 +572,7 @@ func cmdIngestGitTags(c *cli.Context) error {
 				Hash:     ref.Hash().String(),
 			}
 			err = cat.AddItem(catalogRef, wareId, c.Bool("force"))
-			if err != nil && err.(*wfapi.ErrorVal).Code() == "warpforge-error-catalog-item-already-exists" {
+			if err != nil && serum.Code(err) == "warpforge-error-catalog-item-already-exists" {
 				fmt.Printf("catalog already has item %s:%s:%s\n", catalogRef.ModuleName,
 					catalogRef.ReleaseName, catalogRef.ItemName)
 				continue

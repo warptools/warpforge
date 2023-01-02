@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
@@ -29,17 +29,10 @@ const (
 // GetFileType returns the file type, which is the file name without extension
 // e.g., formula.wf -> formula, module.wf -> module, etc...
 //
-// Errors:
-//
-//   - warpforge-error-invalid -- when extension is unsupported
+// Errors: none
 func GetFileType(name string) (string, error) {
-	split := strings.Split(filepath.Base(name), ".")
-	if len(split) != 2 {
-		// ignore files without extensions
-		//TODO: pick a better error code
-		return "", wfapi.ErrorInvalid(fmt.Sprintf("unsupported file: %q", name), [2]string{"name", name})
-	}
-	return split[0], nil
+	ext := filepath.Ext(name)
+	return strings.TrimSuffix(filepath.Base(name), ext), nil
 }
 
 // BinPath is a helper function for finding the path to internally used binaries (e.g, rio, runc)
@@ -55,7 +48,7 @@ func BinPath(bin string) (string, error) {
 
 	path, err := os.Executable()
 	if err != nil {
-		return "", wfapi.ErrorUnknown("unable to get path of warpforge executable", err)
+		return "", serum.Errorf(wfapi.ECodeUnknown, "unable to get path of warpforge executable: %w", err)
 	}
 
 	return filepath.Join(filepath.Dir(path), bin), nil
@@ -71,10 +64,10 @@ func BinPath(bin string) (string, error) {
 //
 //    - warpforge-error-workspace -- could not load workspace stack
 //    - warpforge-error-unknown -- failed to get working directory
-func OpenWorkspaceSet() (workspace.WorkspaceSet, wfapi.Error) {
+func OpenWorkspaceSet() (workspace.WorkspaceSet, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		return workspace.WorkspaceSet{}, wfapi.ErrorUnknown("failed to get working directory: %s", err)
+		return workspace.WorkspaceSet{}, serum.Errorf(wfapi.ECodeUnknown, "failed to get working directory: %w", err)
 	}
 
 	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
@@ -168,7 +161,7 @@ func ExecModule(ctx context.Context, config wfapi.PlotExecConfig, fileName strin
 
 	pwd, nerr := os.Getwd()
 	if nerr != nil {
-		return result, wfapi.ErrorUnknown("unable to get pwd", nerr)
+		return result, serum.Errorf(wfapi.ECodeUnknown, "unable to get pwd: %w", nerr)
 	}
 
 	wss, werr := OpenWorkspaceSet()

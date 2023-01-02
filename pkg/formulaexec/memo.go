@@ -12,7 +12,7 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-func memoizeRun(ws *workspace.Workspace, rr wfapi.RunRecord) wfapi.Error {
+func memoizeRun(ws *workspace.Workspace, rr wfapi.RunRecord) error {
 	// create the memo path, if it does not exist
 	memoBasePath := ws.MemoBasePath()
 	err := os.MkdirAll(ws.MemoBasePath(), 0755)
@@ -36,7 +36,7 @@ func memoizeRun(ws *workspace.Workspace, rr wfapi.RunRecord) wfapi.Error {
 	return nil
 }
 
-func loadMemo(ws *workspace.Workspace, fid string) (*wfapi.RunRecord, wfapi.Error) {
+func loadMemo(ws *workspace.Workspace, fid string) (*wfapi.RunRecord, error) {
 	// if no workspace is provided, there can be no memos
 	if ws == nil {
 		return nil, nil

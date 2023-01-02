@@ -56,7 +56,7 @@ func cmdFerk(c *cli.Context) error {
 		// plot was provided, load from file
 		plot, err = util.PlotFromFile(c.String("plot"))
 		if err != nil {
-			return serum.Error(wfapi.CodePlotInvalid, serum.WithMessageTemplate("plot file {{file}} not parsed"), serum.WithCause(err), serum.WithDetail("file", c.String("plot")))
+			return serum.Error(wfapi.ECodePlotInvalid, serum.WithMessageTemplate("plot file {{file}} not parsed"), serum.WithCause(err), serum.WithDetail("file", c.String("plot")))
 		}
 	} else {
 		// no plot provided, generate the basic default plot from json template

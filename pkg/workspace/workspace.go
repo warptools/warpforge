@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/serum-errors/go-serum"
+
 	_ "github.com/warptools/warpforge/pkg/testutil"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -30,7 +32,7 @@ type Workspace struct {
 // Errors:
 //
 //    - warpforge-error-workspace -- when the workspace directory fails to open
-func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
+func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, error) {
 	_, err := statDir(fsys, filepath.Join(rootPath, magicWorkspaceDirname))
 	if err != nil {
 		return nil, wfapi.ErrorWorkspace(rootPath, err)
@@ -65,7 +67,7 @@ func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 // Errors:
 //
 //    - warpforge-error-workspace -- when the workspace directory fails to open
-func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
+func OpenHomeWorkspace(fsys fs.FS) (*Workspace, error) {
 	return OpenWorkspace(fsys, homedir)
 }
 
@@ -87,7 +89,7 @@ func (ws *Workspace) IsHomeWorkspace() bool {
 // Errors:
 //
 //    - warpforge-error-wareid-invalid -- when a malformed WareID is provided
-func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
+func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 	if len(wareId.Hash) < 7 {
 		return "", wfapi.ErrorWareIdInvalid(wareId)
 	}
@@ -148,7 +150,7 @@ func (ws *Workspace) nonRootCatalogPath() string {
 // Errors:
 //
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
+func (ws *Workspace) CatalogPath(name string) (string, error) {
 	if !ws.isRootWorkspace {
 		if name == "" {
 			return ws.nonRootCatalogPath(), nil
@@ -174,7 +176,7 @@ func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
 //    - warpforge-error-catalog-invalid -- when opened catalog has invalid data
 //    - warpforge-error-io -- when IO error occurs during opening of catalog
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) OpenCatalog(name string) (Catalog, wfapi.Error) {
+func (ws *Workspace) OpenCatalog(name string) (Catalog, error) {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return Catalog{}, err
@@ -189,7 +191,7 @@ func (ws *Workspace) OpenCatalog(name string) (Catalog, wfapi.Error) {
 // Errors:
 //
 //    - warpforge-error-io -- when listing directory fails
-func (ws *Workspace) ListCatalogs() ([]string, wfapi.Error) {
+func (ws *Workspace) ListCatalogs() ([]string, error) {
 	if !ws.isRootWorkspace {
 		return []string{""}, nil
 	}
@@ -229,7 +231,7 @@ func (ws *Workspace) ListCatalogs() ([]string, wfapi.Error) {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
+func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
 	if err != nil {
@@ -239,7 +241,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 	for _, c := range cats {
 		cat, err := ws.OpenCatalog(c)
 		if err != nil {
-			switch err.(*wfapi.ErrorVal).Code() {
+			switch serum.Code(err) {
 			case "warpforge-error-catalog-name":
 				panic(err)
 			default:
@@ -268,7 +270,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 //
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
 //     - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
+func (ws *Workspace) HasCatalog(name string) (bool, error) {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return false, err
@@ -291,7 +293,7 @@ func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
 //    - warpforge-error-io -- when reading or writing the catalog directory fails
 //    - warpforge-error-already-exists -- when the catalog already exists
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
+func (ws *Workspace) CreateCatalog(name string) error {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return err
@@ -322,10 +324,10 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 //  - warpforge-error-io -- when reading or writing the catalog directory fails
 //  - warpforge-error-catalog-name -- when the catalog name is invalid
 //  - warpforge-error-catalog-invalid -- when opened catalog has invalid data
-func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, wfapi.Error) {
+func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, error) {
 	err := ws.CreateCatalog(name)
 	if err != nil {
-		switch err.(*wfapi.ErrorVal).Code() {
+		switch serum.Code(err) {
 		case "warpforge-error-already-exists":
 			return ws.OpenCatalog(name)
 		default:
@@ -345,7 +347,7 @@ func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, wfapi.Error) {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
+func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
 	if err != nil {
@@ -355,7 +357,7 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.
 	for _, c := range cats {
 		cat, err := ws.OpenCatalog(c)
 		if err != nil {
-			switch err.(*wfapi.ErrorVal).Code() {
+			switch serum.Code(err) {
 			case "warpforge-error-catalog-name":
 				// This shouldn't happen
 				panic(err)

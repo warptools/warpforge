@@ -22,7 +22,7 @@ const defaultCatalogUrl = "https://github.com/warptools/warpsys-catalog.git"
 //
 //    - warpforge-error-git -- Cloning catalog fails
 //    - warpforge-error-io -- catalog path exists but is in a strange state
-func InstallDefaultRemoteCatalog(ctx context.Context, path string) wfapi.Error {
+func InstallDefaultRemoteCatalog(ctx context.Context, path string) error {
 	log := logging.Ctx(ctx)
 	// install our default remote catalog as "default-remote" by cloning from git
 	// this will noop if the catalog already exists

@@ -268,7 +268,7 @@ func (c *Config) Run(ctx context.Context) error {
 			if errors.Is(ctx.Err(), context.Canceled) {
 				return nil
 			}
-			return wfapi.ErrorUnknown("context error", ctx.Err())
+			return serum.Errorf(wfapi.ECodeUnknown, "context error: %w", ctx.Err())
 		default:
 		}
 		outerCtx, outerSpan := tracing.Start(ctx, "watch-loop")
@@ -286,7 +286,7 @@ func (c *Config) Run(ctx context.Context) error {
 			})
 			tracing.EndWithStatus(gitSpan, err)
 			if err != nil {
-				return serum.Error(wfapi.CodeGit,
+				return serum.Error(wfapi.ECodeGit,
 					serum.WithMessageTemplate("failed to checkout git repository {{ repository | q }} to memory"),
 					serum.WithDetail("repository", path),
 					serum.WithCause(err),
@@ -295,7 +295,7 @@ func (c *Config) Run(ctx context.Context) error {
 
 			hashBytes, err := r.ResolveRevision(plumbing.Revision(rev))
 			if err != nil {
-				return serum.Error(wfapi.CodeGit,
+				return serum.Error(wfapi.ECodeGit,
 					serum.WithMessageTemplate("failed to resolve git hash for revision {{ revision | q }}"),
 					serum.WithDetail("revision", rev),
 					serum.WithCause(err),
@@ -350,7 +350,7 @@ func execModule(ctx context.Context, config wfapi.PlotExecConfig, modulePath str
 
 	pwd, nerr := os.Getwd()
 	if nerr != nil {
-		return result, wfapi.ErrorUnknown("unable to get pwd", nerr)
+		return result, serum.Errorf(wfapi.ECodeUnknown, "unable to get current directory: %w", nerr)
 	}
 
 	modulePathAbs, err := filepath.Abs(modulePath)
@@ -382,7 +382,7 @@ func execModule(ctx context.Context, config wfapi.PlotExecConfig, modulePath str
 	result, werr = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
 
 	if nerr := os.Chdir(pwd); nerr != nil {
-		return result, wfapi.ErrorIo("cannot return to pwd", pwd, nerr)
+		return result, wfapi.ErrorIo("cannot return to directory", pwd, nerr)
 	}
 
 	if werr != nil {

@@ -95,7 +95,7 @@ func TestRootWorkspaceCatalogPathTestRootWorkspaceCatalogPath(t *testing.T) {
 		testCase string
 		input    string
 		output   string
-		err      wfapi.Error
+		err      error
 	}{
 		{
 			testCase: "empty catalog name",

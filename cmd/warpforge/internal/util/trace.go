@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -24,9 +25,9 @@ import (
 const Module = "github.com/warptools/warpforge"
 
 func setSpanError(ctx context.Context, err error) {
-	wfErr, ok := err.(wfapi.Error)
+	wfErr, ok := err.(serum.ErrorInterface)
 	if !ok {
-		wfErr = wfapi.ErrorUnknown("command failed", err)
+		wfErr = serum.Errorf(wfapi.ECodeUnknown, "command failed: %w", err).(serum.ErrorInterface)
 	}
 	tracing.SetSpanError(ctx, wfErr)
 }
@@ -128,7 +129,7 @@ func (e *fileSpanExporter) Shutdown(ctx context.Context) error {
 	}
 	defer e.Closer.Close() // consume file close errors
 	if err := e.SpanExporter.Shutdown(ctx); err != nil {
-		return wfapi.ErrorInternal("tracing shutdown failed", err)
+		return serum.Errorf(wfapi.ECodeInternal, "tracing shutdown failed; %w", err)
 	}
 	return nil
 }
