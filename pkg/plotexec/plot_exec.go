@@ -57,7 +57,7 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
@@ -98,7 +98,7 @@ func plotInputToFormulaInput(ctx context.Context,
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
@@ -324,7 +324,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 //    - warpforge-error-formula-invalid -- when an invalid formula is provided
 //    - warpforge-error-git -- when an error handing a git ingest occurs
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog entry cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog entry cannot be found
 //    - warpforge-error-plot-invalid -- when the plot contains invalid data
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
@@ -384,7 +384,7 @@ func execProtoformula(ctx context.Context,
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
@@ -513,7 +513,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails

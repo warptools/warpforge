@@ -231,6 +231,7 @@ func (ws *Workspace) ListCatalogs() ([]string, error) {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
+//     - warpforge-error-catalog-missing-entry -- when catalog item is missing
 func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()

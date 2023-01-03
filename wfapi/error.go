@@ -14,7 +14,7 @@ const (
 	// Prefer to use a more specific error code or specify _what_ is missing.
 	ECodeAlreadyExists          = "warpforge-error-already-exists"
 	ECodeCatalogInvalid         = "warpforge-error-catalog-invalid"
-	ECodeCatalogMissingEntry    = "warpforge-error-missing-catalog-entry"
+	ECodeCatalogMissingEntry    = "warpforge-error-catalog-missing-entry"
 	ECodeCatalogName            = "warpforge-error-catalog-name"
 	ECodeCatalogParse           = "warpforge-error-catalog-parse"
 	ECodeDataTooNew             = "warpforge-error-datatoonew"
@@ -45,6 +45,23 @@ const (
 	ECodeWareUnpack    = "warpforge-error-ware-unpack"
 	ECodeWorkspace     = "warpforge-error-workspace"
 )
+
+// IsCode reports whether any error in err's chain matches the given code string.
+//
+// The chain consists of err itself followed by the sequence of errors obtained
+// by repeatedly calling serum.Cause which is similar to calling Unwrap.
+//
+// An error is considered to match the code string if the result of
+// serum.Code(err) is equal to the code string.
+func IsCode(err error, code string) bool {
+	for err != nil {
+		if serum.Code(err) == code {
+			return true
+		}
+		err = serum.Cause(err)
+	}
+	return false
+}
 
 // TerminalError emits an error on stdout as json, and halts immediately.
 // In most cases, you should not use this method, and there will be a better place to send errors
@@ -220,7 +237,7 @@ func ErrorModuleInvalid(reason string) error {
 //
 // Errors:
 //
-//    - warpforge-error-missing-catalog-entry --
+//    - warpforge-error-catalog-missing-entry --
 func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) error {
 	var msg string
 	var available string
