@@ -767,7 +767,7 @@ warpforge plan generate plot.star
 (note, we setup the fs for all the generate tests here to avoid repetition)
 
 [testmark]:# (plan-generate/fs/plot.star)
-``
+```
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 

@@ -2,3 +2,4 @@
 .vscode/*
 .warpforge/*
 !.warpforge/catalog
+warplark.sha256.tmp
