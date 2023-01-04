@@ -126,7 +126,7 @@ We'll run this in a filesystem that contains a `module.wf` (albeit a pretty sill
 ```
 {
 	"module.v1": {
-		"name": "test"
+		"name": "test.org"
 	}
 }
 ```
@@ -151,9 +151,11 @@ We'll run this in a filesystem that contains a `plot.wf` (albeit a pretty silly 
 [testmark]:# (checkplot/fs/plot.wf)
 ```
 {
+	"plot.v1":{
     "inputs": {},
     "steps": {},
     "outputs": {}
+	}
 }
 ```
 
@@ -234,7 +236,7 @@ A module is declared with two files.  One is the `module.wf` file:
 ```
 {
 	"module.v1": {
-		"name": "test"
+		"name": "test.org"
 	}
 }
 ```
@@ -305,7 +307,7 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 									}
 								}
 							}
-						},
+						}
 					},
 					"outputs": {
 						"test": "pipe:one-inner:test"
@@ -496,7 +498,7 @@ this file creates directories for a local workspace
 [testmark]:# (base-workspace/then-bundle/fs/workspace/module.wf)
 ```
 {
-	"name": "bundle-test",
+	"name": "bundle.test",
 }
 ```
 

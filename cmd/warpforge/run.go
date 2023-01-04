@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/wfapi"
@@ -54,7 +55,7 @@ func cmdRun(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not get current directory")
 		}
-		_, err = util.ExecModule(ctx, config, filepath.Join(pwd, util.ModuleFilename))
+		_, err = util.ExecModule(ctx, config, filepath.Join(pwd, dab.MagicFilename_Module))
 		if err != nil {
 			return err
 		}
@@ -68,9 +69,9 @@ func cmdRun(c *cli.Context) error {
 				if err != nil {
 					return err
 				}
-				if filepath.Base(path) == util.ModuleFilename {
+				if filepath.Base(path) == dab.MagicFilename_Module {
 					if c.Bool("verbose") {
-						logger.Debug("executing %q", path)
+						logger.Debug("", "executing %q", path)
 					}
 					_, err = util.ExecModule(ctx, config, path)
 					if err != nil {
@@ -86,27 +87,30 @@ func cmdRun(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
+		fileName, err := filepath.Abs(fileName)
+		if err != nil {
+			return err
+		}
 		if info.IsDir() {
 			// directory provided, execute module if it exists
-			_, err := util.ExecModule(ctx, config, filepath.Join(fileName, "module.wf"))
+			_, err := util.ExecModule(ctx, config, filepath.Join(fileName, dab.MagicFilename_Module))
 			if err != nil {
 				return err
 			}
 		} else {
 			// formula or module file provided
-			f, err := ioutil.ReadFile(fileName)
-			if err != nil {
-				return err
-			}
-
-			t, err := util.GetFileType(fileName)
+			t, err := dab.GetFileType(fileName)
 			if err != nil {
 				return err
 			}
 
 			switch t {
-			case "formula":
+			case dab.FileType_Formula:
 				// unmarshal FormulaAndContext from file data
+				f, err := ioutil.ReadFile(fileName)
+				if err != nil {
+					return err
+				}
 				frmAndCtx := wfapi.FormulaAndContext{}
 				_, err = ipld.Unmarshal([]byte(f), json.Decode, &frmAndCtx, wfapi.TypeSystem.TypeByName("FormulaAndContext"))
 				if err != nil {
@@ -124,7 +128,8 @@ func cmdRun(c *cli.Context) error {
 				if err != nil {
 					return err
 				}
-			case "module":
+			case dab.FileType_Module:
+				logger.Debug("", "executing module")
 				_, err := util.ExecModule(ctx, config, fileName)
 				if err != nil {
 					return err

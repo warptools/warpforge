@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
@@ -18,25 +17,6 @@ import (
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
-
-// DEPRECATED: use dab package
-// special file names for plot and module files
-// these are json files with special formatting for detection
-const (
-	PlotFilename   = dab.MagicFilename_Plot
-	ModuleFilename = dab.MagicFilename_Module
-)
-
-// GetFileType returns the file type, which is the file name without extension
-// e.g., formula.wf -> formula, module.wf -> module, etc...
-//
-// Errors: none
-func GetFileType(name string) (string, error) {
-	ext := filepath.Ext(name)
-	return strings.TrimSuffix(filepath.Base(name), ext), nil
-}
-
-
 
 // BinPath is a helper function for finding the path to internally used binaries (e.g, rio, runc)
 //
@@ -99,31 +79,6 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 	return *plotCapsule.Plot, nil
 }
 
-// DEPRECATED: use dab package
-// ModuleFromFile takes a path to a module file, returns a module
-// Errors:
-//
-//     - warpforge-error-io -- when the file cannot be read
-//     - warpforge-error-module-invalid -- when the module data is invalid
-//     - warpforge-error-serialization -- when the module doesn't parse
-func ModuleFromFile(filename string) (wfapi.Module, error) {
-	f, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return wfapi.Module{}, wfapi.ErrorIo("unable to read module", filename, err)
-	}
-
-	moduleCapsule := wfapi.ModuleCapsule{}
-	_, err = ipld.Unmarshal(f, json.Decode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
-	if err != nil {
-		return wfapi.Module{}, wfapi.ErrorSerialization("unable to deserialize module", err)
-	}
-	if moduleCapsule.Module == nil {
-		return wfapi.Module{}, wfapi.ErrorModuleInvalid("no v1 Module in ModuleCapsule")
-	}
-
-	return *moduleCapsule.Module, nil
-}
-
 // ExecModule executes the given module file with the default plot file in the same directory.
 // WARNING: This function calls Chdir and may not change back on errors
 //
@@ -141,42 +96,44 @@ func ModuleFromFile(filename string) (wfapi.Module, error) {
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-workspace -- when opening the workspace set fails
+//    - warpforge-error-datatoonew -- when module or plot data version is unrecognized
 func ExecModule(ctx context.Context, config wfapi.PlotExecConfig, fileName string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()
 	result := wfapi.PlotResults{}
 
+	fsys := os.DirFS("/")
 	// parse the module, even though it is not currently used
-	if _, werr := ModuleFromFile(fileName); werr != nil {
-		return result, werr
+	if _, err := dab.ModuleFromFile(fsys, fileName); err != nil {
+		return result, err
 	}
 
-	plot, werr := PlotFromFile(filepath.Join(filepath.Dir(fileName), PlotFilename))
+	plot, werr := dab.PlotFromFile(fsys, filepath.Join(filepath.Dir(fileName), dab.MagicFilename_Plot))
 	if werr != nil {
 		return result, werr
 	}
 
-	pwd, nerr := os.Getwd()
-	if nerr != nil {
-		return result, serum.Errorf(wfapi.ECodeUnknown, "unable to get pwd: %w", nerr)
+	pwd, err := os.Getwd()
+	if err != nil {
+		return result, serum.Errorf(wfapi.ECodeUnknown, "unable to get pwd: %w", err)
 	}
 
-	wss, werr := OpenWorkspaceSet()
-	if werr != nil {
-		return result, wfapi.ErrorWorkspace(pwd, werr)
+	wss, err := OpenWorkspaceSet()
+	if err != nil {
+		return result, wfapi.ErrorWorkspace(pwd, err)
 	}
 
 	tmpDir := filepath.Dir(fileName)
 	// FIXME: it would be nice if we could avoid changing directories.
 	//  This generally means removing Getwd calls from pkg libs
-	if nerr := os.Chdir(tmpDir); nerr != nil {
-		return result, wfapi.ErrorIo("cannot change directory", tmpDir, nerr)
+	if err := os.Chdir(tmpDir); err != nil {
+		return result, wfapi.ErrorIo("cannot change directory", tmpDir, err)
 	}
 
 	result, werr = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
 
-	if nerr := os.Chdir(pwd); nerr != nil {
-		return result, wfapi.ErrorIo("cannot return to pwd", pwd, nerr)
+	if err := os.Chdir(pwd); err != nil {
+		return result, wfapi.ErrorIo("cannot return to pwd", pwd, err)
 	}
 
 	if werr != nil {
