@@ -49,14 +49,20 @@ func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, error) {
 // from an outside perspective.
 func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 	rootPath = filepath.Clean(rootPath)
-	isHomeWorkspace := rootPath == homedir
 	return &Workspace{
 		fsys:            fsys,
 		rootPath:        rootPath,
-		isHomeWorkspace: isHomeWorkspace,
-		isRootWorkspace: checkIsRootWorkspace(fsys, rootPath) || isHomeWorkspace,
+		isRootWorkspace: checkIsRootWorkspace(fsys, rootPath),
 		// that's it; everything else is loaded later.
 	}
+}
+
+// openHomeWorkspace is the same as the public method but with no error checking at all;
+func openHomeWorkspace(fsys fs.FS) *Workspace {
+	workspace := openWorkspace(fsys, homedir)
+	workspace.isHomeWorkspace = true
+	workspace.isRootWorkspace = true
+	return workspace
 }
 
 // OpenHomeWorkspace calls OpenWorkspace on the user's homedir.
@@ -68,11 +74,24 @@ func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 //
 //    - warpforge-error-workspace -- when the workspace directory fails to open
 func OpenHomeWorkspace(fsys fs.FS) (*Workspace, error) {
-	return OpenWorkspace(fsys, homedir)
+	workspace, err := OpenWorkspace(fsys, homedir)
+	if err == nil {
+		workspace.isHomeWorkspace = true
+		workspace.isRootWorkspace = true
+	}
+	return workspace, err
+}
+
+// InternalPath returns the workspace's path including the .warp* segment.
+func (ws *Workspace) InternalPath() string {
+	if ws.isHomeWorkspace {
+		return filepath.Join(ws.rootPath, magicHomeWorkspaceDirname)
+	}
+	return filepath.Join(ws.rootPath, magicWorkspaceDirname)
 }
 
 // Path returns the workspace's fs and path -- the directory that is its root.
-// (This does *not* include the ".warpforge" segment on the end of the path.)
+// (This does *not* include the ".warp*" segment on the end of the path.)
 func (ws *Workspace) Path() (fs.FS, string) {
 	return ws.fsys, ws.rootPath
 }
@@ -95,8 +114,7 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 	}
 	return filepath.Join(
 		"/",
-		ws.rootPath,
-		".warpforge",
+		ws.InternalPath(),
 		"cache",
 		string(wareId.Packtype),
 		"fileset",
@@ -110,12 +128,11 @@ func (ws *Workspace) IsRootWorkspace() bool {
 	return ws.isRootWorkspace
 }
 
-// Returns the base path which contains memos (i.e., `.../.warpforge/memos`)
+// Returns the base path which contains memos (e.g., `.../.warpforge/memos`)
 func (ws *Workspace) MemoBasePath() string {
 	return filepath.Join(
 		"/",
-		ws.rootPath,
-		".warpforge",
+		ws.InternalPath(),
 		"memos",
 	)
 }
@@ -128,18 +145,23 @@ func (ws *Workspace) MemoPath(fid string) string {
 	)
 }
 
-// Returns the base path which contains named catalogs (i.e., `.../.warpforge/catalogs`)
+// Returns the base path which contains named catalogs (e.g., `.../.warpforge/catalogs`)
 func (ws *Workspace) CatalogBasePath() string {
 	return filepath.Join(
-		ws.rootPath,
-		".warpforge",
+		ws.InternalPath(),
 		"catalogs",
 	)
 }
 
 // nonRootCatalogPath returns the path to the catalog in a non-root workspace.
 func (ws *Workspace) nonRootCatalogPath() string {
-	return filepath.Join(ws.rootPath, ".warpforge", "catalog")
+	return filepath.Join(ws.InternalPath(), "catalog")
+}
+
+
+// WarehousePath returns the path to the catalog in a non-root workspace.
+func (ws *Workspace) WarehousePath() string {
+	return filepath.Join(ws.InternalPath(), "warehouse")
 }
 
 // CatalogPath returns the catalog path for catalog with a given name within a workspace.
@@ -386,6 +408,6 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error)
 // GetWarehouseAddress will return a URL-style path to the workspace warehouse.
 // will use the rootpath prefixed with "/"
 func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
-	path := filepath.Join("/", ws.rootPath, ".warpforge", "warehouse")
+	path := filepath.Join("/", ws.InternalPath(), "warehouse")
 	return wfapi.WarehouseAddr("ca+file://" + path)
 }
