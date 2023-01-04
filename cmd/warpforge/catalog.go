@@ -22,6 +22,7 @@ import (
 	"github.com/warptools/warpforge/pkg/cataloghtml"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
+	"github.com/warptools/warpforge/pkg/publisher"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -139,6 +140,15 @@ var catalogCmdDef = cli.Command{
 					Usage: "URL for warehouse to use for download links",
 				},
 			},
+		},
+		{
+			Name:  "publish",
+			Usage: "Publish the contents of a catalog to remote warehouses",
+			Action: util.ChainCmdMiddleware(cmdPublish,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
+			),
 		},
 	},
 }
@@ -723,6 +733,23 @@ func cmdGenerateHtml(c *cli.Context) error {
 	}
 
 	fmt.Printf("published HTML for catalog %q to %s\n", catalogName, outputPath)
+
+	return nil
+}
+
+func cmdPublish(c *cli.Context) error {
+	wsSet, err := util.OpenWorkspaceSet()
+	if err != nil {
+		return err
+	}
+
+	catalogName := c.String("name")
+	cat, err := wsSet.Root().OpenCatalog(catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
+	}
+
+	publisher.PublishCatalog(*wsSet.Root(), cat)
 
 	return nil
 }

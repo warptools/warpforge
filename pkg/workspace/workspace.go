@@ -123,6 +123,24 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 		wareId.Hash), nil
 }
 
+// Returns the path to a ware within the workspace's warehouse directory
+// Errors:
+//
+//    - warpforge-error-wareid-invalid -- when a malformed WareID is provided
+func (ws *Workspace) WarePath(wareId wfapi.WareID) (string, error) {
+	if len(wareId.Hash) < 7 {
+		return "", wfapi.ErrorWareIdInvalid(wareId)
+	}
+	return filepath.Join(
+		"/",
+		ws.rootPath,
+		".warpforge",
+		"warehouse",
+		wareId.Hash[0:3],
+		wareId.Hash[3:6],
+		wareId.Hash), nil
+}
+
 // IsRootWorkspace returns true if the workspace is a root workspace
 func (ws *Workspace) IsRootWorkspace() bool {
 	return ws.isRootWorkspace
