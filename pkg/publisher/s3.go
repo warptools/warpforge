@@ -13,6 +13,7 @@ import (
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -94,7 +95,9 @@ func (pub *S3Publisher) putWare(wareId wfapi.WareID, localPath string) error {
 		return err
 	}
 
-	_, err = pub.client.PutObject(context.TODO(), &s3.PutObjectInput{
+	uploader := manager.NewUploader(pub.client)
+
+	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
 		Bucket: &pub.Bucket.Name,
 		Key:    &key,
 		Body:   file,
