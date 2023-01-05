@@ -19,23 +19,45 @@ const (
 	MagicFilename_Plot   = "plot.wf"
 )
 
+// See validateDNS1123Subdomain and ValidateModuleName
+const (
+	// similar to dns1123 label hunks, but allows mid-string dots also.
+	validation_moduleNamePathHunk_regexpStr string = "[a-z0-9]([-a-z0-9\\.]*[a-z0-9])?"
+	validation_moduleNamePathHunk_msg       string = "must consist of lower case alphanumeric characters or '-' or '.', and must start and end with an alphanumeric character"
+	validation_moduleNamePathHunk_maxlen    int    = 63
+	validation_dns1123Label_regexpStr       string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+	validation_dns1123Label_msg             string = "must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character"
+	validation_dns1123Label_maxlen          int    = 63
+	validation_dns1123Subdomain_regexpStr   string = validation_dns1123Label_regexpStr + "(\\." + validation_dns1123Label_regexpStr + ")*"
+	validation_dns1123Subdomain_msg         string = "must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character"
+	validation_dns1123Subdomain_maxlen      int    = 253
+)
+
 var (
-	alphaNumReFmt               = `[a-zA-Z0-9]`
-	wordReFmt                   = `[-a-zA-Z0-9_\.]`
-	segmentReFmt                = fmt.Sprintf(`(%s%s*)?%s`, alphaNumReFmt, wordReFmt, alphaNumReFmt)
-	firstSegmentReFmt           = fmt.Sprintf(`%[1]s\.%[1]s`, segmentReFmt)
-	reModuleFirstSegment        = regexp.MustCompile(`^` + firstSegmentReFmt + `$`)
-	reModuleName                = regexp.MustCompile(`^` + firstSegmentReFmt + `(/` + segmentReFmt + `)*$`)
-	moduleFirstSegmentMaxLength = 63 // limit first segment to encourage compatibility with DNS domain name rules
+	validation_moduleNamePathHunk_regexp = regexp.MustCompile("^" + validation_moduleNamePathHunk_regexpStr + "$")
+	validation_dns1123Subdomain_regexp   = regexp.MustCompile("^" + validation_dns1123Subdomain_regexpStr + "$")
 )
 
 // ValidateModuleName checks the module name for invalid strings.
-// Name "path segments" are defined as the segments separated by forward slash "/".
+// "Path segments" are defined as the segments separated by forward slash "/".
+// "Domain segments" are defined as the segments separated by dot "." and only applies to the first path segment.
 //
-// Module names have the following rules:
-//    - Name MUST start AND end each segment with an ASCII alpha-numeric character.
-//    - Name MUST contain only ASCII alpha-numeric characters plus underscores '_', hyphens '-', dots '.', and forward slash '/'.
-//    - First segment of the name MUST include a dot '.' character and must be 63 characters or less
+// A module name must resemble a domain name (per DNS RFC 1123 & 1035) with optional subsequent path segments. I.E.
+//
+//    [[[...]]]subdomain.]subdomain.]domain[/path[/morepath[...]]]
+//
+// The rules are summarized as following:
+//    - Name MUST contain only:
+//         - ASCII lowercase alpha-numeric characters
+//         - underscores '_'
+//         - hyphens '-'
+//         - dots '.'
+//         - forward slash '/'.
+//    - Name MUST start AND end each path or domain segment with an ASCII lowercase alpha-numeric character.
+//    - First path segment of the name MUST include a dot '.' character
+//    - First path segment of the name MUST be 253 characters or less
+//    - Each domain segment MUST only include ASCII, lowercase, alpha-numeric characters and hyphens '-'
+//    - Each domain segment MUST be 63 characters or less
 //
 // Errors:
 //
@@ -43,21 +65,114 @@ var (
 func ValidateModuleName(moduleName wfapi.ModuleName) error {
 	name := string(moduleName)
 	parts := strings.Split(name, "/")
-	if !reModuleFirstSegment.MatchString(parts[0]) {
+	if err := validateDNS1123Subdomain(parts[0]); err != nil {
 		// test first segment separately so we can add a more specific error message
 		return serum.Error(wfapi.ECodeModuleInvalid,
-			serum.WithMessageLiteral("first segment of module name must both start and end with an alphanumeric character, must contain at least one '.', and must consist of alphanumeric characters, '-', '_', or '.'"),
-			serum.WithDetail("name", strconv.Quote(name)),
+			serum.WithDetail("name", escape(name)),
+			serum.WithCause(err),
 		)
 	}
-	if !reModuleName.MatchString(name) {
-		return serum.Error(wfapi.ECodeModuleInvalid,
-			serum.WithMessageLiteral("module name segments must both start and end with an alphanumeric character and must consist of alphanumeric characters, '-', '_', or '.'"),
-			serum.WithDetail("name", strconv.Quote(name)),
+	for _, pathHunk := range parts[1:] {
+		if err := validateModuleNamePathHunk(pathHunk); err != nil {
+			return serum.Error(wfapi.ECodeModuleInvalid,
+				serum.WithDetail("name", escape(name)),
+				serum.WithCause(err),
+			)
+		}
+	}
+	return nil
+}
+
+func validateModuleNamePathHunk(value string) error {
+	if len(value) > validation_moduleNamePathHunk_maxlen {
+		return serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageTemplate("value must be no more than {{limit}} characters"),
+			serum.WithDetail("limit", strconv.Itoa(validation_moduleNamePathHunk_maxlen)),
 		)
 	}
-	if len(parts[0]) > moduleFirstSegmentMaxLength {
-		return serum.Errorf(wfapi.ECodeModuleInvalid, "first segment of module name may not be longer than %d characters", moduleFirstSegmentMaxLength)
+	if !validation_moduleNamePathHunk_regexp.MatchString(value) {
+		return serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageLiteral(validation_moduleNamePathHunk_msg),
+		)
+	}
+	return nil
+}
+
+// escape limits strings to ascii characters. This will help when debugging
+// unicode characters which are invisible, whitespace, or look-alikes to other characters.
+// escape will convert any such characters into escape sequences.
+func escape(name string) string {
+	qName := strconv.QuoteToASCII(name)
+	qName = qName[1 : len(qName)-1] // remove double quotes
+	return qName
+}
+
+// validateDNS1123Subdomain implements restrictions for DNS names
+//
+// Based on of RFC 1123 (section 2.5)
+//    - MUST allow host name to begin with a digit
+//    - MUST allow host names of up to 63 characters
+//    - SHOULD allow host names of up to 255 characters
+// NOTE: We've shortened subdomain maximum length to 253 characters because
+// that's what we did before and what kubernetes does.
+//
+// Based on RFC 1035 (secion 2.3)
+// <<<
+//     <domain> ::= <subdomain> | " "
+//
+//     <subdomain> ::= <label> | <subdomain> "." <label>
+//
+//     <label> ::= <letter> [ [ <ldh-str> ] <let-dig> ]
+//
+//     <ldh-str> ::= <let-dig-hyp> | <let-dig-hyp> <ldh-str>
+//
+//     <let-dig-hyp> ::= <let-dig> | "-"
+//
+//     <let-dig> ::= <letter> | <digit>
+//
+//     <letter> ::= any one of the 52 alphabetic characters A through Z in
+//     upper case and a through z in lower case
+//
+//     <digit> ::= any one of the ten digits 0 through 9
+//
+//     Note that while upper and lower case letters are allowed in domain
+//     names, no significance is attached to the case.  That is, two names with
+//     the same spelling but different case are to be treated as if identical.
+//
+//     The labels must follow the rules for ARPANET host names.  They must
+//     start with a letter, end with a letter or digit, and have as interior
+//     characters only letters, digits, and hyphen.  There are also some
+//     restrictions on the length.  Labels must be 63 characters or less.
+// >>>
+// We do not implement case folding and therefore domains MUST be lowercase.
+//
+// Errors:
+//
+//   - warpforge-error-invalid -- when the string fails validation
+func validateDNS1123Subdomain(value string) error {
+	if len(value) > validation_dns1123Subdomain_maxlen {
+		return serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageTemplate("domain must be no more than {{limit}} characters"),
+			serum.WithDetail("limit", strconv.Itoa(validation_dns1123Subdomain_maxlen)),
+		)
+	}
+	if !validation_dns1123Subdomain_regexp.MatchString(value) {
+		return serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageLiteral(validation_dns1123Subdomain_msg),
+		)
+	}
+	lastDotIdx := 0
+	for i, r := range value {
+		if r == '.' {
+			lastDotIdx = i + 1
+		}
+		if i-lastDotIdx >= validation_dns1123Label_maxlen {
+			return serum.Error(wfapi.ECodeInvalid,
+				serum.WithMessageTemplate("subdomain must be no more than {{limit}} characters"),
+				serum.WithDetail("limit", strconv.Itoa(validation_dns1123Label_maxlen)),
+				serum.WithDetail("label", value[lastDotIdx+1:i]),
+			)
+		}
 	}
 	return nil
 }
