@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
@@ -84,14 +85,25 @@ func checkFormula(fsys fs.FS, fileName string) (*ipld.Node, error) {
 	return &n, nil
 }
 
+// Errors:
+//
+//   - warpforge-error-invalid --
+//   - warpforge-error-io -- unable to get working directory
+//   - warpforge-error-io -- unable to read files
+//   - warpforge-error-module-invalid -- module data is invalid
+//   - warpforge-error-plot-invalid -- plot data is invalid
+//   - warpforge-error-serialization -- unable to parse files
+//   - warpforge-error-invalid-argument -- cli argument is invalid
 func cmdCheck(c *cli.Context) error {
 	if !c.Args().Present() {
-		return fmt.Errorf("no input files provided")
+		return serum.Error(wfapi.ECodeArgument,
+			serum.WithMessageLiteral("no input files provided"),
+		)
 	}
 	ctx := c.Context
 	pwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return serum.Errorf(wfapi.ECodeIo, "unable to get workding directory: %w", err)
 	}
 	for _, filename := range c.Args().Slice() {
 		t, err := dab.GetFileType(filename)

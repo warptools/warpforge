@@ -39,6 +39,12 @@ var (
 )
 
 // ValidateModuleName checks the module name for invalid strings.
+//
+// Examples of valid module names:
+//    - foobar
+//    - foo.bar/grill
+//    - foo-bar
+//
 // "Path segments" are defined as the segments separated by forward slash "/".
 // "Domain segments" are defined as the segments separated by dot "." and only applies to the first path segment.
 //
@@ -49,7 +55,6 @@ var (
 // The rules are summarized as following:
 //    - Name MUST contain only:
 //         - ASCII lowercase alpha-numeric characters
-//         - underscores '_'
 //         - hyphens '-'
 //         - dots '.'
 //         - forward slash '/'.
