@@ -191,11 +191,9 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		// TODO: unclear if this should happen here or elsewhere
 		if wareAddr == nil {
 			// check if the ware is already in the warehouse
-			_, wsPath := wsSet.Root().Path()
+			root := wsSet.Root()
 			warehousePath := filepath.Join("/",
-				wsPath,
-				".warpforge",
-				"warehouse",
+				root.WarehousePath(),
 				wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 			if _, err := os.Stat(filepath.Join("/", warehousePath)); os.IsNotExist(err) {
 				// ware not found, run the replay to generate it

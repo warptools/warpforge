@@ -14,6 +14,7 @@ import (
 
 const (
 	magicWorkspaceDirname = dab.MagicFilename_Workspace
+	magicHomeWorkspaceDirname = dab.MagicFilename_HomeWorkspace
 )
 
 var homedir string
@@ -46,8 +47,7 @@ func init() {
 //
 // If no workspace is found, it will return nil for both the workspace pointer and error value.
 // If errors are returned, they're due to filesystem IO.
-// FindWorkspace will refuse to return your home workspace and abort the search if it encounters it,
-// returning nils in the same way as if no workspace was found.
+// FindWorkspace will ignore your home workspace and carry on searching upwards.
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
 //
@@ -64,9 +64,6 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 		_, err := statDir(fsys, filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
 		if err == nil {
 			ws := openWorkspace(fsys, filepath.Join(basisPath, searchAt))
-			if ws.isHomeWorkspace {
-				ws = nil
-			}
 			return ws, filepath.Dir(searchAt), nil
 		}
 		if errors.Is(err, fs.ErrNotExist) { // no such thing?  oh well.  pop a segment and keep looking.
@@ -129,9 +126,8 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss Workspace
 		}
 	}
 	// If no root workspace was found, include the home workspace at the end of the stack.
-	// Unless it's already there, of course.
-	if len(wss) == 0 || (!wss[len(wss)-1].isHomeWorkspace && !wss[len(wss)-1].IsRootWorkspace()) {
-		wss = append(wss, openWorkspace(fsys, homedir))
+	if len(wss) == 0 || !wss[len(wss)-1].IsRootWorkspace() {
+		wss = append(wss, openHomeWorkspace(fsys))
 	}
 	return wss, nil
 }
@@ -190,6 +186,8 @@ func SetRootWorkspaceOpt() PlaceWorkspaceOpt {
 //
 //    - warpforge-error-io -- when creating workspace fails
 func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) error {
+	workspaceDirname := magicWorkspaceDirname
+
 	fi, err := os.Stat(rootPath)
 	if err != nil {
 		return wfapi.ErrorIo("invalid rootpath for workspace", rootPath, err)
@@ -198,9 +196,9 @@ func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) error {
 		return wfapi.ErrorIo("workspace rootpath is not a directory", rootPath, err)
 	}
 
-	magicWorkspaceDirname := filepath.Join(rootPath, magicWorkspaceDirname)
-	if err := os.MkdirAll(magicWorkspaceDirname, 0755|os.ModeDir); err != nil {
-		return wfapi.ErrorIo("could not create workspace internals directory", magicWorkspaceDirname, err)
+	workspaceDirname = filepath.Join(rootPath, workspaceDirname)
+	if err := os.MkdirAll(workspaceDirname, 0755|os.ModeDir); err != nil {
+		return wfapi.ErrorIo("could not create workspace internals directory", workspaceDirname, err)
 	}
 
 	for _, o := range opts {

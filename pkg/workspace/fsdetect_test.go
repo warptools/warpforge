@@ -24,7 +24,7 @@ func TestWorkspaceDetection(t *testing.T) {
 	homedir = "home/user"
 	t.Run("happy-path", func(t *testing.T) {
 		fsys := fstest.MapFS{
-			"home/user/.warpforge":                     &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"home/user/.warphome":                      &fstest.MapFile{Mode: 0755 | fs.ModeDir},
 			"home/user/foobar-proj/.warpforge":         &fstest.MapFile{Mode: 0755 | fs.ModeDir},
 			"home/user/workspace/.warpforge":           &fstest.MapFile{Mode: 0755 | fs.ModeDir},
 			"home/user/workspace/quux-proj/.warpforge": &fstest.MapFile{Mode: 0755 | fs.ModeDir},

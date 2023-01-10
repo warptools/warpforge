@@ -685,16 +685,13 @@ func execFormula(ctx context.Context, ws *workspace.Workspace, fc wfapi.FormulaA
 	}
 
 	// get the root workspace location
-	var wsPath string
-	if ws != nil {
-		_, wsPath = ws.Path()
-	} else {
+	if ws == nil {
 		return rr, wfapi.ErrorWorkspace("", fmt.Errorf("no root workspace path was provided for formula exec"))
 	}
-	wsPath = filepath.Join("/", wsPath, ".warpforge")
+	wsPath := filepath.Join("/", ws.InternalPath())
 
 	// ensure a warehouse dir exists within the root workspace
-	warehousePath := filepath.Join(wsPath, "warehouse")
+	warehousePath := filepath.Join("/", ws.WarehousePath())
 	errRaw = os.MkdirAll(warehousePath, 0755)
 	if errRaw != nil {
 		return rr, wfapi.ErrorIo("failed to create warehouse", warehousePath, errRaw)
