@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/warpfork/go-testmark"
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/wfapi"
@@ -14,6 +15,36 @@ import (
 var veryLongDomain = strings.Repeat("a", 63) + "." + strings.Repeat("b", 63) + "." + strings.Repeat("c", 63) + "." + strings.Repeat("d", 61)
 var manySubdomains = strings.Repeat("a.", 126) + "b"
 
+func TestValidateModuleName_Testmark(t *testing.T) {
+	filename := "../../examples/200-module-parse/module-names.md"
+	t.Logf("file://%s", filename)
+	doc, err := testmark.ReadFile(filename)
+	qt.Assert(t, err, qt.IsNil)
+
+	for _, hunk := range doc.DataHunks {
+		hunk := hunk
+		t.Run(hunk.Name, func(t *testing.T) {
+			lines := strings.Split(string(hunk.Body), "\n")
+			for idx, line := range lines {
+				if line == "" {
+					continue
+				}
+				line := line
+				tname := fmt.Sprintf(":%d/%s", hunk.LineStart+3+idx, line)
+				t.Run(tname, func(t *testing.T) {
+					err := dab.ValidateModuleName(wfapi.ModuleName(line))
+					if strings.HasPrefix(hunk.Name, "valid/") {
+						qt.Assert(t, err, qt.IsNil)
+						return
+					}
+					qt.Assert(t, err, qt.IsNotNil)
+				})
+			}
+		})
+	}
+}
+
+// These tests should expand on checks in the testmark tests
 func TestValidateModuleName(t *testing.T) {
 	qt.Assert(t, veryLongDomain, qt.HasLen, 253)
 	qt.Assert(t, manySubdomains, qt.HasLen, 253)

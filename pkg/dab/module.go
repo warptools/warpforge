@@ -59,7 +59,6 @@ var (
 //         - dots '.'
 //         - forward slash '/'.
 //    - Name MUST start AND end each path or domain segment with an ASCII lowercase alpha-numeric character.
-//    - First path segment of the name MUST include a dot '.' character
 //    - First path segment of the name MUST be 253 characters or less
 //    - Each domain segment MUST only include ASCII, lowercase, alpha-numeric characters and hyphens '-'
 //    - Each domain segment MUST be 63 characters or less
