@@ -39,6 +39,11 @@ func wdOrArg(c *cli.Context, argIdx int) (string, error) {
 //
 //   - warpforge-error-io --
 //   - warpforge-error-invalid --
+//   - warpforge-error-query --
+//   - warpforge-error-serialization --
+//   - warpforge-error-io-dial --
+//   - warpforge-error-searching-filesystem --
+//   - warpforge-error-unknown --
 func cmdSpark(c *cli.Context) error {
 	if c.Args().Len() > 1 {
 		return serum.Errorf(wfapi.ECodeInvalid, "too many args")

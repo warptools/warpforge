@@ -15,6 +15,12 @@ import (
 	schemadsl "github.com/ipld/go-ipld-prime/schema/dsl"
 )
 
+// Helper strings for JSON-RPC implementation.
+const (
+	RpcModuleStatus = "RpcModuleStatus"
+	RpcPing         = "RpcPing"
+)
+
 // embed the wfapi ipld schema from file
 //go:embed wfwsapi.ipldsch
 var schFs embed.FS
@@ -50,4 +56,38 @@ func concat(a, b *schemadmt.Schema) *schemadmt.Schema {
 		panic(err)
 	}
 	return bindnode.Unwrap(nb.Build()).(*schemadmt.Schema)
+}
+
+type ModuleStatusQuery struct {
+	Path              string
+	InputReplacements InputReplacements
+	InterestLevel     ModuleInterestLevel
+}
+
+type InputReplacements struct {
+	Keys   []wfapi.PlotInput
+	Values map[wfapi.PlotInput]wfapi.WareID
+}
+
+type ModuleInterestLevel string
+
+const (
+	ModuleInterestLevel_Query = "query"
+	ModuleInterestLevel_Run   = "run"
+)
+
+type ModuleStatus string
+
+const (
+	ModuleStatus_NoInfo             ModuleStatus = "noinfo"
+	ModuleStatus_Queuing            ModuleStatus = "queuing"
+	ModuleStatus_InProgress         ModuleStatus = "inprogress"
+	ModuleStatus_FailedProvisioning ModuleStatus = "failed_provisioning"
+	ModuleStatus_ExecutedSuccess    ModuleStatus = "executed_success"
+	ModuleStatus_ExecutedFailed     ModuleStatus = "executed_failed"
+)
+
+type ModuleStatusAnswer struct {
+	Path   string
+	Status ModuleStatus
 }
