@@ -343,6 +343,7 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-workspace -- when opening the workspace set fails
+//    - warpforge-error-module-invalid -- when module name is invalid
 func execModule(ctx context.Context, config wfapi.PlotExecConfig, modulePath string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()

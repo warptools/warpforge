@@ -10,6 +10,8 @@ import (
 
 // TODO: Add comments for reasons to use or not use particular codes
 const (
+	// ECodeArgument may be used when invalid arguments are provided to the warpforge command line
+	ECodeArgument = "warpforge-error-invalid-argument"
 	// ECodeAlreadyExists may be used when _something_ already exists.
 	// Prefer to use a more specific error code or specify _what_ is missing.
 	ECodeAlreadyExists          = "warpforge-error-already-exists"

@@ -20,6 +20,7 @@ import (
 	"github.com/warptools/warpforge/cmd/warpforge/internal/catalog"
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/cataloghtml"
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
@@ -364,7 +365,7 @@ func cmdCatalogBundle(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get pwd: %s", err)
 	}
-	plot, err := util.PlotFromFile(filepath.Join(pwd, util.PlotFilename))
+	plot, err := util.PlotFromFile(filepath.Join(pwd, dab.MagicFilename_Plot))
 	if err != nil {
 		return err
 	}
@@ -469,8 +470,9 @@ func cmdCatalogRelease(c *cli.Context) error {
 		}
 	}
 
+	fsys := os.DirFS("/")
 	// get the module, release, and item values (in format `module:release:item`)
-	module, err := util.ModuleFromFile("module.wf")
+	module, err := dab.ModuleFromFile(fsys, dab.MagicFilename_Module)
 	if err != nil {
 		return err
 	}
@@ -478,7 +480,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 	releaseName := c.Args().Get(0)
 
 	fmt.Printf("building replay for module = %q, release = %q, executing plot...\n", module.Name, releaseName)
-	plot, err := util.PlotFromFile(util.PlotFilename)
+	plot, err := util.PlotFromFile(dab.MagicFilename_Plot)
 	if err != nil {
 		return err
 	}

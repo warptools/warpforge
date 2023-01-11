@@ -151,9 +151,11 @@ We'll run this in a filesystem that contains a `plot.wf` (albeit a pretty silly 
 [testmark]:# (checkplot/fs/plot.wf)
 ```
 {
+	"plot.v1":{
     "inputs": {},
     "steps": {},
     "outputs": {}
+	}
 }
 ```
 
@@ -305,7 +307,7 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 									}
 								}
 							}
-						},
+						}
 					},
 					"outputs": {
 						"test": "pipe:one-inner:test"

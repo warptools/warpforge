@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
@@ -94,12 +95,13 @@ func cmdStatus(c *cli.Context) error {
 		fmtWarning.Fprintf(c.App.Writer, "WARNING: plugins do not appear to be installed correctly.\n\n")
 	}
 
+	fsys := os.DirFS("/")
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(pwd, util.ModuleFilename)); err == nil {
+	if _, err := os.Stat(filepath.Join(pwd, dab.MagicFilename_Module)); err == nil {
 		isModule = true
-		module, err = util.ModuleFromFile(filepath.Join(pwd, util.ModuleFilename))
+		module, err = dab.ModuleFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Module))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -114,11 +116,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(pwd, util.PlotFilename))
+	_, err = os.Stat(filepath.Join(pwd, dab.MagicFilename_Plot))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = util.PlotFromFile(filepath.Join(pwd, util.PlotFilename))
+		plot, err = util.PlotFromFile(filepath.Join(pwd, dab.MagicFilename_Plot))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
