@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
+	"os"
 
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/plumbing/spark"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 var sparkCmdDef = cli.Command{
@@ -22,12 +24,33 @@ var sparkCmdDef = cli.Command{
 	Flags: []cli.Flag{},
 }
 
-func cmdSpark(c *cli.Context) error {
-	if c.Args().Len() != 1 {
-		return fmt.Errorf("invalid args")
+func wdOrArg(c *cli.Context, argIdx int) (string, error) {
+	if wd := c.Args().Get(argIdx); wd != "" {
+		return wd, nil
 	}
-	cfg := &spark.Config{}
-	err := cfg.Run(c.Context)
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", serum.Error(wfapi.ECodeIo, serum.WithCause(err))
+	}
+	return wd, nil
+}
+
+// Errors:
+//
+//   - warpforge-error-io --
+//   - warpforge-error-invalid --
+func cmdSpark(c *cli.Context) error {
+	if c.Args().Len() > 1 {
+		return serum.Errorf(wfapi.ECodeInvalid, "too many args")
+	}
+	wd, err := wdOrArg(c, 0)
+	if err != nil {
+		return err
+	}
+	cfg := &spark.Config{
+		WorkingDirectory: wd,
+	}
+	err = cfg.Run(c.Context)
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}

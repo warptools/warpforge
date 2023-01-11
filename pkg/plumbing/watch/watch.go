@@ -163,7 +163,12 @@ func (s *server) rmUnixSocket(path string) error {
 // Errors:
 //
 //   - warpforge-error-io -- when socket path is too long
-func generateSocketPath(path string) (string, error) {
+//   - warpforge-error-io -- when socket path cannot be canonicalized
+func GenerateSocketPath(path string) (string, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", wfapi.ErrorIo("could not canonicalize path", path, err)
+	}
 	// This socket path generation is dumb. and also one of the simplest thing to do right now
 	sockPath := fmt.Sprintf("/tmp/warpforge-%s", url.PathEscape(path))
 	if len(sockPath) > 108 {
@@ -263,7 +268,7 @@ func (c *Config) Run(ctx context.Context) error {
 	srv := server{status: statusRunning}
 	if c.Socket {
 		absPath := canonicalizePath(wd, c.Path)
-		sockPath, err := generateSocketPath(absPath)
+		sockPath, err := GenerateSocketPath(absPath)
 		if err != nil {
 			return err
 		}
