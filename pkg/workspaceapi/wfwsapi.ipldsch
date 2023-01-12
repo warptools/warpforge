@@ -63,3 +63,20 @@ type ModuleStatus enum {
 	| ExecutedFailed ("executed_failed")
 }
 
+type ModuleStatusUnion union {
+       | ModuleStatusUnion_NoInfo "noinfo"
+       | ModuleStatusUnion_Queuing "queuing"
+       | ModuleStatusUnion_InProgress "inprogress"
+       | ModuleStatusUnion_FailedProvisioning "failed_provisioning"
+       | ModuleStatusUnion_ExecutedSuccess "executed_success"
+       | ModuleStatusUnion_ExecutedFailed "executed_failed"
+} representation keyed
+
+# TODO most of the below surely deserve some more body content; wip.
+
+type ModuleStatusUnion_NoInfo struct {}
+type ModuleStatusUnion_Queuing struct {}
+type ModuleStatusUnion_InProgress struct {}
+type ModuleStatusUnion_FailedProvisioning struct {}
+type ModuleStatusUnion_ExecutedSuccess struct {}
+type ModuleStatusUnion_ExecutedFailed struct {}

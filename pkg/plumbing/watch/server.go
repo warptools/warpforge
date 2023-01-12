@@ -25,6 +25,7 @@ type server struct {
 // serve accepts and handles connections to the server.
 func (s *server) serve(ctx context.Context) error {
 	log := logging.Ctx(ctx)
+	log.Debug("", "serve")
 	if s.listener == nil {
 		err := fmt.Errorf("did not call listen on server")
 		log.Info("", err.Error())
@@ -55,6 +56,9 @@ type historian struct {
 	status workspaceapi.ModuleStatus
 }
 
+// Errors:
+//
+//   - warpforge-error-internal -- nil receiver
 func (h *historian) ModuleStatus(ctx context.Context, path string) (workspaceapi.ModuleStatus, error) {
 	if h == nil {
 		return workspaceapi.ModuleStatus_NoInfo, serum.Error(wfapi.ECodeInternal, serum.WithMessageLiteral("historian not provisioned"))
@@ -67,7 +71,10 @@ type binder struct {
 	historian *historian
 }
 
+// Errors: none
 func (b binder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
+	logger := logging.Ctx(ctx)
+	logger.Debug("", "bind")
 	h := &handler{
 		statusFetcher: b.historian.ModuleStatus,
 	}
@@ -82,23 +89,28 @@ type handler struct {
 	statusFetcher func(ctx context.Context, path string) (workspaceapi.ModuleStatus, error)
 }
 
+// This _must_ return jsonrpc2 errors. We should probably use a different library.
 // Errors: ignore
 func (h *handler) Handle(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+	logger := logging.Ctx(ctx)
+	logger.Debug("", "handle")
 	switch req.Method {
 	case workspaceapi.RpcModuleStatus:
 		return h.methodModuleStatus(ctx, req.Params)
 	case workspaceapi.RpcPing:
 		return h.methodPing(ctx, req.Params)
 	default:
+		logger.Debug("", "method %q not found", req.Method)
 		return nil, jsonrpc2.ErrMethodNotFound
 	}
 }
 
 func (h *handler) methodPing(ctx context.Context, req json.RawMessage) (json.RawMessage, error) {
+	logger := logging.Ctx(ctx)
+	logger.Debug("", "method: ping")
 	var data workspaceapi.Ping
 	_, err := ipld.Unmarshal(req, ipldjson.Decode, &data, workspaceapi.TypeSystem.TypeByName("Ping"))
 	if err != nil {
-		logger := logging.Ctx(ctx)
 		logger.Debug("", "failed to unmarshal ping struct: %s", err)
 		return nil, jsonrpc2.ErrParse
 	}
@@ -112,6 +124,8 @@ func (h *handler) methodPing(ctx context.Context, req json.RawMessage) (json.Raw
 }
 
 func (h *handler) methodModuleStatus(ctx context.Context, req json.RawMessage) (json.RawMessage, error) {
+	logger := logging.Ctx(ctx)
+	logger.Debug("", "method: module status")
 	var data workspaceapi.ModuleStatusQuery
 	_, err := ipld.Unmarshal(req, ipldjson.Decode, &data, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
 	if err != nil {
@@ -120,6 +134,7 @@ func (h *handler) methodModuleStatus(ctx context.Context, req json.RawMessage) (
 
 	status, err := h.statusFetcher(ctx, data.Path)
 	if err != nil {
+		logger.Debug("", "unable to get status")
 		return nil, jsonrpc2.ErrInternal
 	}
 	response := &workspaceapi.ModuleStatusAnswer{
@@ -129,6 +144,7 @@ func (h *handler) methodModuleStatus(ctx context.Context, req json.RawMessage) (
 
 	result, err := ipld.Marshal(ipldjson.Encode, response, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
 	if err != nil {
+		logger.Debug("", "unable to get serialize status answer")
 		return nil, jsonrpc2.ErrInternal
 	}
 	return json.RawMessage(result), nil

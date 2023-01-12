@@ -59,7 +59,7 @@ func TestServerPing(t *testing.T) {
 	query := workspaceapi.Ping{CallID: "foobar"}
 	data, err := ipld.Marshal(ipldjson.Encode, &query, workspaceapi.TypeSystem.TypeByName("Ping"))
 	qt.Assert(t, err, qt.IsNil)
-	async := conn.Call(ctx, workspaceapi.RpcModuleStatus, json.RawMessage(data))
+	async := conn.Call(ctx, workspaceapi.RpcPing, json.RawMessage(data))
 
 	var msg json.RawMessage
 	err = async.Await(ctx, &msg)
@@ -73,13 +73,36 @@ func TestServerPing(t *testing.T) {
 
 func TestServerModuleStatus(t *testing.T) {
 	ctx := context.Background()
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	logger := logging.NewLogger(stdout, stderr, false, false, true)
+	ctx = logger.WithContext(ctx)
+	t.Cleanup(func() {
+		stdoutData, err := io.ReadAll(stdout)
+		if err != nil {
+			t.Log("unable to read stdout")
+		}
+		t.Logf("flush stdout:\n%s", string(stdoutData))
+
+		stderrData, err := io.ReadAll(stderr)
+		if err != nil {
+			t.Log("unable to read stderr")
+		}
+		t.Logf("flush stderr:\n%s", string(stderrData))
+	})
+	_, err := io.WriteString(stdout, "test\n")
+	qt.Assert(t, err, qt.IsNil)
+	logger.Info("tag", "test")
+
 	listener, err := jsonrpc2.NetPipe(ctx)
 	defer listener.Close()
 	qt.Assert(t, err, qt.IsNil)
 
 	srv := &server{
 		listener: listener,
-		binder:   binder{},
+		binder: binder{
+			historian: &historian{status: workspaceapi.ModuleStatus_ExecutedSuccess},
+		},
 	}
 	now := time.Now()
 	ctx, cancel := context.WithDeadline(ctx, now.Add(5*time.Second))
@@ -103,7 +126,7 @@ func TestServerModuleStatus(t *testing.T) {
 
 	expected := workspaceapi.ModuleStatusAnswer{
 		Path:   query.Path,
-		Status: workspaceapi.ModuleStatus_Queuing,
+		Status: workspaceapi.ModuleStatus_ExecutedSuccess,
 	}
 	var result workspaceapi.ModuleStatusAnswer
 	_, err = ipld.Unmarshal([]byte(msg), ipldjson.Decode, &result, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))

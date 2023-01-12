@@ -60,3 +60,11 @@ func GenerateSchemaTypes() {
 		panic(err)
 	}
 }
+
+func TestModuleStatusUnion(t *testing.T) {
+	ms := ModuleStatusUnion{ModuleStatusUnion_NoInfo: &ModuleStatusUnion_NoInfo{}}
+	result := ms.Type()
+	qt.Assert(t, result, qt.Equals, "ModuleStatusUnion_NoInfo")
+	typ := TypeSystem.TypeByName(result)
+	qt.Assert(t, typ, qt.IsNotNil)
+}

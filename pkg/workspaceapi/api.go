@@ -3,6 +3,7 @@ package workspaceapi
 import (
 	"embed"
 	"fmt"
+	"reflect"
 
 	"github.com/warptools/warpforge/wfapi"
 
@@ -99,3 +100,47 @@ const (
 	ModuleStatus_ExecutedSuccess    ModuleStatus = "ExecutedSuccess"
 	ModuleStatus_ExecutedFailed     ModuleStatus = "ExecutedFailed"
 )
+
+type ModuleStatusUnion struct {
+	ModuleStatusUnion_NoInfo             *ModuleStatusUnion_NoInfo
+	ModuleStatusUnion_Queuing            *ModuleStatusUnion_Queuing
+	ModuleStatusUnion_InProgress         *ModuleStatusUnion_InProgress
+	ModuleStatusUnion_FailedProvisioning *ModuleStatusUnion_FailedProvisioning
+	ModuleStatusUnion_ExecutedSuccess    *ModuleStatusUnion_ExecutedSuccess
+	ModuleStatusUnion_ExecutedFailed     *ModuleStatusUnion_ExecutedFailed
+}
+
+func (ms ModuleStatusUnion) Type() string {
+	rv := reflect.ValueOf(ms)
+	unionIdx := -1
+	var unionField reflect.Value
+	for idx := 0; idx < rv.NumField(); idx++ {
+		field := rv.Field(idx)
+		if field.IsNil() {
+			continue
+		}
+		if unionIdx == -1 {
+			unionIdx = idx
+			unionField = field
+			continue
+		}
+		panic("union has multiple types")
+	}
+	if unionIdx == -1 {
+		panic("union has no type")
+	}
+	return unionField.Type().Elem().Name()
+}
+
+type ModuleStatusUnion_NoInfo struct {
+}
+type ModuleStatusUnion_Queuing struct {
+}
+type ModuleStatusUnion_InProgress struct {
+}
+type ModuleStatusUnion_FailedProvisioning struct {
+}
+type ModuleStatusUnion_ExecutedSuccess struct {
+}
+type ModuleStatusUnion_ExecutedFailed struct {
+}
