@@ -138,19 +138,21 @@ type connection jsonrpc2.Connection
 //   - warpforge-error-serialization --
 func (c *connection) moduleStatusQuery(ctx context.Context, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
 	var result workspaceapi.ModuleStatusAnswer
-	data, err := ipld.Marshal(ipldjson.Encode, query, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
+	data, err := ipld.Marshal(ipldjson.Encode, &query, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
 	if err != nil {
 		return result, serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
 			serum.WithMessageLiteral("failed to serialize Module Status Query"))
 	}
 	async := (*jsonrpc2.Connection)(c).Call(ctx, workspaceapi.RpcModuleStatus, json.RawMessage(data))
-	var raw json.RawMessage
-	if err := async.Await(ctx, raw); err != nil {
+
+	var msg json.RawMessage
+	if err := async.Await(ctx, &msg); err != nil {
 		return result, serum.Error(ECodeQuery, serum.WithCause(err),
 			serum.WithMessageLiteral("Module Status Query failed"),
 		)
 	}
-	_, err = ipld.Unmarshal(raw, ipldjson.Decode, &result, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
+
+	_, err = ipld.Unmarshal([]byte(msg), ipldjson.Decode, &result, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
 	if err != nil {
 		return result, serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
 			serum.WithMessageLiteral("failed to deserialize ModuleStatusAnswer"),

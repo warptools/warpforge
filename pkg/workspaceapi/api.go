@@ -60,7 +60,7 @@ func concat(a, b *schemadmt.Schema) *schemadmt.Schema {
 
 type ModuleStatusQuery struct {
 	Path              string
-	InputReplacements InputReplacements
+	InputReplacements *InputReplacements
 	InterestLevel     ModuleInterestLevel
 }
 
@@ -72,22 +72,30 @@ type InputReplacements struct {
 type ModuleInterestLevel string
 
 const (
-	ModuleInterestLevel_Query = "query"
-	ModuleInterestLevel_Run   = "run"
+	ModuleInterestLevel_Query ModuleInterestLevel = "Query"
+	ModuleInterestLevel_Run   ModuleInterestLevel = "Run"
 )
 
 type ModuleStatus string
-
-const (
-	ModuleStatus_NoInfo             ModuleStatus = "noinfo"
-	ModuleStatus_Queuing            ModuleStatus = "queuing"
-	ModuleStatus_InProgress         ModuleStatus = "inprogress"
-	ModuleStatus_FailedProvisioning ModuleStatus = "failed_provisioning"
-	ModuleStatus_ExecutedSuccess    ModuleStatus = "executed_success"
-	ModuleStatus_ExecutedFailed     ModuleStatus = "executed_failed"
-)
 
 type ModuleStatusAnswer struct {
 	Path   string
 	Status ModuleStatus
 }
+
+type Ping struct {
+	CallID string
+}
+
+type PingAck struct {
+	CallID string
+}
+
+const (
+	ModuleStatus_NoInfo             ModuleStatus = "NoInfo"
+	ModuleStatus_Queuing            ModuleStatus = "Queuing"
+	ModuleStatus_InProgress         ModuleStatus = "InProgress"
+	ModuleStatus_FailedProvisioning ModuleStatus = "FailedProvisioning"
+	ModuleStatus_ExecutedSuccess    ModuleStatus = "ExecutedSuccess"
+	ModuleStatus_ExecutedFailed     ModuleStatus = "ExecutedFailed"
+)

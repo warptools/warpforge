@@ -26,6 +26,7 @@ import (
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/pkg/workspaceapi"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -188,7 +189,8 @@ func (c *Config) Run(ctx context.Context) error {
 		ingestCache[k] = v
 	}
 
-	srv := server{status: statusRunning}
+	hist := &historian{status: workspaceapi.ModuleStatus_ExecutedSuccess}
+	srv := server{binder: binder{historian: hist}}
 	if c.Socket {
 		absPath := canonicalizePath(wd, c.Path)
 		sockPath, err := GenerateSocketPath(absPath)
@@ -256,14 +258,14 @@ func (c *Config) Run(ctx context.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				log.Info("", "path %q changed; new hash %q", path, hash)
 				ingestCache[path] = hash
-				srv.status = statusRunning
+				hist.status = workspaceapi.ModuleStatus_InProgress
 
 				_, err := exec(innerCtx, c.PlotConfig, modulePathAbs)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
-					srv.status = statusFailed
+					hist.status = workspaceapi.ModuleStatus_ExecutedFailed
 				} else {
-					srv.status = statusOkay
+					hist.status = workspaceapi.ModuleStatus_ExecutedSuccess
 				}
 			}
 			innerSpan.End()

@@ -54,20 +54,12 @@ type ModuleStatusAnswer struct {
 	status ModuleStatus
 }
 
-type ModuleStatus union {
-	| ModuleStatus_NoInfo "noinfo"
-	| ModuleStatus_Queuing "queuing"
-	| ModuleStatus_InProgress "inprogress"
-	| ModuleStatus_FailedProvisioning "failed_provisioning"
-	| ModuleStatus_ExecutedSuccess "executed_success"
-	| ModuleStatus_ExecutedFailed "executed_failed"
-} representation keyed
+type ModuleStatus enum {
+	| NoInfo ("noinfo")
+	| Queuing ("queuing")
+	| InProgress ("inprogress")
+	| FailedProvisioning ("failed_provisioning")
+	| ExecutedSuccess ("executed_success")
+	| ExecutedFailed ("executed_failed")
+}
 
-# TODO most of the below surely deserve some more body content; wip.
-
-type ModuleStatus_NoInfo struct {}
-type ModuleStatus_Queuing struct {}
-type ModuleStatus_InProgress struct {}
-type ModuleStatus_FailedProvisioning struct {}
-type ModuleStatus_ExecutedSuccess struct {}
-type ModuleStatus_ExecutedFailed struct {}
