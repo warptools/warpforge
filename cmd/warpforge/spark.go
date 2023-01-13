@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/serum-errors/go-serum"
@@ -23,14 +24,22 @@ var sparkCmdDef = cli.Command{
 	),
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "format",
-			Value: "simple",
-			Usage: "Set output format.",
+			Name:  "format-markup",
+			Value: string(spark.DefaultMarkup),
+			Usage: "Set output format." + fmt.Sprintf("%s", spark.MarkupList),
+		},
+		&cli.StringFlag{
+			Name:  "format-style",
+			Value: string(spark.DefaultStyle),
+			Usage: "Set output format." + fmt.Sprintf("%s", spark.StyleList),
 		},
 		&cli.BoolFlag{Name: "no-color"},
 	},
 }
 
+// Errors:
+//
+//  - warpforge-error-io --
 func getwd() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -41,13 +50,11 @@ func getwd() (string, error) {
 
 // Errors:
 //
-//   - warpforge-error-io --
-//   - warpforge-error-invalid --
-//   - warpforge-error-query --
-//   - warpforge-error-serialization --
-//   - warpforge-error-io-dial --
-//   - warpforge-error-searching-filesystem --
-//   - warpforge-error-unknown --
+//    - warpforge-error-invalid -- argument error
+//    - warpforge-error-io -- working directory error
+//    - warpforge-spark-no-module -- module not found
+//    - warpforge-spark-no-socket -- when socket does not dial or does not exist
+//    - warpforge-spark-unknown -- all other errors
 func cmdSpark(c *cli.Context) error {
 	if c.Args().Len() > 1 {
 		return serum.Errorf(wfapi.ECodeInvalid, "too many args")
@@ -60,7 +67,8 @@ func cmdSpark(c *cli.Context) error {
 		Fsys:             os.DirFS("/"),
 		Path:             c.Args().Get(0),
 		WorkingDirectory: wd,
-		OutputStyle:      c.String("format"),
+		OutputMarkup:     c.String("format-markup"),
+		OutputStyle:      c.String("format-style"),
 		OutputColor:      !c.Bool("no-color"),
 	}
 	err = cfg.Run(c.Context)

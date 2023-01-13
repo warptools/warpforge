@@ -147,7 +147,7 @@ func TestServerModuleStatus(t *testing.T) {
 			historian: hist,
 		},
 	}
-	hist.SetStatus("foobar", map[string]string{}, workspaceapi.ModuleStatus_ExecutedSuccess)
+	hist.setStatus("foobar", map[string]string{}, workspaceapi.ModuleStatus_ExecutedSuccess)
 
 	done := make(chan struct{})
 	go func(ch chan<- struct{}) { srv.serve(ctx); ch <- struct{}{} }(done) // this is a lot of crap to ensure that we can actually shut down the server.

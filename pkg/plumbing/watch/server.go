@@ -62,7 +62,7 @@ func (b binder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.C
 	logger := logging.Ctx(ctx)
 	logger.Debug("", "bind")
 	h := &handler{
-		statusFetcher: b.historian.GetStatus,
+		statusFetcher: b.historian.getStatus,
 	}
 	return jsonrpc2.ConnectionOptions{
 		Framer:    b.framer,

@@ -19,7 +19,7 @@ type moduleHistory struct {
 	recent workspaceapi.ModuleStatus
 }
 
-func (h *historian) SetStatus(path string, ingests map[string]string, status workspaceapi.ModuleStatus) {
+func (h *historian) setStatus(path string, ingests map[string]string, status workspaceapi.ModuleStatus) {
 	if h == nil {
 		return
 	}
@@ -36,7 +36,7 @@ func (h *historian) SetStatus(path string, ingests map[string]string, status wor
 	record.recent = status
 }
 
-func (h *historian) GetStatus(ctx context.Context, path string) (workspaceapi.ModuleStatus, error) {
+func (h *historian) getStatus(ctx context.Context, path string) (workspaceapi.ModuleStatus, error) {
 	if h == nil {
 		return workspaceapi.ModuleStatus_NoInfo, serum.Error(wfapi.ECodeInternal, serum.WithMessageLiteral("historian not provisioned"))
 	}

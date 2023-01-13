@@ -158,6 +158,22 @@ func getIngests(plot wfapi.Plot) map[string]string {
 	return ingests
 }
 
+// filepath.Rel + serum
+// Errors:
+//
+//   - warpforge-error-searching-filesystem --
+func relativePath(basepath, targpath string) (string, error) {
+	result, err := filepath.Rel(basepath, targpath)
+	if err != nil {
+		return "", serum.Error(wfapi.ECodeSearchingFilesystem, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to find relative path from {{basePath|q}} to {{targPath|q}}"),
+			serum.WithDetail("basePath", basepath),
+			serum.WithDetail("targPath", targpath),
+		)
+	}
+	return result, nil
+}
+
 // Run will execute the watch command
 //
 // Errors:
@@ -170,6 +186,8 @@ func getIngests(plot wfapi.Plot) map[string]string {
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
 //    - warpforge-error-initialization -- unable to get working directory or executable path
+//    - warpforge-error-searching-filesystem --
+//    - warpforge-error-module-invalid --
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
@@ -180,13 +198,9 @@ func (c *Config) Run(ctx context.Context) error {
 		return err
 	}
 	_, wsPath := ws.Path()
-	searchPath, err = filepath.Rel("/"+wsPath, searchPath)
+	searchPath, err = relativePath("/"+wsPath, searchPath)
 	if err != nil {
-		return serum.Error(wfapi.ECodeSearchingFilesystem, serum.WithCause(err),
-			serum.WithMessageLiteral("unable to find relative path from workspace {{basisPath|q}} to search path {{searchPath|q}}"),
-			serum.WithDetail("basisPath", wsPath),
-			serum.WithDetail("searchPath", searchPath),
-		)
+		return err
 	}
 	log.Debug("", "ws path: %s", wsPath)
 	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath[1:])
@@ -221,7 +235,7 @@ func (c *Config) Run(ctx context.Context) error {
 	}
 	hist := &historian{}
 	srv := server{binder: binder{historian: hist}}
-	hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
+	hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
 	if c.Socket {
 		sockPath, err := GenerateSocketPath(ws)
 		if err != nil {
@@ -288,8 +302,7 @@ func (c *Config) Run(ctx context.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				log.Info("", "path %q changed; new hash %q", path, hash)
 				ingestCache[path] = hash
-
-				hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_InProgress)
+				hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_InProgress)
 				_, err := exec(innerCtx, c.PlotConfig, modulePath)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
@@ -305,11 +318,11 @@ func (c *Config) Run(ctx context.Context) error {
 					wfapi.ECodePlotInvalid,
 					wfapi.ECodeWorkspace,
 					wfapi.ECodeUnknown:
-					hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_FailedProvisioning)
+					hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_FailedProvisioning)
 				case "":
-					hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedSuccess)
+					hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedSuccess)
 				default:
-					hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedFailed)
+					hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedFailed)
 				}
 			}
 			innerSpan.End()
