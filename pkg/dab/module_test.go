@@ -2,8 +2,10 @@ package dab_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/warpfork/go-testmark"
@@ -202,5 +204,43 @@ func TestValidateModuleName(t *testing.T) {
 			result := dab.ValidateModuleName(moduleName)
 			qt.Assert(t, result, testcase.checker)
 		})
+	}
+}
+
+func TestFindModule(t *testing.T) {
+	target := filepath.Join("foo/bar", dab.MagicFilename_Module)
+	fsys := fstest.MapFS{
+		"foo/bar/grill/baz": &fstest.MapFile{},
+		target:              &fstest.MapFile{},
+	}
+	{
+		path, rem, err := dab.FindModule(fsys, "", "non/existing/dir")
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, path, qt.Equals, "")
+		qt.Assert(t, rem, qt.Equals, "")
+	}
+	{
+		path, rem, err := dab.FindModule(fsys, "", "foo/bar/grill/baz/non/existing/dir")
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, path, qt.Equals, target)
+		qt.Assert(t, rem, qt.Equals, "foo")
+	}
+	{
+		path, rem, err := dab.FindModule(fsys, "foo/bar", "grill/baz/non/existing/dir")
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, path, qt.Equals, target)
+		qt.Assert(t, rem, qt.Equals, "foo")
+	}
+	{
+		path, rem, err := dab.FindModule(fsys, "foo/bar", "non/existing/dir")
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, path, qt.Equals, target)
+		qt.Assert(t, rem, qt.Equals, "foo")
+	}
+	{
+		path, rem, err := dab.FindModule(fsys, "foo/bar/grill", "baz/non/existing/dir")
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, path, qt.Equals, "")
+		qt.Assert(t, rem, qt.Equals, "")
 	}
 }
