@@ -271,21 +271,21 @@ func PlotFromFile(fsys fs.FS, filename string) (wfapi.Plot, error) {
 func FindModule(fsys fs.FS, basisPath, searchPath string) (path string, remainingSearchPath string, err error) {
 	// Our search loops over searchPath, popping a path segment off at the end of every round.
 	//  Keep the given searchPath in hand; we might need it for an error report.
-	searchAt := searchPath
+	basisPath = filepath.Clean(basisPath)
+	searchAt := filepath.Join(basisPath, searchPath)
 	for {
-		path := filepath.Join(basisPath, searchAt, MagicFilename_Module)
+		path := filepath.Join(searchAt, MagicFilename_Module)
 		_, err := fs.Stat(fsys, path)
 		if err == nil {
 			return path, filepath.Dir(searchAt), nil
 		}
 		if errors.Is(err, fs.ErrNotExist) { // no such thing?  oh well.  pop a segment and keep looking.
-			searchAt = filepath.Dir(searchAt)
-			// If popping a searchAt segment got us down to nothing,
-			//  and we didn't find anything here either,
-			//   that's it: return NotFound.
-			if searchAt == "/" || searchAt == "." {
+			// Went all the way up to basis path and didn't find it.
+			// return NotFound
+			if searchAt == basisPath {
 				return "", "", nil
 			}
+			searchAt = filepath.Dir(searchAt)
 			// ... otherwise: continue, with popped searchAt.
 			continue
 		}

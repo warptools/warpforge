@@ -52,20 +52,6 @@ func (s *server) listen(ctx context.Context, sockPath string) (err error) {
 	return nil
 }
 
-type historian struct {
-	status workspaceapi.ModuleStatus
-}
-
-// Errors:
-//
-//   - warpforge-error-internal -- nil receiver
-func (h *historian) ModuleStatus(ctx context.Context, path string) (workspaceapi.ModuleStatus, error) {
-	if h == nil {
-		return workspaceapi.ModuleStatus_NoInfo, serum.Error(wfapi.ECodeInternal, serum.WithMessageLiteral("historian not provisioned"))
-	}
-	return h.status, nil
-}
-
 type binder struct {
 	framer    jsonrpc2.Framer
 	historian *historian
@@ -76,7 +62,7 @@ func (b binder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.C
 	logger := logging.Ctx(ctx)
 	logger.Debug("", "bind")
 	h := &handler{
-		statusFetcher: b.historian.ModuleStatus,
+		statusFetcher: b.historian.GetStatus,
 	}
 	return jsonrpc2.ConnectionOptions{
 		Framer:    b.framer,
@@ -89,7 +75,10 @@ type handler struct {
 	statusFetcher func(ctx context.Context, path string) (workspaceapi.ModuleStatus, error)
 }
 
-// This _must_ return jsonrpc2 errors. We should probably use a different library.
+// Handle _MUST_ return jsonrpc2 errors. We should probably use a different library.
+// jsonrpc2 is switching directly on error types which have wire significance to the JSON-RPC 2.0 specification.
+// Alternatively we can upstream ignoring particular functions in serum.
+//
 // Errors: ignore
 func (h *handler) Handle(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 	logger := logging.Ctx(ctx)

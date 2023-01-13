@@ -21,13 +21,17 @@ var sparkCmdDef = cli.Command{
 		util.CmdMiddlewareTracingConfig,
 		util.CmdMiddlewareCancelOnInterrupt,
 	),
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Value: "simple",
+			Usage: "Set output format.",
+		},
+		&cli.BoolFlag{Name: "no-color"},
+	},
 }
 
-func wdOrArg(c *cli.Context, argIdx int) (string, error) {
-	if wd := c.Args().Get(argIdx); wd != "" {
-		return wd, nil
-	}
+func getwd() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", serum.Error(wfapi.ECodeIo, serum.WithCause(err))
@@ -48,12 +52,16 @@ func cmdSpark(c *cli.Context) error {
 	if c.Args().Len() > 1 {
 		return serum.Errorf(wfapi.ECodeInvalid, "too many args")
 	}
-	wd, err := wdOrArg(c, 0)
+	wd, err := getwd()
 	if err != nil {
 		return err
 	}
 	cfg := &spark.Config{
+		Fsys:             os.DirFS("/"),
+		Path:             c.Args().Get(0),
 		WorkingDirectory: wd,
+		OutputStyle:      c.String("format"),
+		OutputColor:      !c.Bool("no-color"),
 	}
 	err = cfg.Run(c.Context)
 	if errors.Is(err, context.Canceled) {

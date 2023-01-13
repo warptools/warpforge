@@ -32,6 +32,10 @@ import (
 
 // Configuration for the watch command
 type Config struct {
+	// filesystem; generally os.DirFS("/")
+	Fsys fs.FS
+	// Absolute path to working directory
+	WorkingDirectory string
 	// Path is the path to the directory containing the module you want to watch
 	Path string
 	// Socket will enable a unix socket that emits watch result status
@@ -88,11 +92,8 @@ func (s *server) rmUnixSocket(path string) error {
 //
 //   - warpforge-error-io -- when socket path is too long
 //   - warpforge-error-io -- when socket path cannot be canonicalized
-func GenerateSocketPath(path string) (string, error) {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return "", wfapi.ErrorIo("could not canonicalize path", path, err)
-	}
+func GenerateSocketPath(ws *workspace.Workspace) (string, error) {
+	_, path := ws.Path()
 	// This socket path generation is dumb. and also one of the simplest thing to do right now
 	sockPath := fmt.Sprintf("/tmp/warpforge-%s", url.PathEscape(path))
 	if len(sockPath) > 108 {
@@ -136,36 +137,7 @@ func canonicalizePath(pwd, path string) string {
 	return filepath.Join(pwd, path)
 }
 
-// Run will execute the watch command
-//
-// Errors:
-//
-//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
-//    - warpforge-error-git --
-//    - warpforge-error-io -- when socket path is too long
-//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
-//    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-unknown -- when changing directories fails
-//    - warpforge-error-unknown -- when context ends for reasons other than being canceled
-//    - warpforge-error-initialization -- unable to get working directory or executable path
-func (c *Config) Run(ctx context.Context) error {
-	log := logging.Ctx(ctx)
-
-	wd, xerr := os.Getwd()
-	if xerr != nil {
-		return serum.Error(wfapi.ECodeInitialization, serum.WithCause(xerr), serum.WithMessageLiteral("unable to get working directory"))
-	}
-
-	modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
-	modulePathAbs := canonicalizePath(wd, modulePath)
-
-	// TODO: currently we read the module/plot from the provided path.
-	// instead, we should read it from the git cache dir
-	plot, err := dab.PlotFromFile(os.DirFS(c.Path), dab.MagicFilename_Plot)
-	if err != nil {
-		return err
-	}
-
+func getIngests(plot wfapi.Plot) map[string]string {
 	ingests := make(map[string]string)
 	var allInputs []wfapi.PlotInput
 	for _, input := range plot.Inputs.Values {
@@ -183,17 +155,75 @@ func (c *Config) Run(ctx context.Context) error {
 			ingests[ingest.HostPath] = ingest.Ref
 		}
 	}
+	return ingests
+}
+
+// Run will execute the watch command
+//
+// Errors:
+//
+//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
+//    - warpforge-error-git --
+//    - warpforge-error-io -- when socket path is too long
+//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
+//    - warpforge-error-serialization -- when the module or plot cannot be parsed
+//    - warpforge-error-unknown -- when changing directories fails
+//    - warpforge-error-unknown -- when context ends for reasons other than being canceled
+//    - warpforge-error-initialization -- unable to get working directory or executable path
+func (c *Config) Run(ctx context.Context) error {
+	log := logging.Ctx(ctx)
+	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
+
+	log.Debug("", "search path: %s", searchPath)
+	ws, _, err := workspace.FindWorkspace(c.Fsys, "", searchPath[1:])
+	if err != nil {
+		return err
+	}
+	_, wsPath := ws.Path()
+	searchPath, err = filepath.Rel("/"+wsPath, searchPath)
+	if err != nil {
+		return serum.Error(wfapi.ECodeSearchingFilesystem, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to find relative path from workspace {{basisPath|q}} to search path {{searchPath|q}}"),
+			serum.WithDetail("basisPath", wsPath),
+			serum.WithDetail("searchPath", searchPath),
+		)
+	}
+	log.Debug("", "ws path: %s", wsPath)
+	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath[1:])
+	if err != nil {
+		return err
+	}
+	if modulePath == "" {
+		return serum.Error(wfapi.ECodeModuleInvalid, serum.WithMessageLiteral("no module found"))
+	}
+	log.Debug("", "module path: %s", modulePath)
+	_, err = dab.ModuleFromFile(c.Fsys, modulePath)
+	if err != nil {
+		return err
+	}
+	moduleDir := filepath.Dir(modulePath)
+	log.Debug("", "module dir: %s", moduleDir)
+
+	// TODO: currently we read the module/plot from the provided path.
+	// instead, we should read it from the git cache dir
+	plotPath := filepath.Join(moduleDir, dab.MagicFilename_Plot)
+	log.Debug("", "plot path: %s", plotPath)
+	plot, err := dab.PlotFromFile(c.Fsys, plotPath)
+	if err != nil {
+		return err
+	}
+
+	ingests := getIngests(plot)
 
 	ingestCache := make(map[string]string)
 	for k, v := range ingests {
 		ingestCache[k] = v
 	}
-
-	hist := &historian{status: workspaceapi.ModuleStatus_ExecutedSuccess}
+	hist := &historian{}
 	srv := server{binder: binder{historian: hist}}
+	hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
 	if c.Socket {
-		absPath := canonicalizePath(wd, c.Path)
-		sockPath, err := GenerateSocketPath(absPath)
+		sockPath, err := GenerateSocketPath(ws)
 		if err != nil {
 			return err
 		}
@@ -258,14 +288,28 @@ func (c *Config) Run(ctx context.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				log.Info("", "path %q changed; new hash %q", path, hash)
 				ingestCache[path] = hash
-				hist.status = workspaceapi.ModuleStatus_InProgress
 
-				_, err := exec(innerCtx, c.PlotConfig, modulePathAbs)
+				hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_InProgress)
+				_, err := exec(innerCtx, c.PlotConfig, modulePath)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
-					hist.status = workspaceapi.ModuleStatus_ExecutedFailed
-				} else {
-					hist.status = workspaceapi.ModuleStatus_ExecutedSuccess
+				}
+
+				switch serum.Code(err) {
+				case
+					wfapi.ECodeCatalogMissingEntry,
+					wfapi.ECodeCatalogParse,
+					wfapi.ECodeDataTooNew,
+					wfapi.ECodeGit,
+					wfapi.ECodeIo,
+					wfapi.ECodePlotInvalid,
+					wfapi.ECodeWorkspace,
+					wfapi.ECodeUnknown:
+					hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_FailedProvisioning)
+				case "":
+					hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedSuccess)
+				default:
+					hist.SetStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedFailed)
 				}
 			}
 			innerSpan.End()
