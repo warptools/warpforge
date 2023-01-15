@@ -107,7 +107,7 @@ func (pub *S3Publisher) putWare(wareId wfapi.WareID, localPath string) error {
 }
 
 func publishToS3(warehouseAddr wfapi.WarehouseAddr, wareId wfapi.WareID, filePath string) error {
-	tmp := strings.Replace(string(warehouseAddr), "s3+ca://", "", 1)
+	tmp := strings.Replace(string(warehouseAddr), "ca+s3://", "", 1)
 	region := strings.Split(tmp, ".")[1]
 	endpoint := "https://" + strings.Split(tmp, "/")[0]
 	bucket := strings.Split(tmp, "/")[1]
@@ -132,7 +132,10 @@ func publishToS3(warehouseAddr wfapi.WarehouseAddr, wareId wfapi.WareID, filePat
 		fmt.Println("bucket has ware")
 	} else {
 		fmt.Println("bucket does NOT have ware")
-		pub.putWare(wareId, filePath)
+		err := pub.putWare(wareId, filePath)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
