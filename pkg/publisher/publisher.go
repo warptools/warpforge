@@ -44,6 +44,7 @@ func PublishCatalog(ws workspace.Workspace, cat workspace.Catalog) error {
 
 				// it is possible we don't have this ware, in which case we just want to skip over it
 				if _, err := os.Stat(warePath); os.IsNotExist(err) {
+					fmt.Println("no file @", warePath)
 					continue
 				} else if err != nil {
 					return err
@@ -60,7 +61,7 @@ func PublishCatalog(ws workspace.Workspace, cat workspace.Catalog) error {
 
 				fmt.Println("publish:", ref.String(), " wareId =", wareId, "warehouseAddr =", *warehouseAddr, "warePath =", warePath, "scheme =", scheme)
 				switch scheme {
-				case "s3+ca":
+				case "ca+s3":
 					err := publishToS3(*warehouseAddr, *wareId, warePath)
 					if err != nil {
 						return err

@@ -747,7 +747,7 @@ func cmdPublish(c *cli.Context) error {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
 
-	publisher.PublishCatalog(*wsSet.Root(), cat)
+	err = publisher.PublishCatalog(*wsSet.Root(), cat)
 
-	return nil
+	return err
 }
