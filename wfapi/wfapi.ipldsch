@@ -431,3 +431,23 @@ type CatalogMirrorsByPacktype {Packtype:WarehouseAddrList}
 type ReplayCapsule union {
 	| Plot "plot.v1"
 } representation keyed
+
+# MirroringConfig defines the mirroring configuration for an entire workspace.
+# This maps the addresses which we want to publish to (of type WarehouseAddr) 
+# to specific configs, which may be backed by various types of storage.
+type MirroringConfig {WarehouseAddr:WarehouseMirroringConfig}
+
+type WarehouseMirroringConfig struct {
+	pushConfig WarehousePushConfig 
+}
+
+type WarehousePushConfig union {
+	| S3PushConfig "s3"
+} representation keyed
+
+type S3PushConfig struct {
+	endpoint String
+	region String
+	bucket String
+	path optional String
+}

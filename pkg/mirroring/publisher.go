@@ -3,18 +3,27 @@ package mirroring
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
 
-type publisher interface {
+type pusher interface {
 	hasWare(wfapi.WareID) (bool, error)
-	publishWare(wfapi.WareID, string) error
+	pushWare(wfapi.WareID, string) error
 }
 
-func PushCatalogWares(ws workspace.Workspace, cat workspace.Catalog) error {
+func pusherFromConfig(cfg wfapi.WarehouseMirroringConfig) (pusher, error) {
+	pusher, err := NewS3Publisher(*cfg.PushConfig.S3)
+	return &pusher, err
+}
+
+func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr wfapi.WarehouseAddr, cfg wfapi.WarehouseMirroringConfig) error {
+	pusher, err := pusherFromConfig(cfg)
+	if err != nil {
+		return err
+	}
+
 	for _, m := range cat.Modules() {
 		ref := wfapi.CatalogRef{ModuleName: m}
 		module, err := cat.GetModule(ref)
@@ -34,8 +43,9 @@ func PushCatalogWares(ws workspace.Workspace, cat workspace.Catalog) error {
 				if err != nil {
 					return err
 				}
-				if warehouseAddr == nil {
-					// we do not have a place to publish to, so skip this item
+				if warehouseAddr == nil || *warehouseAddr != pushAddr {
+					// this ware's WarehouseAddr does not match the one we're pushing to,
+					// ignore this ware
 					continue
 				}
 
@@ -50,27 +60,18 @@ func PushCatalogWares(ws workspace.Workspace, cat workspace.Catalog) error {
 					return err
 				}
 
-				// we have the data and an address to publish to!
+				// we have a ware to publish!
 
-				// determine which URI scheme is in use
-				schemeSplit := strings.Split(string(*warehouseAddr), "://")
-				if len(schemeSplit) < 2 {
-					return fmt.Errorf("invalid URL: %q", *warehouseAddr)
+				fmt.Println("publish ware: wareId =", wareId, " warePath =", warePath, "pushAddr =", pushAddr)
+				hasWare, err := pusher.hasWare(*wareId)
+				if err != nil {
+					return err
 				}
-				scheme := schemeSplit[0]
-
-				fmt.Println("publish:", ref.String(), " wareId =", wareId, "warehouseAddr =", *warehouseAddr, "warePath =", warePath, "scheme =", scheme)
-				switch scheme {
-				case "ca+s3":
-					err := publishToS3(*warehouseAddr, *wareId, warePath)
+				if !hasWare {
+					err := pusher.pushWare(*wareId, warePath)
 					if err != nil {
 						return err
 					}
-				case "https":
-					// readonly scheme, no-op
-					continue
-				default:
-					return fmt.Errorf("unsupported scheme %q", scheme)
 				}
 			}
 		}

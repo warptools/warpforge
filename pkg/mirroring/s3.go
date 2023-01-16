@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -19,31 +18,25 @@ import (
 
 type S3Publisher struct {
 	client *s3.Client
-	Bucket BucketSpec
-}
-
-type BucketSpec struct {
-	Name     string
-	Endpoint string
-	Region   string
+	cfg    wfapi.S3PushConfig
 }
 
 func wareIdToKey(wareId wfapi.WareID) string {
 	return filepath.Join(wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 }
 
-func NewS3Publisher(bucket BucketSpec) (S3Publisher, error) {
+func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
 	config, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(bucket.Region),
+		config.WithRegion(cfg.Region),
 		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
 			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 				return aws.Endpoint{
-					URL:               bucket.Endpoint,
+					URL:               cfg.Endpoint,
 					HostnameImmutable: true,
-					SigningRegion:     bucket.Region,
+					SigningRegion:     cfg.Region,
 				}, nil
 			})),
-		config.WithRegion(bucket.Region),
+		config.WithRegion(cfg.Region),
 	)
 
 	if err != nil {
@@ -54,15 +47,15 @@ func NewS3Publisher(bucket BucketSpec) (S3Publisher, error) {
 
 	// make sure we can access the specified bucket
 	_, err = client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
-		Bucket: aws.String(bucket.Name),
+		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
-		return S3Publisher{}, fmt.Errorf("could not access bucket %q: %s", bucket, err)
+		return S3Publisher{}, fmt.Errorf("could not access bucket %q: %s", cfg.Bucket, err)
 	}
 
 	return S3Publisher{
 		client: client,
-		Bucket: bucket,
+		cfg:    cfg,
 	}, nil
 
 }
@@ -72,7 +65,7 @@ func (pub *S3Publisher) hasWare(wareId wfapi.WareID) (bool, error) {
 	// we should list wares once then check the list instead
 	// but for the purposes of getting an end-to-end test going, meh.
 	_, err := pub.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
-		Bucket: aws.String(pub.Bucket.Name),
+		Bucket: aws.String(pub.cfg.Bucket),
 		Key:    aws.String(wareIdToKey(wareId)),
 	})
 
@@ -88,7 +81,7 @@ func (pub *S3Publisher) hasWare(wareId wfapi.WareID) (bool, error) {
 	}
 }
 
-func (pub *S3Publisher) putWare(wareId wfapi.WareID, localPath string) error {
+func (pub *S3Publisher) pushWare(wareId wfapi.WareID, localPath string) error {
 	key := wareIdToKey(wareId)
 	file, err := os.Open(localPath)
 	if err != nil {
@@ -98,45 +91,10 @@ func (pub *S3Publisher) putWare(wareId wfapi.WareID, localPath string) error {
 	uploader := manager.NewUploader(pub.client)
 
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
-		Bucket: &pub.Bucket.Name,
+		Bucket: &pub.cfg.Bucket,
 		Key:    &key,
 		Body:   file,
 	})
 
 	return err
-}
-
-func publishToS3(warehouseAddr wfapi.WarehouseAddr, wareId wfapi.WareID, filePath string) error {
-	tmp := strings.Replace(string(warehouseAddr), "ca+s3://", "", 1)
-	region := strings.Split(tmp, ".")[1]
-	endpoint := "https://" + strings.Split(tmp, "/")[0]
-	bucket := strings.Split(tmp, "/")[1]
-
-	fmt.Println("publish to S3. endpoint =", endpoint, "region =", region, "bucket =", bucket)
-
-	b := BucketSpec{
-		Endpoint: endpoint,
-		Region:   region,
-		Name:     bucket,
-	}
-	pub, err := NewS3Publisher(b)
-	if err != nil {
-		return err
-	}
-
-	exists, err := pub.hasWare(wareId)
-	if err != nil {
-		return err
-	}
-	if exists {
-		fmt.Println("bucket has ware")
-	} else {
-		fmt.Println("bucket does NOT have ware")
-		err := pub.putWare(wareId, filePath)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/serum-errors/go-serum"
 
+	"github.com/warptools/warpforge/pkg/dab"
 	_ "github.com/warptools/warpforge/pkg/testutil"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -175,7 +176,6 @@ func (ws *Workspace) CatalogBasePath() string {
 func (ws *Workspace) nonRootCatalogPath() string {
 	return filepath.Join(ws.InternalPath(), "catalog")
 }
-
 
 // WarehousePath returns the path to the catalog in a non-root workspace.
 func (ws *Workspace) WarehousePath() string {
@@ -428,4 +428,10 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error)
 func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
 	path := filepath.Join("/", ws.InternalPath(), "warehouse")
 	return wfapi.WarehouseAddr("ca+file://" + path)
+}
+
+// GetMirroringConfig will return the MirroringConfig map for this workspace
+// which is read from the .warpforge/mirroring.json config file.
+func (ws *Workspace) GetMirroringConfig() (wfapi.MirroringConfig, error) {
+	return dab.MirroringConfigFromFile(ws.fsys, filepath.Join(ws.InternalPath(), dab.MagicFilename_MirroringConfig))
 }

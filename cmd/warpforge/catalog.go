@@ -749,7 +749,18 @@ func cmdPush(c *cli.Context) error {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
 
-	err = mirroring.PushCatalogWares(*wsSet.Root(), cat)
+	configs, err := wsSet.Root().GetMirroringConfig()
+	if err != nil {
+		return err
+	}
+
+	for wareAddr, cfg := range configs.Values {
+		fmt.Println("pushing for addr", wareAddr)
+		err = mirroring.PushToWarehouseAddr(*wsSet.Root(), cat, wareAddr, cfg)
+		if err != nil {
+			return err
+		}
+	}
 
 	return err
 }
