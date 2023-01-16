@@ -1,4 +1,4 @@
-package publisher
+package mirroring
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type publisher interface {
 	publishWare(wfapi.WareID, string) error
 }
 
-func PublishCatalog(ws workspace.Workspace, cat workspace.Catalog) error {
+func PushCatalogWares(ws workspace.Workspace, cat workspace.Catalog) error {
 	for _, m := range cat.Modules() {
 		ref := wfapi.CatalogRef{ModuleName: m}
 		module, err := cat.GetModule(ref)

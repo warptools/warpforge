@@ -21,8 +21,8 @@ import (
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/cataloghtml"
 	"github.com/warptools/warpforge/pkg/dab"
+	"github.com/warptools/warpforge/pkg/mirroring"
 	"github.com/warptools/warpforge/pkg/plotexec"
-	"github.com/warptools/warpforge/pkg/publisher"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -142,9 +142,9 @@ var catalogCmdDef = cli.Command{
 			},
 		},
 		{
-			Name:  "publish",
-			Usage: "Publish the contents of a catalog to remote warehouses",
-			Action: util.ChainCmdMiddleware(cmdPublish,
+			Name:  "push",
+			Usage: "Push the contents of a catalog to remote warehouses",
+			Action: util.ChainCmdMiddleware(cmdPush,
 				util.CmdMiddlewareLogging,
 				util.CmdMiddlewareTracingConfig,
 				util.CmdMiddlewareTracingSpan,
@@ -737,7 +737,7 @@ func cmdGenerateHtml(c *cli.Context) error {
 	return nil
 }
 
-func cmdPublish(c *cli.Context) error {
+func cmdPush(c *cli.Context) error {
 	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
@@ -749,7 +749,7 @@ func cmdPublish(c *cli.Context) error {
 		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
 	}
 
-	err = publisher.PublishCatalog(*wsSet.Root(), cat)
+	err = mirroring.PushCatalogWares(*wsSet.Root(), cat)
 
 	return err
 }
