@@ -2,14 +2,11 @@ package mirroring
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -17,8 +14,9 @@ import (
 )
 
 type S3Publisher struct {
-	client *s3.Client
-	cfg    wfapi.S3PushConfig
+	client       *s3.Client
+	cfg          wfapi.S3PushConfig
+	existingKeys map[string]bool
 }
 
 func wareIdToKey(wareId wfapi.WareID) string {
@@ -53,31 +51,35 @@ func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
 		return S3Publisher{}, fmt.Errorf("could not access bucket %q: %s", cfg.Bucket, err)
 	}
 
+	// list all the objects currently in the bucket
+	result, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+		Bucket: aws.String(cfg.Bucket),
+	})
+	if err != nil {
+		return S3Publisher{}, fmt.Errorf("could not list contents of bucket %q: %s", cfg.Bucket, err)
+	}
+
+	// store the list of existing keys so we can ignore writes for existing WareIDs
+	existingKeys := make(map[string]bool)
+	for _, object := range result.Contents {
+		existingKeys[*object.Key] = true
+	}
+
 	return S3Publisher{
-		client: client,
-		cfg:    cfg,
+		client:       client,
+		cfg:          cfg,
+		existingKeys: existingKeys,
 	}, nil
 
 }
 
 func (pub *S3Publisher) hasWare(wareId wfapi.WareID) (bool, error) {
-	// TODO: this is a bad, bad implementation since it has to do an HTTP request for every ware
-	// we should list wares once then check the list instead
-	// but for the purposes of getting an end-to-end test going, meh.
-	_, err := pub.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
-		Bucket: aws.String(pub.cfg.Bucket),
-		Key:    aws.String(wareIdToKey(wareId)),
-	})
-
-	if err != nil {
-		var responseError *awshttp.ResponseError
-		if errors.As(err, &responseError) && responseError.ResponseError.HTTPStatusCode() == http.StatusNotFound {
-			return false, nil
-		} else {
-			return false, err
-		}
-	} else {
+	key := wareIdToKey(wareId)
+	if _, exists := pub.existingKeys[key]; exists {
+		// key already exsits in bucket
 		return true, nil
+	} else {
+		return false, nil
 	}
 }
 

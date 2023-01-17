@@ -72,6 +72,8 @@ func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr
 					if err != nil {
 						return err
 					}
+				} else {
+					fmt.Println("bucket already has ware", wareId)
 				}
 			}
 		}
