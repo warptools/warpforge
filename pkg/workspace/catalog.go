@@ -227,25 +227,36 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 		return nil, nil, err
 	}
 
+	// resolve which WarehouseAddr will get returned for this particular ware
+	// this is done by first looking for a specific ByWare mirror for the WareID
+	// if none exists, the ByModule address is returned if it exists
 	// TODO: handling of multiple mirrors
-	switch {
-	case mirror == nil:
+	if mirror == nil {
+		// no mirror exists at all, return nil
 		return &wareId, nil, nil
-	case mirror.ByWare != nil:
-		if len(mirror.ByWare.Values[wareId]) > 0 {
-			return &wareId, &mirror.ByWare.Values[wareId][0], nil
-		} else {
-			return &wareId, nil, nil
+	}
+
+	// check ByWare for a matching WareId
+	if mirror.ByWare != nil {
+		if addrs, exists := mirror.ByWare.Values[wareId]; exists {
+			// match found, return it
+			return &wareId, &addrs[0], nil
 		}
-	case mirror.ByModule != nil:
+	}
+
+	// check if we can return a ByModule WarehouseAddress
+	// note, this address may not actually contain the ware we're looking for
+	if mirror.ByModule != nil {
 		if len(mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype]) > 0 {
 			return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
 		} else {
 			return &wareId, nil, nil
 		}
-	default:
-		panic("unreachable")
 	}
+
+	// we have exhausted our options, no mirror exists
+	// this is not an error, but we will return a nil WarehouseAddr
+	return &wareId, nil, nil
 }
 
 // Get a catalog mirror for a given catalog reference.
