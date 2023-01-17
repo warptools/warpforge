@@ -14,8 +14,16 @@ type pusher interface {
 }
 
 func pusherFromConfig(cfg wfapi.WarehouseMirroringConfig) (pusher, error) {
-	pusher, err := NewS3Pusher(*cfg.PushConfig.S3)
-	return &pusher, err
+	if cfg.PushConfig.S3 != nil {
+		pusher, err := NewS3Pusher(*cfg.PushConfig.S3)
+		return &pusher, err
+	} else if cfg.PushConfig.Mock != nil {
+		pusher, err := NewMockPusher(*cfg.PushConfig.Mock)
+		return &pusher, err
+	} else {
+		// this should be unreachable due to IPLD validation
+		panic("no supported push configuration provided")
+	}
 }
 
 func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr wfapi.WarehouseAddr, cfg wfapi.WarehouseMirroringConfig) error {

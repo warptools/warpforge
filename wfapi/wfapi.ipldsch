@@ -443,6 +443,7 @@ type WarehouseMirroringConfig struct {
 
 type WarehousePushConfig union {
 	| S3PushConfig "s3"
+	| S3PushConfig "mock"
 } representation keyed
 
 type S3PushConfig struct {
@@ -451,3 +452,5 @@ type S3PushConfig struct {
 	bucket String
 	path optional String
 }
+
+type MockPushConfig struct {}

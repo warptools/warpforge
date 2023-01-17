@@ -10,7 +10,8 @@ type WarehouseMirroringConfig struct {
 }
 
 type WarehousePushConfig struct {
-	S3 *S3PushConfig
+	S3   *S3PushConfig
+	Mock *MockPushConfig
 }
 
 type S3PushConfig struct {
@@ -18,4 +19,7 @@ type S3PushConfig struct {
 	Region   string
 	Bucket   string
 	Path     *string
+}
+
+type MockPushConfig struct {
 }
