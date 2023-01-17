@@ -14,7 +14,7 @@ type pusher interface {
 }
 
 func pusherFromConfig(cfg wfapi.WarehouseMirroringConfig) (pusher, error) {
-	pusher, err := NewS3Publisher(*cfg.PushConfig.S3)
+	pusher, err := NewS3Pusher(*cfg.PushConfig.S3)
 	return &pusher, err
 }
 
@@ -49,7 +49,7 @@ func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr
 					continue
 				}
 
-				// get the path to the data we want to publish
+				// get the path to the data we want to push
 				warePath, _ := ws.WarePath(*wareId)
 
 				// it is possible we don't have this ware, in which case we just want to skip over it
@@ -60,9 +60,9 @@ func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr
 					return err
 				}
 
-				// we have a ware to publish!
+				// we have a ware to push!
 
-				fmt.Println("publish ware: wareId =", wareId, " warePath =", warePath, "pushAddr =", pushAddr)
+				fmt.Println("push ware: wareId =", wareId, " warePath =", warePath, "pushAddr =", pushAddr)
 				hasWare, err := pusher.hasWare(*wareId)
 				if err != nil {
 					return err

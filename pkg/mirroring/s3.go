@@ -13,7 +13,7 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-type S3Publisher struct {
+type S3Pusher struct {
 	client       *s3.Client
 	cfg          wfapi.S3PushConfig
 	existingKeys map[string]bool
@@ -23,7 +23,7 @@ func wareIdToKey(wareId wfapi.WareID) string {
 	return filepath.Join(wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 }
 
-func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
+func NewS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
 	config, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(cfg.Region),
 		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
@@ -48,7 +48,7 @@ func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
 		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
-		return S3Publisher{}, fmt.Errorf("could not access bucket %q: %s", cfg.Bucket, err)
+		return S3Pusher{}, fmt.Errorf("could not access bucket %q: %s", cfg.Bucket, err)
 	}
 
 	// list all the objects currently in the bucket
@@ -56,7 +56,7 @@ func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
 		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
-		return S3Publisher{}, fmt.Errorf("could not list contents of bucket %q: %s", cfg.Bucket, err)
+		return S3Pusher{}, fmt.Errorf("could not list contents of bucket %q: %s", cfg.Bucket, err)
 	}
 
 	// store the list of existing keys so we can ignore writes for existing WareIDs
@@ -65,7 +65,7 @@ func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
 		existingKeys[*object.Key] = true
 	}
 
-	return S3Publisher{
+	return S3Pusher{
 		client:       client,
 		cfg:          cfg,
 		existingKeys: existingKeys,
@@ -73,9 +73,9 @@ func NewS3Publisher(cfg wfapi.S3PushConfig) (S3Publisher, error) {
 
 }
 
-func (pub *S3Publisher) hasWare(wareId wfapi.WareID) (bool, error) {
+func (p *S3Pusher) hasWare(wareId wfapi.WareID) (bool, error) {
 	key := wareIdToKey(wareId)
-	if _, exists := pub.existingKeys[key]; exists {
+	if _, exists := p.existingKeys[key]; exists {
 		// key already exsits in bucket
 		return true, nil
 	} else {
@@ -83,17 +83,17 @@ func (pub *S3Publisher) hasWare(wareId wfapi.WareID) (bool, error) {
 	}
 }
 
-func (pub *S3Publisher) pushWare(wareId wfapi.WareID, localPath string) error {
+func (p *S3Pusher) pushWare(wareId wfapi.WareID, localPath string) error {
 	key := wareIdToKey(wareId)
 	file, err := os.Open(localPath)
 	if err != nil {
 		return err
 	}
 
-	uploader := manager.NewUploader(pub.client)
+	uploader := manager.NewUploader(p.client)
 
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
-		Bucket: &pub.cfg.Bucket,
+		Bucket: &p.cfg.Bucket,
 		Key:    &key,
 		Body:   file,
 	})
