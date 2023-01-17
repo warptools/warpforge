@@ -417,10 +417,10 @@ type CatalogMirrorsCapsule union {
 	| CatalogMirrors "catalogmirrors.v1"
 } representation keyed
 
-type CatalogMirrors union {
-	| CatalogMirrorsByWare "byWare"
-	| CatalogMirrorsByModule "byModule"
-} representation keyed
+type CatalogMirrors struct {
+	byWare optional CatalogMirrorsByWare
+	byModule optional CatalogMirrorsByModule
+}
 
 type WarehouseAddrList [WarehouseAddr]
 
