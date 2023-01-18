@@ -63,7 +63,7 @@ func isSocket(m fs.FileMode) bool {
 //
 // NOTE: If for some reason the socket exists and the listener is alive but does not respond, the file will still be removed.
 // This will likely result in errors for whoever is expecting that socket file to exist, however the listener holds an open file descriptor and will not likely detect any problems.
-func (s *server) rmUnixSocket(path string) error {
+func rmUnixSocket(path string) error {
 	fi, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		return nil
@@ -234,23 +234,26 @@ func (c *Config) Run(ctx context.Context) error {
 		ingestCache[k] = v
 	}
 	hist := &historian{}
-	srv := server{binder: binder{historian: hist}}
+	srv := server{
+		handler: handler{statusFetcher: hist.getStatus},
+	}
 	hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
 	if c.Socket {
 		sockPath, err := GenerateSocketPath(ws)
 		if err != nil {
 			return err
 		}
-		if err := srv.rmUnixSocket(sockPath); err != nil {
+		if err := rmUnixSocket(sockPath); err != nil {
 			log.Info("", "removing socket %q: %s", sockPath, err.Error())
 		}
 		defer runtime.Gosched() // give server a chance to close on context cancel/close
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		if err := srv.listen(ctx, sockPath); err != nil {
+		lstnr, err := listener(ctx, sockPath)
+		if err != nil {
 			return err
 		}
-		defer srv.listener.Close()
+		defer lstnr.Close()
 		go srv.serve(ctx)
 		log.Info("", "serving to %q\n", sockPath)
 		time.Sleep(time.Second) // give user a second to realize that there's info here. FIXME: Consider literally anything other than a hardcoded sleep.

@@ -16,12 +16,6 @@ import (
 	schemadsl "github.com/ipld/go-ipld-prime/schema/dsl"
 )
 
-// Helper strings for JSON-RPC implementation.
-const (
-	RpcModuleStatus = "RpcModuleStatus"
-	RpcPing         = "RpcPing"
-)
-
 // embed the wfapi ipld schema from file
 //go:embed wfwsapi.ipldsch
 var schFs embed.FS

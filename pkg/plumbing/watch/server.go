@@ -3,138 +3,280 @@ package watch
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"net"
+	"time"
 
 	ipld "github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/serum-errors/go-serum"
-	"golang.org/x/exp/jsonrpc2"
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
 	"github.com/warptools/warpforge/wfapi"
 )
 
+const LOG_TAG_SRV = "╬═  server"
+
 // server stores the current status of the plot execution and responds to clients
 type server struct {
-	listener  jsonrpc2.Listener
-	rpcServer jsonrpc2.Server
-	binder    jsonrpc2.Binder
+	listener    net.Listener
+	handler     handler
+	nowFn       func() time.Time
+	readTimeout *time.Duration
+}
+
+const DefaultReadTimeout = 5 * time.Second
+
+func (s *server) now() time.Time {
+	if s.nowFn == nil {
+		return time.Now()
+	}
+	return s.nowFn()
+}
+
+// Errors:
+//
+//   - warpforge-error-internal -- failed to set connection read deadline
+func (s *server) setReadDeadline(conn net.Conn) error {
+	to := DefaultReadTimeout
+	if s.readTimeout != nil {
+		to = *s.readTimeout
+	}
+	deadline := s.now().Add(to)
+	err := conn.SetReadDeadline(deadline)
+	if err != nil {
+		return serum.Error(wfapi.ECodeInternal,
+			serum.WithCause(err),
+			serum.WithMessageTemplate("server failed to set read deadline {{deadline}}"),
+			serum.WithDetail("deadline", deadline.String()),
+		)
+	}
+	return nil
+}
+
+// Errors:
+//
+//    - warpforge-error-rpc-serialization -- bad connection or invalid json
+//    - warpforge-error-rpc-serialization -- invalid RPC data
+//    - warpforge-error-rpc-method-not-found -- data is nil
+func NextRPC(ctx context.Context, d *json.Decoder) (*workspaceapi.Rpc, error) {
+	var err error
+	var raw json.RawMessage
+	var rpc workspaceapi.Rpc
+	err = d.Decode(&raw)
+	if err != nil {
+		return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to read JSON from connection"),
+		)
+	}
+	log := logging.Ctx(ctx)
+	log.Debug("---", string(raw))
+	_, err = ipld.Unmarshal(raw, ipldjson.Decode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	if err != nil {
+		return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to read RPC message"),
+		)
+	}
+	if rpc.Data == nil {
+		return nil, serum.Error(workspaceapi.ECodeRpcMethodNotFound,
+			serum.WithMessageLiteral("RPC message contains no data"))
+	}
+	return &rpc, nil
+}
+
+// handle is expected to respond to client connections.
+// This function should recover from panics and log errors before returning.
+// It is expected that handle is run as a goroutine and that errors may not be handled.
+//
+// handle emits the current status of the watch command over the connection
+func (s *server) handle(ctx context.Context, conn net.Conn) (err error) {
+	log := logging.Ctx(ctx)
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Info(LOG_TAG_SRV, "socket handler panic: %s", r)
+			return
+		}
+		if err != nil {
+			log.Info(LOG_TAG_SRV, "handler returned with error: %s", err.Error())
+		}
+	}()
+	ctx, cancel := context.WithCancel(ctx)
+	defer log.Info(LOG_TAG_SRV, "connection closed")
+	defer cancel()
+	defer conn.Close()
+	dec := json.NewDecoder(conn)
+	for {
+		if err := s.setReadDeadline(conn); err != nil {
+			return err
+		}
+		log.Info(LOG_TAG_SRV, "reading data")
+		rpc, err := NextRPC(ctx, dec)
+		if err != nil {
+			log.Info(LOG_TAG_SRV, "unable to read RPC: %s", err.Error())
+			// TODO: send error response
+			return err
+		}
+		rpc.ErrorCode = nil // ignore errors sent by client
+		log.Debug(LOG_TAG_SRV, "%v", rpc)
+		log.Info(LOG_TAG_SRV, "binding request")
+		request, err := NodeToRpcRequest(rpc.Data)
+		if err != nil {
+			log.Info(LOG_TAG_SRV, "unable to bind RPC data to struct: %s", err.Error())
+			//TODO: send error response
+			continue
+		}
+		log.Info(LOG_TAG_SRV, "handle request")
+		response, err := s.handler.handle(ctx, rpc.ID, *request)
+		if err != nil {
+			log.Info(LOG_TAG_SRV, "RPC handler failed: %s", err.Error())
+			//TODO: send error response
+			continue
+		}
+		if response == nil || rpc.ID == "" {
+			// ignore responses without IDs
+			log.Info(LOG_TAG_SRV, "RPC handler response is nil or request has no ID: %s", rpc.ID)
+			continue
+		}
+		rpc.Data = response
+		log.Info(LOG_TAG_SRV, "response")
+		err = ipld.MarshalStreaming(conn, ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
+		if err != nil {
+			return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err))
+		}
+	}
+}
+
+// Errors:
+//
+//    - warpforge-error-rpc-serialization -- unable to convert ipld node to struct
+func NodeToRpcRequest(data datamodel.Node) (*workspaceapi.RpcRequest, error) {
+	np := bindnode.Prototype(&workspaceapi.RpcRequest{}, workspaceapi.TypeSystem.TypeByName("RpcRequest"))
+	nb := np.NewBuilder()
+	if err := datamodel.Copy(data, nb); err != nil {
+		return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
+			serum.WithMessageLiteral("RpcRequest is invalid"),
+		)
+	}
+	request := bindnode.Unwrap(nb.Build()).(*workspaceapi.RpcRequest)
+	return request, nil
+}
+
+func sendError(ctx context.Context, conn net.Conn, rpc workspaceapi.Rpc, err error) error {
+	if err == nil {
+		panic("server cannot send nil error")
+	}
+	code := serum.Code(err)
+	if code == "" {
+		code = workspaceapi.ECodeRpcUnknown
+	}
+	rpc.ErrorCode = &code
+	rpc.Data = nil
+	if err != nil {
+		return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to serialize error"),
+		)
+	}
+	err = ipld.MarshalStreaming(conn, ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	if err != nil {
+		return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to send rpc error response"),
+		)
+	}
+	return nil
 }
 
 // serve accepts and handles connections to the server.
+// Serve should not return under normal circumstances, however if an error occurs then it will log that error and return it.
+// Context will only be checked between accepted connections, canceling this function while it's blocking requires the server's listener to be closed.
 func (s *server) serve(ctx context.Context) error {
+	// It is expected that serve will be called as a goroutine and the returned error may not be handled.
+	// Any errors should be logged before returning.
 	log := logging.Ctx(ctx)
-	log.Debug("", "serve")
 	if s.listener == nil {
-		err := fmt.Errorf("did not call listen on server")
-		log.Info("", err.Error())
-		return err
+		panic("server has nil listener")
 	}
-	server, err := jsonrpc2.Serve(ctx, s.listener, s.binder)
+	for {
+		conn, err := s.listener.Accept() // blocks, doesn't accept a context.
+		if err != nil {
+			log.Info(LOG_TAG_SRV, "server: socket error on accept: %s", err.Error())
+			return err
+		}
+		go s.handle(ctx, conn)
+		select {
+		case <-ctx.Done():
+			log.Info(LOG_TAG_SRV, "server: socket no longer accepting connections")
+			return nil
+		default:
+		}
+	}
+}
+
+// listener will create a unix socket on the given path
+func listener(ctx context.Context, sockPath string) (net.Listener, error) {
+	cfg := net.ListenConfig{}
+	l, err := cfg.Listen(ctx, "unix", sockPath)
 	if err != nil {
-		return serum.Error(wfapi.ECodeUnknown, serum.WithCause(err),
-			serum.WithMessageLiteral("unable to start server"),
-		)
+		return nil, wfapi.ErrorIo("could not create socket", sockPath, err)
 	}
-	server.Wait()
-	return nil
-}
-
-// listen will create a unix socket on the given path
-// listen should be called before "serve"
-func (s *server) listen(ctx context.Context, sockPath string) (err error) {
-	listener, err := jsonrpc2.NetListener(ctx, "unix", sockPath, jsonrpc2.NetListenOptions{})
-	if err != nil {
-		return wfapi.ErrorIo("could not create socket", sockPath, err)
-	}
-	s.listener = listener
-	return nil
-}
-
-type binder struct {
-	framer    jsonrpc2.Framer
-	historian *historian
-}
-
-// Errors: none
-func (b binder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
-	logger := logging.Ctx(ctx)
-	logger.Debug("", "bind")
-	h := &handler{
-		statusFetcher: b.historian.getStatus,
-	}
-	return jsonrpc2.ConnectionOptions{
-		Framer:    b.framer,
-		Preempter: nil,
-		Handler:   h,
-	}, nil
+	return l, nil
 }
 
 type handler struct {
 	statusFetcher func(ctx context.Context, path string) (workspaceapi.ModuleStatus, error)
 }
 
-// Handle _MUST_ return jsonrpc2 errors. We should probably use a different library.
-// jsonrpc2 is switching directly on error types which have wire significance to the JSON-RPC 2.0 specification.
-// Alternatively we can upstream ignoring particular functions in serum.
-//
-// Errors: ignore
-func (h *handler) Handle(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+func (h *handler) handle(ctx context.Context, ID string, req workspaceapi.RpcRequest) (datamodel.Node, error) {
 	logger := logging.Ctx(ctx)
 	logger.Debug("", "handle")
-	switch req.Method {
-	case workspaceapi.RpcModuleStatus:
-		return h.methodModuleStatus(ctx, req.Params)
-	case workspaceapi.RpcPing:
-		return h.methodPing(ctx, req.Params)
+	if ID == "" {
+		return nil, nil
+	}
+	switch {
+	case req.ModuleStatusQuery != nil:
+		return h.methodModuleStatus(ctx, *req.ModuleStatusQuery)
+	case req.Ping != nil:
+		return h.methodPing(ctx, *req.Ping)
 	default:
-		logger.Debug("", "method %q not found", req.Method)
-		return nil, jsonrpc2.ErrMethodNotFound
+		// TODO: reflect magic could tell you more about this, and allow us to do method registration.
+		logger.Debug("", "method not found")
+		return nil, serum.Error(workspaceapi.ECodeRpcMethodNotFound)
 	}
 }
 
-func (h *handler) methodPing(ctx context.Context, req json.RawMessage) (json.RawMessage, error) {
+func (h *handler) methodPing(ctx context.Context, req workspaceapi.Ping) (datamodel.Node, error) {
 	logger := logging.Ctx(ctx)
 	logger.Debug("", "method: ping")
 	var data workspaceapi.Ping
-	_, err := ipld.Unmarshal(req, ipldjson.Decode, &data, workspaceapi.TypeSystem.TypeByName("Ping"))
-	if err != nil {
-		logger.Debug("", "failed to unmarshal ping struct: %s", err)
-		return nil, jsonrpc2.ErrParse
-	}
 
 	response := &workspaceapi.PingAck{CallID: data.CallID}
-	result, err := ipld.Marshal(ipldjson.Encode, response, workspaceapi.TypeSystem.TypeByName("PingAck"))
-	if err != nil {
-		return nil, jsonrpc2.ErrInternal
-	}
-	return json.RawMessage(result), nil
+	result := bindnode.Wrap(response, workspaceapi.TypeSystem.TypeByName("PingAck"))
+	// result, err := ipld.Marshal(ipldjson.Encode, response, workspaceapi.TypeSystem.TypeByName("PingAck"))
+	// if err != nil {
+	// 	return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err))
+	// }
+	return result, nil
 }
 
-func (h *handler) methodModuleStatus(ctx context.Context, req json.RawMessage) (json.RawMessage, error) {
+func (h *handler) methodModuleStatus(ctx context.Context, req workspaceapi.ModuleStatusQuery) (datamodel.Node, error) {
 	logger := logging.Ctx(ctx)
-	logger.Debug("", "method: module status")
-	var data workspaceapi.ModuleStatusQuery
-	_, err := ipld.Unmarshal(req, ipldjson.Decode, &data, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
-	if err != nil {
-		return nil, jsonrpc2.ErrParse
-	}
-
-	status, err := h.statusFetcher(ctx, data.Path)
+	status, err := h.statusFetcher(ctx, req.Path)
 	if err != nil {
 		logger.Debug("", "unable to get status")
-		return nil, jsonrpc2.ErrInternal
+		return nil, serum.Error(workspaceapi.ECodeRpcInternal, serum.WithCause(err))
 	}
 	response := &workspaceapi.ModuleStatusAnswer{
-		Path:   data.Path,
+		Path:   req.Path,
 		Status: status,
 	}
+	result := bindnode.Wrap(response, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
 
-	result, err := ipld.Marshal(ipldjson.Encode, response, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
-	if err != nil {
-		logger.Debug("", "unable to get serialize status answer")
-		return nil, jsonrpc2.ErrInternal
-	}
-	return json.RawMessage(result), nil
+	// result, err := ipld.Marshal(ipldjson.Encode, response, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
+	// if err != nil {
+	// 	logger.Debug("", "unable to get serialize status answer")
+	// 	return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err))
+	// }
+	return result, nil
 }

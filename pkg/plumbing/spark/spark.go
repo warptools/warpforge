@@ -8,10 +8,12 @@ import (
 	"net"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	ipld "github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/serum-errors/go-serum"
-	"golang.org/x/exp/jsonrpc2"
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
@@ -25,10 +27,38 @@ type Config struct {
 	Fsys             fs.FS
 	Path             string // path to module
 	WorkingDirectory string // absolute path to working directory
-	Dialer           jsonrpc2.Dialer
+	Dialer           Dialer
 	OutputMarkup     string
 	OutputStyle      string
 	OutputColor      bool
+}
+
+type Dialer interface {
+	// Errors:
+	//
+	//   - warpforge-error-rpc-connection -- dial fails
+	Dial(ctx context.Context) (net.Conn, error)
+}
+
+type netDialer struct {
+	network string
+	address string
+	dialer  net.Dialer
+}
+
+// Errors:
+//
+//   - warpforge-error-rpc-connection -- dial fails
+func (n *netDialer) Dial(ctx context.Context) (net.Conn, error) {
+	conn, err := n.dialer.DialContext(ctx, n.network, n.address)
+	if err != nil {
+		return nil, serum.Error(workspaceapi.ECodeRpcConnection, serum.WithCause(err),
+			serum.WithMessageTemplate("unable to dial server at network {{network|q}} and address {{address|q}}"),
+			serum.WithDetail("network", n.network),
+			serum.WithDetail("address", n.address),
+		)
+	}
+	return conn, nil
 }
 
 const (
@@ -37,10 +67,12 @@ const (
 	// ECodeQuery is used when a query fails for unknown reasons
 	ECodeQuery = "warpforge-error-query"
 )
+
 const (
-	SCodeNoModule = "warpforge-spark-no-module"
-	SCodeNoSocket = "warpforge-spark-no-socket"
-	SCodeUnknown  = "warpforge-spark-unknown"
+	ECodeSparkNoModule = "warpforge-spark-no-module" // locally can't find module path
+	ECodeSparkNoSocket = "warpforge-spark-no-socket" // locally can't find socket or can't dial the socket
+	ECodeSparkInternal = "warpforge-spark-internal"  // other errors, including serialization, broken comms, invalid data errors
+	ECodeSparkServer   = "warpforge-spark-server"    // server error response
 )
 
 func (c *Config) searchPath() string {
@@ -56,7 +88,7 @@ func relativePath(basepath, targpath string) (string, error) {
 	result, err := filepath.Rel(basepath, targpath)
 	if err != nil {
 		return "", serum.Error(wfapi.ECodeSearchingFilesystem, serum.WithCause(err),
-			serum.WithMessageLiteral("unable to find relative path from {{basePath|q}} to {{targPath|q}}"),
+			serum.WithMessageTemplate("unable to find relative path from {{basePath|q}} to {{targPath|q}}"),
 			serum.WithDetail("basePath", basepath),
 			serum.WithDetail("targPath", targpath),
 		)
@@ -65,7 +97,7 @@ func relativePath(basepath, targpath string) (string, error) {
 }
 
 func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, error) {
-	result := workspaceapi.ModuleStatusAnswer{}
+	var empty workspaceapi.ModuleStatusAnswer
 	logger := logging.Ctx(ctx)
 
 	searchPath := c.searchPath()
@@ -76,20 +108,20 @@ func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, erro
 		if err == nil {
 			err = serum.Error(wfapi.ECodeWorkspace, serum.WithMessageLiteral("workspace not found"))
 		}
-		return result, serum.Error(SCodeNoModule, serum.WithCause(err))
+		return empty, serum.Error(ECodeSparkNoModule, serum.WithCause(err))
 	}
 	_, wsPath := ws.Path()
 	logger.Debug("", "ws path: %q", wsPath)
 
 	searchPath, err = relativePath("/"+wsPath, searchPath)
 	if err != nil {
-		return result, serum.Error(SCodeNoModule, serum.WithCause(err))
+		return empty, serum.Error(ECodeSparkNoModule, serum.WithCause(err))
 	}
 
 	logger.Debug("", "module search path: %q", searchPath)
 	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath[1:])
 	if err != nil {
-		return result, serum.Error(SCodeNoModule, serum.WithCause(err))
+		return empty, serum.Error(ECodeSparkNoModule, serum.WithCause(err))
 	}
 
 	query := workspaceapi.ModuleStatusQuery{
@@ -97,17 +129,17 @@ func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, erro
 		InterestLevel: workspaceapi.ModuleInterestLevel_Query,
 	}
 	logger.Info("", "ModulePath: %s", query.Path)
-	return c.resolve(ctx, ws, query)
+	return c.remoteResolve(ctx, ws, query)
 }
 
 // Run executes spark
 //
-// Did I confuse the crap out of serum. Yes I did. It's tradition now.
 // Errors:
 //
 //   - warpforge-spark-no-module -- can't find module
 //   - warpforge-spark-no-socket -- when socket does not dial or does not exist
-//   - warpforge-spark-unknown -- all other errors
+//   - warpforge-spark-internal -- all other errors
+//   - warpforge-spark-server  -- server responded with an error
 func (c *Config) Run(ctx context.Context) error {
 	answer, err := c.run(ctx)
 	frm := formatter{
@@ -122,97 +154,121 @@ func (c *Config) Run(ctx context.Context) error {
 
 // Errors:
 //
-//   - warpforge-spark-no-socket -- when socket does not dial or does not exist
-//   - warpforge-spark-unknown -- all other errors
-func (c *Config) resolve(ctx context.Context, ws *workspace.Workspace, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
-	result, err := c.remoteResolve(ctx, ws, query)
-	if err != nil {
-		switch serum.Code(err) {
-		case ECodeDial:
-			return result, serum.Error(SCodeNoSocket, serum.WithCause(err))
-		case SCodeNoSocket, SCodeUnknown:
-			// Error Codes = warpforge-spark-no-socket, warpforge-spark-unknown
-			return result, err
-		default:
-			return result, serum.Error(SCodeUnknown, serum.WithCause(err))
-		}
-	}
-	return result, nil
-}
-
-// Errors:
-//
 //  - warpforge-spark-no-socket -- socket path cannot be created
-func (c *Config) setupDialer(ws *workspace.Workspace) (jsonrpc2.Dialer, error) {
+func (c *Config) getDialer(ws *workspace.Workspace) (Dialer, error) {
 	if c.Dialer != nil {
 		return c.Dialer, nil
 	}
+	// use default dialer
 	path, err := watch.GenerateSocketPath(ws)
 	if err != nil {
-		return nil, serum.Error(SCodeNoSocket, serum.WithCause(err))
+		return nil, serum.Error(ECodeSparkNoSocket, serum.WithCause(err))
 	}
-	return jsonrpc2.NetDialer("unix", path, net.Dialer{}), nil
+	return &netDialer{
+		network: "unix",
+		address: path,
+		dialer:  net.Dialer{},
+	}, nil
 }
 
 // remoteResolve attempts to resolve over a socket
 // Errors:
 //
-//  - warpforge-spark-no-socket -- socket path cannot be created
-//  - warpforge-spark-no-socket -- socket dial fails
-//  - warpforge-error-query --
-//  - warpforge-error-serialization --
+//    - warpforge-spark-no-socket -- socket path cannot be created
+//    - warpforge-spark-no-socket -- socket dial fails
+//    - warpforge-spark-internal -- unable to send|receive request
+//    - warpforge-spark-server -- server sent an error response
 func (c *Config) remoteResolve(ctx context.Context, ws *workspace.Workspace, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
-	dialer, err := c.setupDialer(ws)
+	var empty workspaceapi.ModuleStatusAnswer
+	dialer, err := c.getDialer(ws)
 	if err != nil {
-		return workspaceapi.ModuleStatusAnswer{}, err
+		return empty, serum.Error(ECodeSparkNoSocket, serum.WithCause(err))
 	}
-	conn, err := dial(ctx, dialer, jsonrpc2.ConnectionOptions{})
+	conn, err := dialer.Dial(ctx)
 	if err != nil {
-		return workspaceapi.ModuleStatusAnswer{}, err
+		return empty, serum.Error(ECodeSparkNoSocket, serum.WithCause(err),
+			serum.WithMessageTemplate("could not dial server"),
+		)
 	}
 	defer conn.Close()
-	return moduleStatusQuery(ctx, conn, query)
+	{ // code block to prevent serum from complaining
+		answer, err := moduleStatusQuery(ctx, conn, query)
+		if err != nil {
+			return empty, err
+		}
+		return answer, nil
+	}
 }
 
 // Errors:
 //
-//   - warpforge-spark-no-socket -- dial fails
-func dial(ctx context.Context, dialer jsonrpc2.Dialer, opts jsonrpc2.ConnectionOptions) (*jsonrpc2.Connection, error) {
-	conn, err := jsonrpc2.Dial(ctx, dialer, opts)
-	if err != nil {
-		return nil, serum.Error(SCodeNoSocket,
-			serum.WithMessageTemplate("could not dial server"),
-			serum.WithCause(err),
-		)
+//    - warpforge-spark-internal -- unable to send|receive request
+//    - warpforge-spark-server -- server sent an error response
+func moduleStatusQuery(ctx context.Context, conn net.Conn, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
+	var empty workspaceapi.ModuleStatusAnswer
+	queryNode := bindnode.Wrap(query, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
+	rpc := workspaceapi.Rpc{
+		ID:   uuid.New().String(),
+		Data: queryNode,
 	}
-	return conn, nil
+	data, err := ipld.Marshal(ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	if err != nil {
+		return empty, serum.Error(ECodeSparkInternal,
+			serum.WithCause(serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
+				serum.WithMessageLiteral("failed to serialize Module Status Query"),
+			)))
+	}
+
+	if _, err := conn.Write(data); err != nil {
+		return empty, serum.Error(ECodeSparkInternal,
+			serum.WithCause(serum.Error(workspaceapi.ECodeRpcConnection, serum.WithCause(err),
+				serum.WithMessageLiteral("unable to send RPC request"),
+			)))
+	}
+
+	var raw json.RawMessage
+	dec := json.NewDecoder(conn)
+	if err := dec.Decode(&raw); err != nil {
+		return empty, serum.Error(ECodeSparkInternal,
+			serum.WithCause(serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
+				serum.WithMessageLiteral("unable to retrieve json from socket"),
+			)))
+	}
+
+	var response workspaceapi.Rpc
+	_, err = ipld.Unmarshal(raw, ipldjson.Decode, &response, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	if err != nil {
+		return empty, serum.Error(ECodeSparkInternal,
+			serum.WithCause(serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
+				serum.WithMessageLiteral("failed to deserialize ModuleStatusAnswer"),
+			)))
+	}
+
+	rpcResp, err := NodeToRpcResponse(response.Data)
+	if err != nil {
+		return empty, serum.Error(ECodeSparkInternal, serum.WithCause(err))
+	}
+	switch {
+	case rpcResp.ModuleStatusAnswer != nil:
+		return *rpcResp.ModuleStatusAnswer, nil
+	case rpcResp.Error != nil:
+		return empty, serum.Error(ECodeSparkServer, serum.WithCause(rpcResp.Error))
+	default:
+		return empty, serum.Error(ECodeSparkInternal, serum.WithMessageLiteral("unrecognized RPC response"))
+	}
 }
 
 // Errors:
 //
-//   - warpforge-error-query --
-//   - warpforge-error-serialization --
-func moduleStatusQuery(ctx context.Context, conn *jsonrpc2.Connection, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
-	var result workspaceapi.ModuleStatusAnswer
-	data, err := ipld.Marshal(ipldjson.Encode, &query, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
-	if err != nil {
-		return result, serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
-			serum.WithMessageLiteral("failed to serialize Module Status Query"))
-	}
-	async := conn.Call(ctx, workspaceapi.RpcModuleStatus, json.RawMessage(data))
-
-	var msg json.RawMessage
-	if err := async.Await(ctx, &msg); err != nil {
-		return result, serum.Error(ECodeQuery, serum.WithCause(err),
-			serum.WithMessageLiteral("Module Status Query failed"),
+//    - warpforge-error-rpc-serialization -- unable to convert ipld node to struct
+func NodeToRpcResponse(data datamodel.Node) (*workspaceapi.RpcResponse, error) {
+	np := bindnode.Prototype(&workspaceapi.RpcResponse{}, workspaceapi.TypeSystem.TypeByName("RpcResponse"))
+	nb := np.NewBuilder()
+	if err := datamodel.Copy(data, nb); err != nil {
+		return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
+			serum.WithMessageLiteral("server response is invalid"),
 		)
 	}
-
-	_, err = ipld.Unmarshal([]byte(msg), ipldjson.Decode, &result, workspaceapi.TypeSystem.TypeByName("ModuleStatusAnswer"))
-	if err != nil {
-		return result, serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
-			serum.WithMessageLiteral("failed to deserialize ModuleStatusAnswer"),
-		)
-	}
-	return result, nil
+	response := bindnode.Unwrap(nb.Build()).(*workspaceapi.RpcResponse)
+	return response, nil
 }

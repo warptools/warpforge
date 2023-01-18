@@ -80,3 +80,29 @@ type ModuleStatusUnion_InProgress struct {}
 type ModuleStatusUnion_FailedProvisioning struct {}
 type ModuleStatusUnion_ExecutedSuccess struct {}
 type ModuleStatusUnion_ExecutedFailed struct {}
+
+
+
+type RpcRequest union {
+	| Ping "ping"
+	| ModuleStatusQuery "module_status"
+} representation keyed
+
+type RpcResponse union {
+	| PingAck "ping"
+	| ModuleStatusAnswer "module_status"
+	| Error "error"
+} representation keyed
+
+type Rpc struct {
+	ID String
+	Data Any
+	ErrorCode optional String
+}
+
+type Error struct {
+	code    String
+	message optional String
+	details optional {String:String}
+	cause   optional [Error]
+} representation map

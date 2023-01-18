@@ -131,10 +131,11 @@ const (
 	Phase_NoModule   Phase = "nop" // spark-side only: couldn't find a module.
 	Phase_NoSocket   Phase = "dwn" // spark-side only: no daemon up.
 	Phase_Wat        Phase = "wat" // spark-side only: we had comms errors, or daemon sent nonsense.
+	Phase_Err        Phase = "err" // server returned an error or rejected our request
 	Phase_NoPlan     Phase = "non" // daemon does not have plans for this thing.
 	Phase_Queued     Phase = "inq" // queued in warpforge.
 	Phase_InProgress Phase = "wip" // actively running, like, we're streaming logs out.
-	Phase_Rejected   Phase = "rej" // rejected by a warpforge
+	Phase_Rejected   Phase = "rej" // module rejected by a warpforge
 	Phase_Saving     Phase = "sav" // done, ran user code completely, now saving user outputs. //TODO
 	Phase_DoneGood   Phase = "yay" // done, ran user code completely: zero exit.
 	Phase_DoneNoGood Phase = "aww" // done, ran user code completely: non-zero exit.
@@ -151,11 +152,13 @@ var Status2Phase = map[workspaceapi.ModuleStatus]Phase{
 
 func Code2Phase(code string) Phase {
 	switch code {
-	case SCodeNoModule:
+	case ECodeSparkNoModule:
 		return Phase_NoModule
-	case SCodeNoSocket:
+	case ECodeSparkNoSocket:
 		return Phase_NoSocket
-	case SCodeUnknown:
+	case ECodeSparkServer:
+		return Phase_Err
+	case ECodeSparkInternal:
 		fallthrough
 	default:
 		return Phase_Wat
@@ -165,12 +168,14 @@ func Code2Phase(code string) Phase {
 const AnsiColorReset = "\x1B[0m"
 
 //TODO: colorblind coloring map AND/OR allowing custom color maps.
-// Probably swap green/red -> blue/yellow respectively?
+// Probably swap green/red/yellow -> blue/yellow/?? respectively?
+// Need to do some palette research
 
 var dasAnsiColorMap = map[Phase]string{
 	Phase_NoModule:   "\x1B[1;90m",                // grey
 	Phase_NoSocket:   "\x1B[1;90m",                // grey
 	Phase_Wat:        "\x1B[5m\x1B[41m\x1B[1;33m", // blink yellow, red bg
+	Phase_Err:        "\x1B[5m\x1B[41m\x1B[1;33m", // blink yellow, red bg
 	Phase_NoPlan:     "\x1B[1;90m",                // grey
 	Phase_Queued:     "\x1B[33m",                  // brown
 	Phase_InProgress: "\x1B[33m",                  // brown
@@ -180,10 +185,12 @@ var dasAnsiColorMap = map[Phase]string{
 	Phase_DoneNoGood: "\x1B[1;31m",                // red
 }
 
+// The primary requirement here is that no two phases be identical
 var dasMap = map[Phase]string{
 	Phase_NoModule:   "---",
-	Phase_NoSocket:   "-↯-",
-	Phase_Wat:        " ! ",
+	Phase_NoSocket:   "⌁⌁⌁",
+	Phase_Wat:        "⌁?⌁",
+	Phase_Err:        "⇃!⇂",
 	Phase_NoPlan:     "┐-┌",
 	Phase_Queued:     "⟨║⟩",
 	Phase_InProgress: "⟨⇋⟩",
@@ -197,6 +204,7 @@ var dasPangoColorMap = map[Phase]string{
 	Phase_NoModule:   `foreground="grey"`,
 	Phase_NoSocket:   `foreground="grey"`,
 	Phase_Wat:        `foreground="yellow" background="red"`,
+	Phase_Err:        `foreground="yellow" background="red"`,
 	Phase_NoPlan:     `foreground="grey"`,
 	Phase_Queued:     `foreground="brown"`,
 	Phase_InProgress: `foreground="brown"`,
