@@ -8,7 +8,6 @@ import (
 	qt "github.com/frankban/quicktest"
 	ipld "github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 )
@@ -129,39 +128,40 @@ func TestRpc(t *testing.T) {
 			_, err = ipld.Unmarshal(data, ipldjson.Decode, &output, TypeSystem.TypeByName("Rpc"))
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, output.ID, qt.Equals, testcase.input.ID)
+			t.Logf("\n%#v", output.Data)
 
 			tn := testcase.input.Data.(schema.TypedNode)
 			typeName := tn.Type().Name()
 			switch typeName {
 			case "RpcRequest":
-				var uut *RpcRequest
-				i, err := bindnodeCopy(output.Data, uut, tn.Type())
+				uut := &RpcRequest{}
+				err := output.ExtractData(uut)
 				qt.Assert(t, err, qt.IsNil)
-				uut = i.(*RpcRequest)
 				expect := bindnode.Unwrap(testcase.input.Data).(*RpcRequest)
-				qt.Assert(t, *uut, qt.Equals, *expect)
+				qt.Assert(t, *uut, qt.CmpEquals(), *expect)
+
+				// i, err := bindnodeCopy(output.Data, uut, tn.Type())
+				// qt.Assert(t, err, qt.IsNil)
+				// uut = i.(*RpcRequest)
+				// expect := bindnode.Unwrap(testcase.input.Data).(*RpcRequest)
+				// qt.Assert(t, *uut, qt.Equals, *expect)
 			case "RpcResponse":
-				var uut *RpcResponse
-				i, err := bindnodeCopy(output.Data, uut, tn.Type())
+				uut := &RpcResponse{}
+				err := output.ExtractData(uut)
 				qt.Assert(t, err, qt.IsNil)
-				uut = i.(*RpcResponse)
 				expect := bindnode.Unwrap(testcase.input.Data).(*RpcResponse)
-				qt.Assert(t, *uut, qt.Equals, *expect)
+				qt.Assert(t, *uut, qt.CmpEquals(), *expect)
+
+				// i, err := bindnodeCopy(output.Data, uut, tn.Type())
+				// qt.Assert(t, err, qt.IsNil)
+				// uut = i.(*RpcResponse)
+				// expect := bindnode.Unwrap(testcase.input.Data).(*RpcResponse)
+				// qt.Assert(t, *uut, qt.Equals, *expect)
 			default:
 				t.Fatalf("invalid typename: %q", typeName)
 			}
 		})
 	}
-}
-
-func bindnodeCopy(data datamodel.Node, i interface{}, t schema.Type) (interface{}, error) {
-	np := bindnode.Prototype(i, t)
-	nb := np.NewBuilder()
-	if err := datamodel.Copy(data, nb); err != nil {
-		return nil, err
-	}
-	result := bindnode.Unwrap(nb.Build())
-	return result, nil
 }
 
 func TestRegenerate(t *testing.T) {

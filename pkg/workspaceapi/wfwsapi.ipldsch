@@ -94,6 +94,11 @@ type RpcResponse union {
 	| Error "error"
 } representation keyed
 
+type RpcData union {
+	|RpcRequest "request"
+	|RpcResponse "response"
+}
+
 type Rpc struct {
 	ID String (rename "id")
 	data Any (rename "data")
