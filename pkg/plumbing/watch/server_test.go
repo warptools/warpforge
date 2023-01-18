@@ -30,12 +30,14 @@ type pipeListener struct {
 	done        chan struct{}
 }
 
+// Errors: none
 func (p *pipeListener) Close() error {
 	// closing channel will unblock accept
 	close(p.done)
 	return nil
 }
 
+// Errors: none
 func (p *pipeListener) Accept() (net.Conn, error) {
 	select {
 	case <-p.done:
@@ -47,6 +49,8 @@ func (p *pipeListener) Accept() (net.Conn, error) {
 	}
 }
 func (p *pipeListener) Addr() net.Addr { return nil }
+
+// Errors: none
 func (p *pipeListener) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	serverConn, clientConn := net.Pipe()
 	select {

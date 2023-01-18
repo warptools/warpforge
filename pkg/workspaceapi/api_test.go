@@ -8,7 +8,9 @@ import (
 	qt "github.com/frankban/quicktest"
 	ipld "github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/schema"
 )
 
 func TestTypeSystemCompiles(t *testing.T) {
@@ -45,6 +47,121 @@ func TestModuleStatusAnswerSerialization(t *testing.T) {
 	_, err = ipld.Unmarshal(data, ipldjson.Decode, &result, TypeSystem.TypeByName("ModuleStatusAnswer"))
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, result, qt.DeepEquals, input)
+}
+
+func TestRpcRequest(t *testing.T) {
+	input := RpcRequest{
+		ModuleStatusQuery: &ModuleStatusQuery{
+			Path:          "a string",
+			InterestLevel: ModuleInterestLevel_Query,
+		},
+	}
+	data, err := ipld.Marshal(ipldjson.Encode, &input, TypeSystem.TypeByName("RpcRequest"))
+	qt.Assert(t, err, qt.IsNil)
+
+	var result RpcRequest
+	_, err = ipld.Unmarshal(data, ipldjson.Decode, &result, TypeSystem.TypeByName("RpcRequest"))
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, result, qt.DeepEquals, input)
+}
+
+func TestRpcResponse(t *testing.T) {
+	input := RpcResponse{
+		ModuleStatusAnswer: &ModuleStatusAnswer{
+			Path:   "a string",
+			Status: ModuleStatus_NoInfo,
+		},
+	}
+	data, err := ipld.Marshal(ipldjson.Encode, &input, TypeSystem.TypeByName("RpcResponse"))
+	qt.Assert(t, err, qt.IsNil)
+
+	var result RpcResponse
+	_, err = ipld.Unmarshal(data, ipldjson.Decode, &result, TypeSystem.TypeByName("RpcResponse"))
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, result, qt.DeepEquals, input)
+}
+
+func TestRpc(t *testing.T) {
+	for _, testcase := range []struct {
+		input Rpc
+	}{
+		{
+			input: Rpc{
+				ID: "request-ping-foo",
+				Data: bindnode.Wrap(&RpcRequest{
+					Ping: &Ping{CallID: "foo"},
+				}, TypeSystem.TypeByName("RpcRequest")),
+			},
+		},
+		{
+			input: Rpc{
+				ID: "request-status-foo",
+				Data: bindnode.Wrap(&RpcRequest{
+					ModuleStatusQuery: &ModuleStatusQuery{Path: "foo", InterestLevel: ModuleInterestLevel_Query},
+				}, TypeSystem.TypeByName("RpcRequest")),
+			},
+		},
+		{
+			input: Rpc{
+				ID: "response-ping-foo",
+				Data: bindnode.Wrap(&RpcResponse{
+					PingAck: &PingAck{CallID: "foo"},
+				}, TypeSystem.TypeByName("RpcResponse")),
+			},
+		},
+		{
+			input: Rpc{
+				ID: "response-status-foo",
+				Data: bindnode.Wrap(&RpcResponse{
+					ModuleStatusAnswer: &ModuleStatusAnswer{Path: "foo", Status: ModuleStatus_ExecutedSuccess},
+				}, TypeSystem.TypeByName("RpcResponse")),
+			},
+		},
+	} {
+		t.Run(testcase.input.ID, func(t *testing.T) {
+			testcase := testcase
+
+			data, err := ipld.Marshal(ipldjson.Encode, &testcase.input, TypeSystem.TypeByName("Rpc"))
+			qt.Assert(t, err, qt.IsNil)
+			t.Logf("\n%s", string(data))
+
+			var output Rpc
+			_, err = ipld.Unmarshal(data, ipldjson.Decode, &output, TypeSystem.TypeByName("Rpc"))
+			qt.Assert(t, err, qt.IsNil)
+			qt.Assert(t, output.ID, qt.Equals, testcase.input.ID)
+
+			tn := testcase.input.Data.(schema.TypedNode)
+			typeName := tn.Type().Name()
+			switch typeName {
+			case "RpcRequest":
+				var uut *RpcRequest
+				i, err := bindnodeCopy(output.Data, uut, tn.Type())
+				qt.Assert(t, err, qt.IsNil)
+				uut = i.(*RpcRequest)
+				expect := bindnode.Unwrap(testcase.input.Data).(*RpcRequest)
+				qt.Assert(t, *uut, qt.Equals, *expect)
+			case "RpcResponse":
+				var uut *RpcResponse
+				i, err := bindnodeCopy(output.Data, uut, tn.Type())
+				qt.Assert(t, err, qt.IsNil)
+				uut = i.(*RpcResponse)
+				expect := bindnode.Unwrap(testcase.input.Data).(*RpcResponse)
+				qt.Assert(t, *uut, qt.Equals, *expect)
+			default:
+				t.Fatalf("invalid typename: %q", typeName)
+			}
+		})
+	}
+}
+
+func bindnodeCopy(data datamodel.Node, i interface{}, t schema.Type) (interface{}, error) {
+	np := bindnode.Prototype(i, t)
+	nb := np.NewBuilder()
+	if err := datamodel.Copy(data, nb); err != nil {
+		return nil, err
+	}
+	result := bindnode.Unwrap(nb.Build())
+	return result, nil
 }
 
 func TestRegenerate(t *testing.T) {

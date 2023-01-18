@@ -95,14 +95,13 @@ type RpcResponse union {
 } representation keyed
 
 type Rpc struct {
-	ID String
-	Data Any
-	ErrorCode optional String
+	ID String (rename "id")
+	data Any (rename "data")
 }
 
 type Error struct {
 	code    String
 	message optional String
 	details optional {String:String}
-	cause   optional [Error]
+	cause   optional Error
 } representation map
