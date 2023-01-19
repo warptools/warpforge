@@ -1,56 +1,109 @@
 package workspaceapi
 
 import (
-	"embed"
-	"fmt"
 	"reflect"
 
 	"github.com/warptools/warpforge/wfapi"
 
-	"github.com/ipld/go-ipld-prime/node/bindnode"
-
 	"github.com/ipld/go-ipld-prime/datamodel"
-
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
-	schemadmt "github.com/ipld/go-ipld-prime/schema/dmt"
-	schemadsl "github.com/ipld/go-ipld-prime/schema/dsl"
+	"github.com/serum-errors/go-serum"
 )
 
-// embed the wfapi ipld schema from file
-//go:embed wfwsapi.ipldsch
-var schFs embed.FS
+const (
+	ModuleInterestLevel_Query ModuleInterestLevel = "Query"
+	ModuleInterestLevel_Run   ModuleInterestLevel = "Run"
+)
+const (
+	ECodeRpcMethodNotFound = "warpforge-error-rpc-method-not-found"
+	ECodeRpcInternal       = "warpforge-error-rpc-internal"
+	ECodeRpcSerialization  = "warpforge-error-rpc-serialization"
+	ECodeRpcUnknown        = "warpforge-error-rpc-unknown"
+	ECodeRpcConnection     = "warpforge-error-rpc-connection"
+	ECodeRpcMissingData    = "warpforge-error-rpc-missing-data"
+	ECodeRpcExtraData      = "warpforge-error-rpc-extra-data"
+)
 
-var SchemaDMT, TypeSystem = func() (*schemadmt.Schema, *schema.TypeSystem) {
-	r, err := schFs.Open("wfwsapi.ipldsch")
-	if err != nil {
-		panic(fmt.Sprintf("failed to open embedded wfwsapi.ipldsch: %s", err))
-	}
-	schemaDmt, err := schemadsl.Parse("wfwsapi.ipldsch", r)
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse api schema: %s", err))
-	}
-	schemaDmt = concat(wfapi.SchemaDMT, schemaDmt)
+const (
+	ModuleStatus_NoInfo             ModuleStatus = "NoInfo"
+	ModuleStatus_Queuing            ModuleStatus = "Queuing"
+	ModuleStatus_InProgress         ModuleStatus = "InProgress"
+	ModuleStatus_FailedProvisioning ModuleStatus = "FailedProvisioning"
+	ModuleStatus_ExecutedSuccess    ModuleStatus = "ExecutedSuccess"
+	ModuleStatus_ExecutedFailed     ModuleStatus = "ExecutedFailed"
+)
 
-	ts := new(schema.TypeSystem)
-	ts.Init()
-	if err := schemadmt.Compile(ts, schemaDmt); err != nil {
-		panic(fmt.Sprintf("failed to compile api schema: %s", err))
-	}
-	return schemaDmt, ts
-}()
+type RpcRequest struct {
+	*ModuleStatusQuery
+}
 
-// concat returns a new schemadmt that's got the types from both.
-//
-// This function could probably be hoisted upstream.
-func concat(a, b *schemadmt.Schema) *schemadmt.Schema {
-	nb := schemadmt.Type.Schema.NewBuilder()
-	if err := datamodel.Copy(bindnode.Wrap(a, schemadmt.Type.Schema.Type()), nb); err != nil {
-		panic(err)
+type RpcResponse struct {
+	*Echo
+	*ModuleStatusAnswer
+	*Error
+}
+
+type RpcData struct {
+	*RpcRequest
+	*RpcResponse
+}
+
+type Rpc struct {
+	ID   string
+	Data RpcData
+}
+
+type Error struct {
+	Code    string
+	Message *string
+	Details *Details
+	Cause   *Error
+}
+
+type Details struct {
+	Keys   []string
+	Values map[string]string
+}
+
+func (d *Details) Details() [][2]string {
+	if d == nil {
+		return [][2]string{}
 	}
-	if err := datamodel.Copy(bindnode.Wrap(b, schemadmt.Type.Schema.Type()), nb); err != nil {
-		panic(err)
+	result := make([][2]string, 0, len(d.Keys))
+	for _, key := range d.Keys {
+		result = append(result, [2]string{key, d.Values[key]})
 	}
-	return bindnode.Unwrap(nb.Build()).(*schemadmt.Schema)
+	return result
+}
+
+// Warning: this function returns an _error struct_ which can mess with go nil types
+func (e *Error) Serum() *serum.ErrorValue {
+	if e == nil {
+		return nil
+	}
+	var msg string
+	if e.Message != nil {
+		msg = *e.Message
+	}
+	return &serum.ErrorValue{
+		Data: serum.Data{
+			Code:    e.Code,
+			Message: msg,
+			Details: e.Details.Details(),
+			Cause:   e.Cause.Serum(),
+		},
+	}
+}
+
+func bindnodeCopy(data datamodel.Node, i interface{}, t schema.Type) (interface{}, error) {
+	np := bindnode.Prototype(i, t)
+	nb := np.NewBuilder()
+	if err := datamodel.Copy(data, nb); err != nil {
+		return nil, err
+	}
+	result := bindnode.Unwrap(nb.Build())
+	return result, nil
 }
 
 type ModuleStatusQuery struct {
@@ -66,11 +119,6 @@ type InputReplacements struct {
 
 type ModuleInterestLevel string
 
-const (
-	ModuleInterestLevel_Query ModuleInterestLevel = "Query"
-	ModuleInterestLevel_Run   ModuleInterestLevel = "Run"
-)
-
 type ModuleStatus string
 
 type ModuleStatusAnswer struct {
@@ -78,22 +126,7 @@ type ModuleStatusAnswer struct {
 	Status ModuleStatus
 }
 
-type Ping struct {
-	CallID string
-}
-
-type PingAck struct {
-	CallID string
-}
-
-const (
-	ModuleStatus_NoInfo             ModuleStatus = "NoInfo"
-	ModuleStatus_Queuing            ModuleStatus = "Queuing"
-	ModuleStatus_InProgress         ModuleStatus = "InProgress"
-	ModuleStatus_FailedProvisioning ModuleStatus = "FailedProvisioning"
-	ModuleStatus_ExecutedSuccess    ModuleStatus = "ExecutedSuccess"
-	ModuleStatus_ExecutedFailed     ModuleStatus = "ExecutedFailed"
-)
+type Echo string
 
 type ModuleStatusUnion struct {
 	ModuleStatusUnion_NoInfo             *ModuleStatusUnion_NoInfo
@@ -104,8 +137,8 @@ type ModuleStatusUnion struct {
 	ModuleStatusUnion_ExecutedFailed     *ModuleStatusUnion_ExecutedFailed
 }
 
-func (ms ModuleStatusUnion) Type() string {
-	rv := reflect.ValueOf(ms)
+func UnionField(i interface{}) string {
+	rv := reflect.ValueOf(i)
 	unionIdx := -1
 	var unionField reflect.Value
 	for idx := 0; idx < rv.NumField(); idx++ {

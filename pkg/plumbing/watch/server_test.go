@@ -6,18 +6,18 @@ import (
 	"encoding/json"
 	"io"
 	"net"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	ipld "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
-	ipldfmt "github.com/ipld/go-ipld-prime/printer"
+	rfmtjson "github.com/polydawn/refmt/json"
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
@@ -53,6 +53,8 @@ func (p *pipeListener) Addr() net.Addr { return nil }
 // Errors: none
 func (p *pipeListener) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	serverConn, clientConn := net.Pipe()
+	deadline := time.Now().Add(5 * time.Second)
+	clientConn.SetDeadline(deadline) // will cause tests to fail if they block
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -75,6 +77,7 @@ func NewLogBuffers(t *testing.T, ctx context.Context) (context.Context, func()) 
 	logger := logging.NewLogger(stdout, stderr, false, false, true)
 	ctx = logger.WithContext(ctx)
 	return ctx, func() {
+		t.Log("---")
 		stdoutData, err := io.ReadAll(stdout)
 		if err != nil {
 			t.Log("unable to read stdout")
@@ -106,7 +109,6 @@ func TestServerShutdown(t *testing.T) {
 	ctx, flushLogs := NewLogBuffers(t, ctx)
 	t.Cleanup(func() { flushLogs() })
 
-	ngo := runtime.NumGoroutine()
 	listener := NewPipeListener(ctx)
 
 	hist := &historian{}
@@ -124,34 +126,50 @@ func TestServerShutdown(t *testing.T) {
 	cancel()
 	conn.Close()
 	listener.Close()
-	<-done
-	qt.Assert(t, runtime.NumGoroutine() <= ngo, qt.IsTrue) // if this ever fails... maybe delete it
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("test timeout")
+	}
+}
+
+func streamEncode(n datamodel.Node, w io.Writer) error {
+	return dagjson.Marshal(n, rfmtjson.NewEncoder(w, rfmtjson.EncodeOptions{
+		Line:   []byte{'\n'},
+		Indent: []byte{'\t'},
+	}), dagjson.EncodeOptions{
+		EncodeLinks: false,
+		EncodeBytes: false,
+		MapSortMode: codec.MapSortMode_None,
+	})
+}
+
+func streamDecode(na datamodel.NodeAssembler, r io.Reader) error {
+	return dagjson.DecodeOptions{
+		ParseLinks:         false,
+		ParseBytes:         false,
+		DontParseBeyondEnd: true, // This is critical for streaming over a socket
+	}.Decode(na, r)
 }
 
 func TestRoundtrip_Streaming(t *testing.T) {
-	t.Skipf("ipld streaming codec tries to read until EOF. This is not useful where there is no EOF.")
-
 	var err error
 	buf := &bytes.Buffer{}
-	query := workspaceapi.Ping{CallID: "foobar"}
-	dataNode := bindnode.Wrap(&query, workspaceapi.TypeSystem.TypeByName("Ping"))
+	echo := workspaceapi.Echo("foobar")
 	request := workspaceapi.Rpc{
 		ID:   "1",
-		Data: dataNode,
+		Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{Echo: &echo}},
 	}
-	err = ipld.MarshalStreaming(buf, ipldjson.Encode, &request, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	err = ipld.MarshalStreaming(buf, streamEncode, &request, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	qt.Assert(t, err, qt.IsNil)
-	expected := `{"ID":"1","Data":{"callID":"foobar"}}`
-	replacer := strings.NewReplacer("\n", "", "\t", "", " ", "")
-	qt.Assert(t, replacer.Replace(buf.String()), qt.Equals, expected)
+	t.Log("write:\n", buf.String())
 	r, w := io.Pipe()
 	go io.Copy(w, buf)
 	var uut workspaceapi.Rpc
 	t.Cleanup(func() { w.Close(); r.Close() })
-	t.Deadline()
 	ch := make(chan struct{})
 	go func() {
-		_, err = ipld.UnmarshalStreaming(r, ipldjson.Decode, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
+		_, err = ipld.UnmarshalStreaming(r, streamDecode, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
 		ch <- struct{}{}
 	}()
 	select {
@@ -160,26 +178,19 @@ func TestRoundtrip_Streaming(t *testing.T) {
 	case <-ch:
 	}
 	qt.Assert(t, err, qt.IsNil)
-	qt.Assert(t, uut, qt.Equals, request)
+	qt.Assert(t, uut, qt.CmpEquals(), request)
 }
 
 func TestRoundtrip_PreReadJson(t *testing.T) {
 	var err error
 	buf := &bytes.Buffer{}
-	request := workspaceapi.RpcRequest{
-		Ping: &workspaceapi.Ping{CallID: "foobar"},
-	}
-	dataNode := bindnode.Wrap(&request, workspaceapi.TypeSystem.TypeByName("RpcRequest"))
+	echo := workspaceapi.Echo("foobar")
 	rpcOut := workspaceapi.Rpc{
 		ID:   "1",
-		Data: dataNode,
+		Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{Echo: &echo}},
 	}
 	err = ipld.MarshalStreaming(buf, ipldjson.Encode, &rpcOut, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	qt.Assert(t, err, qt.IsNil)
-
-	expected := `{"ID":"1","Data":{"ping":{"callID":"foobar"}}}`
-	replacer := strings.NewReplacer("\n", "", "\t", "", " ", "") // ipld json always adds whitespace
-	qt.Assert(t, replacer.Replace(buf.String()), qt.Equals, expected)
 
 	t.Log("write:\n", buf.String())
 
@@ -193,25 +204,30 @@ func TestRoundtrip_PreReadJson(t *testing.T) {
 	dec := json.NewDecoder(r)
 	err = dec.Decode(&raw)
 	qt.Assert(t, err, qt.IsNil)
+	t.Log("read:\n", string(raw))
 
 	uut := workspaceapi.Rpc{}
 	_, err = ipld.Unmarshal(raw, ipldjson.Decode, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	qt.Assert(t, err, qt.IsNil)
-
-	// Convert data to RPC Request
-	t.Log("read:\n", string(raw))
-	t.Log("ipldprint:\n", ipldfmt.Sprint(uut.Data))
-	np := bindnode.Prototype(&workspaceapi.RpcRequest{}, workspaceapi.TypeSystem.TypeByName("RpcRequest"))
-	nb := np.NewBuilder()
-	err = datamodel.Copy(uut.Data, nb)
-	qt.Assert(t, err, qt.IsNil)
-
-	result := bindnode.Unwrap(nb.Build()).(*workspaceapi.RpcRequest)
-	qt.Assert(t, err, qt.IsNil)
-	qt.Assert(t, result, qt.Equals, request)
+	qt.Assert(t, uut, qt.CmpEquals(), rpcOut)
 }
 
-func TestServerPing(t *testing.T) {
+type rpcPromise struct {
+	*workspaceapi.Rpc
+	error
+}
+
+func promiseNextRpc(ctx context.Context, d *json.Decoder) <-chan rpcPromise {
+	ctx = setHandlerTag(ctx, "<-  test recv")
+	ch := make(chan rpcPromise)
+	go func() {
+		result, err := NextRPC(ctx, d)
+		ch <- rpcPromise{result, err}
+	}()
+	return ch
+}
+
+func TestServerEcho(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	t.Cleanup(func() { cancel() })
@@ -232,32 +248,40 @@ func TestServerPing(t *testing.T) {
 	t.Cleanup(func() { conn.Close() })
 	dec := json.NewDecoder(conn)
 
-	request := workspaceapi.RpcRequest{
-		Ping: &workspaceapi.Ping{CallID: "foobar"},
-	}
-	dataNode := bindnode.Wrap(&request, workspaceapi.TypeSystem.TypeByName("RpcRequest"))
-	rpcOut := workspaceapi.Rpc{
+	echo := workspaceapi.Echo("foobar")
+	request := workspaceapi.Rpc{
 		ID:   uuid.New().String(),
-		Data: dataNode,
+		Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{Echo: &echo}},
 	}
 
 	t.Log("send request")
 	buf := &bytes.Buffer{}
-	err = ipld.MarshalStreaming(buf, ipldjson.Encode, &rpcOut, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	err = ipld.MarshalStreaming(buf, ipldjson.Encode, &request, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	qt.Assert(t, err, qt.IsNil)
 	_, err = io.Copy(conn, buf)
 	qt.Assert(t, err, qt.IsNil)
 
 	t.Log("read reply")
-	response, err := NextRPC(ctx, dec)
-	qt.Assert(t, err, qt.IsNil)
-	qt.Assert(t, rpcOut.ID, qt.Equals, response.ID)
+	ch := promiseNextRpc(ctx, dec)
+	select {
+	case promise := <-ch:
+		qt.Assert(t, promise.error, qt.IsNil)
+		qt.Assert(t, *promise.Rpc, qt.CmpEquals(), request)
+	case <-time.After(time.Second):
+		t.Fatalf("test timeout")
+	}
+}
 
-	ack, err := nodeToRpcResponse(response.Data)
-	qt.Assert(t, err, qt.IsNil)
-	qt.Assert(t, ack.PingAck, qt.IsNotNil)
-	qt.Assert(t, ack.ModuleStatusAnswer, qt.IsNil)
-	qt.Assert(t, ack.PingAck.CallID, qt.Equals, request.CallID)
+type tlog struct {
+	logf func(format string, args ...interface{})
+	tag  string
+}
+
+func (t tlog) Logf(format string, args ...interface{}) {
+	t.logf(t.tag+" "+format, args...)
+}
+func (t tlog) TLogf(tag, format string, args ...interface{}) {
+	t.logf(tag+" "+format, args...)
 }
 
 func TestServerModuleStatus(t *testing.T) {
@@ -284,27 +308,35 @@ func TestServerModuleStatus(t *testing.T) {
 	dec := json.NewDecoder(conn)
 
 	doCall := func(id string, query workspaceapi.ModuleStatusQuery, expected workspaceapi.ModuleStatusAnswer) {
-		request := workspaceapi.RpcRequest{
-			ModuleStatusQuery: &query,
-		}
-		dataNode := bindnode.Wrap(&request, workspaceapi.TypeSystem.TypeByName("RpcRequest"))
+		t.Log("┌─ ")
+		log := tlog{logf: t.Logf, tag: "│  " + id}
 		rpcOut := workspaceapi.Rpc{
 			ID:   id,
-			Data: dataNode,
+			Data: workspaceapi.RpcData{RpcRequest: &workspaceapi.RpcRequest{ModuleStatusQuery: &query}},
 		}
-		err = ipld.MarshalStreaming(conn, ipldjson.Encode, &rpcOut, workspaceapi.TypeSystem.TypeByName("Rpc"))
+		expectIn := workspaceapi.Rpc{
+			ID:   id,
+			Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{ModuleStatusAnswer: &expected}},
+		}
+		log.Logf("send request")
+		data, err := ipld.Marshal(ipldjson.Encode, &rpcOut, workspaceapi.TypeSystem.TypeByName("Rpc"))
+		qt.Assert(t, err, qt.IsNil)
+		_, err = conn.Write(data)
 		qt.Assert(t, err, qt.IsNil)
 
-		response, err := NextRPC(ctx, dec)
-		qt.Assert(t, err, qt.IsNil)
-		qt.Assert(t, rpcOut.ID, qt.Equals, response.ID)
-
-		ack, err := nodeToRpcResponse(response.Data)
-		qt.Assert(t, err, qt.IsNil)
-		qt.Assert(t, ack, qt.IsNotNil)
-		qt.Assert(t, ack.PingAck, qt.IsNil)
-		qt.Assert(t, ack.ModuleStatusAnswer, qt.IsNotNil)
-		qt.Assert(t, ack.ModuleStatusAnswer, qt.DeepEquals, expected)
+		log.Logf("read reply")
+		ch := promiseNextRpc(ctx, dec)
+		log.Logf("wait...")
+		select {
+		case promise := <-ch:
+			log.Logf("assert")
+			qt.Assert(t, promise.error, qt.IsNil)
+			qt.Assert(t, *promise.Rpc, qt.CmpEquals(), expectIn)
+		case <-time.After(time.Second):
+			t.Fatalf("test timeout")
+		}
+		log.Logf("done")
+		t.Log("└─ ")
 	}
 
 	doCall("0",

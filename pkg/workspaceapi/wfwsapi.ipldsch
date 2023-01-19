@@ -16,13 +16,7 @@
 ## This is a local-only protocol; there's no real sense in versioning it,
 ## because both parties speaking it are expected to come from the same build.
 
-type Ping struct {
-	callID String
-}
-
-type PingAck struct {
-	callID String
-}
+type Echo string 
 
 type ModuleStatusQuery struct {
 	## Path to module within the workspace is the primary identifier.
@@ -84,24 +78,23 @@ type ModuleStatusUnion_ExecutedFailed struct {}
 
 
 type RpcRequest union {
-	| Ping "ping"
 	| ModuleStatusQuery "module_status"
 } representation keyed
 
 type RpcResponse union {
-	| PingAck "ping"
+	| Echo "echo"
 	| ModuleStatusAnswer "module_status"
 	| Error "error"
 } representation keyed
 
 type RpcData union {
-	|RpcRequest "request"
-	|RpcResponse "response"
-}
+	| RpcRequest "request"
+	| RpcResponse "response"
+} representation keyed
 
 type Rpc struct {
 	ID String (rename "id")
-	data Any (rename "data")
+	data RpcData (rename "data")
 }
 
 type Error struct {
