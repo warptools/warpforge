@@ -206,10 +206,9 @@ func (c *Config) remoteResolve(ctx context.Context, ws *workspace.Workspace, que
 //    - warpforge-spark-server -- server sent an error response
 func moduleStatusQuery(ctx context.Context, conn net.Conn, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
 	var empty workspaceapi.ModuleStatusAnswer
-	queryNode := bindnode.Wrap(query, workspaceapi.TypeSystem.TypeByName("ModuleStatusQuery"))
 	rpc := workspaceapi.Rpc{
 		ID:   uuid.New().String(),
-		Data: queryNode,
+		Data: workspaceapi.RpcData{RpcRequest: &workspaceapi.RpcRequest{ModuleStatusQuery: &query}},
 	}
 	data, err := ipld.Marshal(ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	if err != nil {
@@ -243,16 +242,21 @@ func moduleStatusQuery(ctx context.Context, conn net.Conn, query workspaceapi.Mo
 				serum.WithMessageLiteral("failed to deserialize ModuleStatusAnswer"),
 			)))
 	}
-
-	rpcResp, err := NodeToRpcResponse(response.Data)
 	if err != nil {
 		return empty, serum.Error(ECodeSparkInternal, serum.WithCause(err))
 	}
+	if response.Data.RpcResponse == nil {
+		return empty, serum.Error(ECodeSparkInternal,
+			serum.WithMessageLiteral("response missing data"),
+		)
+	}
+	rpcResp := response.Data.RpcResponse
 	switch {
 	case rpcResp.ModuleStatusAnswer != nil:
 		return *rpcResp.ModuleStatusAnswer, nil
 	case rpcResp.Error != nil:
-		return empty, serum.Error(ECodeSparkServer, serum.WithCause(rpcResp.Error))
+		data := rpcResp.Error.AsSerumData()
+		return empty, serum.Error(ECodeSparkServer, serum.WithCause(&serum.ErrorValue{Data: *data}))
 	default:
 		return empty, serum.Error(ECodeSparkInternal, serum.WithMessageLiteral("unrecognized RPC response"))
 	}

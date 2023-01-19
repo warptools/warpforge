@@ -18,6 +18,7 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	rfmtjson "github.com/polydawn/refmt/json"
+	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
@@ -37,27 +38,32 @@ func (p *pipeListener) Close() error {
 	return nil
 }
 
-// Errors: none
+// Errors:
+//
+//   - EOF --
+//   - CONTEXT --
 func (p *pipeListener) Accept() (net.Conn, error) {
 	select {
 	case <-p.done:
-		return nil, io.EOF
+		return nil, serum.Error("EOF", serum.WithCause(io.EOF))
 	case <-p.ctx.Done():
-		return nil, p.ctx.Err()
+		return nil, serum.Error("CONTEXT", serum.WithCause(p.ctx.Err()))
 	case conn := <-p.connections:
 		return conn, nil
 	}
 }
 func (p *pipeListener) Addr() net.Addr { return nil }
 
-// Errors: none
+// Errors:
+//
+//   - CONTEXT --
 func (p *pipeListener) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	serverConn, clientConn := net.Pipe()
 	deadline := time.Now().Add(5 * time.Second)
 	clientConn.SetDeadline(deadline) // will cause tests to fail if they block
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, serum.Error("CONTEXT", serum.WithCause(ctx.Err()))
 	case p.connections <- serverConn:
 		return clientConn, nil
 	}

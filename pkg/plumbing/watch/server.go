@@ -81,7 +81,6 @@ func (s *server) setReadDeadline(conn net.Conn) error {
 //
 //    - warpforge-error-rpc-serialization -- bad connection or invalid json
 //    - warpforge-error-rpc-serialization -- invalid RPC data
-//    - warpforge-error-rpc-method-not-found -- data is nil
 func NextRPC(ctx context.Context, d *json.Decoder) (*workspaceapi.Rpc, error) {
 	var err error
 	var raw json.RawMessage

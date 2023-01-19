@@ -77,8 +77,15 @@ func (d *Details) Details() [][2]string {
 	return result
 }
 
-// Warning: this function returns an _error struct_ which can mess with go nil types
-func (e *Error) Serum() *serum.ErrorValue {
+func (e *Error) serum() *serum.ErrorValue {
+	data := e.AsSerumData()
+	if data == nil {
+		return nil
+	}
+	return &serum.ErrorValue{Data: *data}
+}
+
+func (e *Error) AsSerumData() *serum.Data {
 	if e == nil {
 		return nil
 	}
@@ -86,13 +93,11 @@ func (e *Error) Serum() *serum.ErrorValue {
 	if e.Message != nil {
 		msg = *e.Message
 	}
-	return &serum.ErrorValue{
-		Data: serum.Data{
-			Code:    e.Code,
-			Message: msg,
-			Details: e.Details.Details(),
-			Cause:   e.Cause.Serum(),
-		},
+	return &serum.Data{
+		Code:    e.Code,
+		Message: msg,
+		Details: e.Details.Details(),
+		Cause:   e.Cause.serum(),
 	}
 }
 

@@ -254,6 +254,7 @@ func (c *Config) Run(ctx context.Context) error {
 			return err
 		}
 		defer lstnr.Close()
+		srv.listener = lstnr
 		go srv.serve(ctx)
 		log.Info("", "serving to %q\n", sockPath)
 		time.Sleep(time.Second) // give user a second to realize that there's info here. FIXME: Consider literally anything other than a hardcoded sleep.
