@@ -2,7 +2,6 @@ package wfapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/serum-errors/go-serum"

@@ -158,7 +158,6 @@ func (ws *Workspace) nonRootCatalogPath() string {
 	return filepath.Join(ws.InternalPath(), "catalog")
 }
 
-
 // WarehousePath returns the path to the catalog in a non-root workspace.
 func (ws *Workspace) WarehousePath() string {
 	return filepath.Join(ws.InternalPath(), "warehouse")
