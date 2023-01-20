@@ -392,6 +392,13 @@ warpforge catalog ls
 warpforge catalog --name=test generate-html
 ```
 
+### Mirror a Catalog
+
+[testmark]:# (base-workspace/then-mirror/sequence)
+```
+warpforge catalog --name=test mirror
+```
+
 ### Add an Item to a Catalog
 
 #### tar
@@ -616,7 +623,7 @@ warpforge --json run
 ```
 { "log": { "Msg": "inputs:" } } 
 { "log": { "Msg": "type = catalog ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static" } } 
-{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = none" } } 
+{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
 { "log": { "Msg": "ware mount: wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
@@ -648,6 +655,12 @@ These tests require a workspace with a catalog entry,  which is setup here:
 {
 	"catalogmirrors.v1": {
 		"byWare": {
+			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": ["https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"]
+		},
+		"byModule": {
+			"warpsys.org/busybox": {
+				"tar": ["ca+mock://mock.warp.tools"]
+			}
 		}
 	}
 }
@@ -669,7 +682,16 @@ These tests require a workspace with a catalog entry,  which is setup here:
 this file marks the workspace as a root workspace
 ```
 
-
+[testmark]:# (base-workspace/fs/.warpforge/mirroring.json)
+```
+{
+    "ca+mock://mock.warp.tools": {
+		"pushConfig": {
+			"mock": {}
+		}
+    }
+}
+```
 
 [testmark]:# (base-workspace/script)
 ```

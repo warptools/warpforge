@@ -142,9 +142,9 @@ var catalogCmdDef = cli.Command{
 			},
 		},
 		{
-			Name:  "push",
-			Usage: "Push the contents of a catalog to remote warehouses",
-			Action: util.ChainCmdMiddleware(cmdPush,
+			Name:  "mirror",
+			Usage: "Mirror the contents of a catalog to remote warehouses",
+			Action: util.ChainCmdMiddleware(cmdMirror,
 				util.CmdMiddlewareLogging,
 				util.CmdMiddlewareTracingConfig,
 				util.CmdMiddlewareTracingSpan,
@@ -737,7 +737,7 @@ func cmdGenerateHtml(c *cli.Context) error {
 	return nil
 }
 
-func cmdPush(c *cli.Context) error {
+func cmdMirror(c *cli.Context) error {
 	wsSet, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
@@ -755,7 +755,7 @@ func cmdPush(c *cli.Context) error {
 	}
 
 	for wareAddr, cfg := range configs.Values {
-		fmt.Println("pushing for addr", wareAddr)
+		fmt.Println("mirroring to warehouse: ", wareAddr)
 		err = mirroring.PushToWarehouseAddr(*wsSet.Root(), cat, wareAddr, cfg)
 		if err != nil {
 			return err
