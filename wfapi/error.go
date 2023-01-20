@@ -106,7 +106,11 @@ func ErrorExecutorFailed(executorEngineName string, cause error) error {
 	)
 }
 
-// DEPRECATED: This is just adds a degenerate repetition of the error code
+// DEPRECATED: This just adds a degenerate repetition of the error code.
+// Some IO errors do not have paths and the path isn't templated into the error.
+// Generally, relevant paths are expected to be included in the cause.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorIo wraps generic I/O errors from the Go stdlib
 //
 // Errors:
@@ -120,7 +124,9 @@ func ErrorIo(context string, path string, cause error) error {
 	)
 }
 
-// DEPRECATED: This is just adds a degenerate repetition of the error code
+// DEPRECATED: This just adds a degenerate repetition of the error code.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorSerialization is returned when a serialization or deserialization error occurs
 //
 // Errors:
@@ -181,7 +187,9 @@ func ErrorFormulaInvalid(reason string) error {
 	)
 }
 
-// DEPRECATED: message adds no value
+// DEPRECATED: This constructor does not add value.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorFormulaExecutionFailed is returned to wrap generic errors that cause
 // formula execution to fail.
 //
@@ -207,7 +215,9 @@ func ErrorPlotInvalid(reason string) error {
 	)
 }
 
-// DEPRECATED: adds no value
+// DEPRECATED: This constructor does not add value.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorModuleInvalid is returned when a module contains invalid data
 //
 // Errors:
@@ -242,7 +252,9 @@ func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) error {
 	)
 }
 
-// DEPRECATED: adds no value
+// DEPRECATED: This constructor does not add value.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorGit is returned when a go-git error occurs
 //
 // Errors:
@@ -341,7 +353,9 @@ func ErrorFileMissing(path string) error {
 	)
 }
 
-// DEPRECATED: adds no value
+// DEPRECATED: This constructor does not add value.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorSyscall is used to wrap errors from the syscall package
 //
 // Errors:
@@ -351,7 +365,9 @@ func ErrorSyscall(fmtPattern string, args ...interface{}) error {
 	return serum.Errorf(ECodeSyscall, fmtPattern, args...)
 }
 
-// DEPRECATED: adds no value
+// DEPRECATED: This constructor does not add value.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorPlotExecutionFailed is used to wrap errors around plot execution
 // Errors:
 //
