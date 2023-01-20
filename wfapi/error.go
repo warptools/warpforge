@@ -106,7 +106,7 @@ func ErrorExecutorFailed(executorEngineName string, cause error) error {
 	)
 }
 
-// DEPRECATED: This constructor just adds a degenerate repetition of the error code.
+// DEPRECATED: This constructor just prefixes a degenerate repetition of the error code.
 // Some IO errors do not have paths and the path isn't templated into the error.
 // Generally, relevant paths are expected to be included in the cause.
 // Instead, call serum.Error directly to wrap errors.
@@ -124,7 +124,7 @@ func ErrorIo(context string, path string, cause error) error {
 	)
 }
 
-// DEPRECATED: This constructor just adds a degenerate repetition of the error code.
+// DEPRECATED: This constructor just prefixes a degenerate repetition of the error code.
 // Instead, call serum.Error directly to wrap errors.
 //
 // ErrorSerialization is returned when a serialization or deserialization error occurs
@@ -202,7 +202,7 @@ func ErrorFormulaExecutionFailed(cause error) error {
 	)
 }
 
-// DEPRECATED: This constructor just prefixes a degenerate version of the error code.
+// DEPRECATED: This constructor just prefixes a degenerate repetition of the error code.
 // Instead, call serum.Error directly to wrap errors.
 //
 // ErrorPlotInvalid is returned when a plot contains invalid data
@@ -217,7 +217,7 @@ func ErrorPlotInvalid(reason string) error {
 	)
 }
 
-// DEPRECATED: This constructor does not add value.
+// DEPRECATED: This constructor just prefixes a degenerate repetition of the error code.
 // Instead, call serum.Error directly to wrap errors.
 //
 // ErrorModuleInvalid is returned when a module contains invalid data
