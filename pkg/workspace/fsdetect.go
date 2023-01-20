@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	magicWorkspaceDirname = dab.MagicFilename_Workspace
+	magicWorkspaceDirname     = dab.MagicFilename_Workspace
 	magicHomeWorkspaceDirname = dab.MagicFilename_HomeWorkspace
 )
 
