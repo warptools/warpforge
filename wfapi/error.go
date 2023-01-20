@@ -97,12 +97,10 @@ func ErrorSearchingFilesystem(searchingFor string, cause error) error {
 //
 //    - warpforge-error-workspace --
 func ErrorWorkspace(wsPath string, cause error) error {
-	result := serum.Errorf(ECodeWorkspace,
-		"error handling workspace at %q: %w", wsPath, cause)
-	addDetails(result, [][2]string{
-		{"workspacePath", wsPath},
-	})
-	return result
+	return serum.Error(ECodeWorkspace, serum.WithCause(cause),
+		serum.WithMessageTemplate("error handling workspace at {{workspacePath|q}}"),
+		serum.WithDetail("workspacePath", wsPath),
+	)
 }
 
 // ErrorExecutorFailed is returned when a container executor (e.g., runc)
@@ -112,39 +110,38 @@ func ErrorWorkspace(wsPath string, cause error) error {
 //
 //    - warpforge-error-executor-failed --
 func ErrorExecutorFailed(executorEngineName string, cause error) error {
-	result := serum.Errorf(ECodeExecutorFailed,
-		"executor engine failed: the %s engine reported error: %w", executorEngineName, cause)
-	addDetails(result, [][2]string{
-		{"engineName", executorEngineName},
+	return serum.Error(ECodeExecutorFailed, serum.WithCause(cause),
+		serum.WithMessageTemplate("the {{engineName|q}} engine reported error"),
+		serum.WithDetail("engineName", executorEngineName),
 		// ideally we'd have more details here, but honestly, our executors don't give us much clarity most of the time, so... we'll see.
-	})
-	return result
+	)
 }
 
+// DEPRECATED: This is just adds a degenerate repetition of the error code
 // ErrorIo wraps generic I/O errors from the Go stdlib
 //
 // Errors:
 //
 //    - warpforge-error-io --
 func ErrorIo(context string, path string, cause error) error {
-	result := serum.Errorf(ECodeIo,
-		"io error: %s: %w", context, cause)
-	addDetails(result, [][2]string{{"context", context}, {"path", path}})
-	return result
+	return serum.Error(ECodeIo, serum.WithCause(cause),
+		serum.WithMessageTemplate("io error: {{context}}"),
+		serum.WithDetail("context", context),
+		serum.WithDetail("path", path),
+	)
 }
 
+// DEPRECATED: This is just adds a degenerate repetition of the error code
 // ErrorSerialization is returned when a serialization or deserialization error occurs
 //
 // Errors:
 //
 //    - warpforge-error-serialization --
 func ErrorSerialization(context string, cause error) error {
-	result := serum.Errorf(ECodeSerialization,
-		"serialization error: %s: %w", context, cause)
-	addDetails(result, [][2]string{
-		{"context", context},
-	})
-	return result
+	return serum.Error(ECodeSerialization, serum.WithCause(cause),
+		serum.WithMessageTemplate("serialization error: {{context}}"),
+		serum.WithDetail("context", context),
+	)
 }
 
 // ErrorWareUnpack is returned when the unpacking of a ware fails
@@ -153,12 +150,10 @@ func ErrorSerialization(context string, cause error) error {
 //
 //    - warpforge-error-ware-unpack --
 func ErrorWareUnpack(wareId WareID, cause error) error {
-	result := serum.Errorf(ECodeWareUnpack,
-		"error unpacking ware %q: %w", wareId, cause)
-	addDetails(result, [][2]string{
-		{"wareID", wareId.String()},
-	})
-	return result
+	return serum.Error(ECodeWareUnpack, serum.WithCause(cause),
+		serum.WithMessageTemplate("unable to unpack ware {{wareID|q}}"),
+		serum.WithDetail("wareID", wareId.String()),
+	)
 }
 
 // ErrorWarePack is returned when the packing of a ware fails
@@ -167,12 +162,10 @@ func ErrorWareUnpack(wareId WareID, cause error) error {
 //
 //    - warpforge-error-ware-pack --
 func ErrorWarePack(path string, cause error) error {
-	result := serum.Errorf(ECodeWarePack,
-		"error packing ware %q: %w", path, cause)
-	addDetails(result, [][2]string{
-		{"path", path},
-	})
-	return result
+	return serum.Error(ECodeWarePack, serum.WithCause(cause),
+		serum.WithMessageTemplate("unable to pack ware at path {{path | q}}"),
+		serum.WithDetail("path", path),
+	)
 }
 
 // ErrorWareIdInvalid is returned when a malformed WareID is parsed
@@ -199,6 +192,7 @@ func ErrorFormulaInvalid(reason string) error {
 	)
 }
 
+// DEPRECATED: message adds no value
 // ErrorFormulaExecutionFailed is returned to wrap generic errors that cause
 // formula execution to fail.
 //
@@ -206,11 +200,12 @@ func ErrorFormulaInvalid(reason string) error {
 //
 //    - warpforge-error-formula-execution-failed --
 func ErrorFormulaExecutionFailed(cause error) error {
-	return serum.Errorf(ECodeFormulaExecutionFailed,
-		"formula execution failed: %w", cause,
+	return serum.Error(ECodeFormulaExecutionFailed, serum.WithCause(cause),
+		serum.WithMessageLiteral("formula execution failed"),
 	)
 }
 
+// DEPRECATED: message adds no value
 // ErrorPlotInvalid is returned when a plot contains invalid data
 //
 // Errors:
@@ -223,6 +218,7 @@ func ErrorPlotInvalid(reason string) error {
 	)
 }
 
+// DEPRECATED: adds no value
 // ErrorModuleInvalid is returned when a module contains invalid data
 //
 // Errors:
@@ -244,30 +240,29 @@ func ErrorMissingCatalogEntry(ref CatalogRef, replayAvailable bool) error {
 	var msg string
 	var available string
 	if replayAvailable {
-		msg = fmt.Sprintf("catalog entry %q exists, but content is missing. Re-run recusively to resolve entry.", ref.String())
+		msg = "catalog entry {{catalogRef | q}} exists, but content is missing. Re-run recusively to resolve entry."
 		available = "true"
 	} else {
-		msg = fmt.Sprintf("missing catalog entry %q", ref.String())
+		msg = "missing catalog entry {{catalogRef | q}}"
 		available = "false"
 	}
 	return serum.Error(ECodeCatalogMissingEntry,
-		serum.WithMessageLiteral(msg),
+		serum.WithMessageTemplate(msg),
 		serum.WithDetail("catalogRef", ref.String()),
 		serum.WithDetail("replayAvailable", available),
 	)
 }
 
+// DEPRECATED: adds no value
 // ErrorGit is returned when a go-git error occurs
 //
 // Errors:
 //
 //    - warpforge-error-git --
 func ErrorGit(context string, cause error) error {
-	result := serum.Errorf(ECodeGit, "git error: %s: %w", context, cause)
-	addDetails(result, [][2]string{
-		{"context", context},
-	})
-	return result
+	return serum.Error(ECodeGit, serum.WithCause(cause),
+		serum.WithMessageLiteral(context),
+	)
 }
 
 // ErrorPlotStepFailed is returned execution of a Step within a Plot fails
@@ -276,11 +271,10 @@ func ErrorGit(context string, cause error) error {
 //
 //    - warpforge-error-plot-step-failed --
 func ErrorPlotStepFailed(stepName StepName, cause error) error {
-	result := serum.Errorf(ECodePlotStepFailed, "plot step %q failed: %w", stepName, cause)
-	addDetails(result, [][2]string{
-		{"stepName", string(stepName)},
-	})
-	return result
+	return serum.Error(ECodePlotStepFailed, serum.WithCause(cause),
+		serum.WithMessageTemplate("plot step {{stepName|q}} failed"),
+		serum.WithDetail("stepName", string(stepName)),
+	)
 }
 
 // ErrorCatalogParse is returned when parsing of a catalog file fails
@@ -289,12 +283,10 @@ func ErrorPlotStepFailed(stepName StepName, cause error) error {
 //
 //    - warpforge-error-catalog-parse --
 func ErrorCatalogParse(path string, cause error) error {
-	result := serum.Errorf(ECodeCatalogParse,
-		"parsing of catalog file %q failed: %w", path, cause)
-	addDetails(result, [][2]string{
-		{"path", path},
-	})
-	return result
+	return serum.Error(ECodeCatalogParse, serum.WithCause(cause),
+		serum.WithMessageTemplate("parsing of catalog file {{path|q}} failed"),
+		serum.WithDetail("path", path),
+	)
 }
 
 // ErrorCatalogInvalid is returned when a catalog contains invalid data
@@ -360,6 +352,7 @@ func ErrorFileMissing(path string) error {
 	)
 }
 
+// DEPRECATED: adds no value
 // ErrorSyscall is used to wrap errors from the syscall package
 //
 // Errors:
@@ -369,12 +362,15 @@ func ErrorSyscall(fmtPattern string, args ...interface{}) error {
 	return serum.Errorf(ECodeSyscall, fmtPattern, args...)
 }
 
+// DEPRECATED: adds no value
 // ErrorPlotExecutionFailed is used to wrap errors around plot execution
 // Errors:
 //
 //    - warpforge-error-plot-execution-failed --
 func ErrorPlotExecutionFailed(cause error) error {
-	return serum.Errorf(ECodePlotExecution, "plot execution failed: %w", cause)
+	return serum.Error(ECodePlotExecution, serum.WithCause(cause),
+		serum.WithMessageLiteral("plot execution failed"),
+	)
 }
 
 // ErrorGeneratorFailed is returned when an external generator fails
@@ -382,8 +378,13 @@ func ErrorPlotExecutionFailed(cause error) error {
 // Errors:
 //
 //    - warpforge-error-generator-failed --
-func ErrorGeneratorFailed(generatorName string, inputFile string, details string) error {
-	return serum.Errorf(ECodeGeneratorFailed, "execution of external generator %q for file %q failed: %s", generatorName, inputFile, details)
+func ErrorGeneratorFailed(generatorName string, inputFile string, context string) error {
+	return serum.Error(ECodeGeneratorFailed,
+		serum.WithMessageTemplate("execution of external generator {{generator|q}} for file {{inputFile|q}} failed: {{context}}"),
+		serum.WithDetail("generator", generatorName),
+		serum.WithDetail("inputFile", inputFile),
+		serum.WithDetail("context", context),
+	)
 }
 
 // ErrorDataTooNew is returned when some data was (partially) deserialized,
@@ -394,12 +395,10 @@ func ErrorGeneratorFailed(generatorName string, inputFile string, details string
 //
 //    - warpforge-error-datatoonew -- if some data is too new to parse completely.
 func ErrorDataTooNew(context string, cause error) error {
-	result := serum.Errorf(ECodeDataTooNew,
-		"while %s, encountered data from an unknown version: %w", context, cause)
-	addDetails(result, [][2]string{
-		{"context", context},
-	})
-	return result
+	return serum.Error(ECodeDataTooNew, serum.WithCause(cause),
+		serum.WithMessageTemplate("while {{context}}, encountered data from an unknown version"),
+		serum.WithDetail("context", context),
+	)
 }
 
 // addDetails is a helper method to get around the fact that doing a type coercion within
