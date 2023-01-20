@@ -81,13 +81,11 @@ func TerminalError(err serum.ErrorInterface, exitCode int) {
 //
 //    - warpforge-error-searching-filesystem --
 func ErrorSearchingFilesystem(searchingFor string, cause error) error {
-	result := serum.Errorf(ECodeSearchingFilesystem,
-		"error while searching filesystem for %s: %w", searchingFor, cause)
-	addDetails(result, [][2]string{
-		{"searchingFor", searchingFor},
-		// the cause is presumed to have any path(s) relevant.
-	})
-	return result
+	return serum.Error(ECodeSearchingFilesystem, serum.WithCause(cause),
+		serum.WithMessageTemplate("error while searching filesystem for {{searchingFor|q}}"),
+		serum.WithDetail("searchingFor", searchingFor),
+		// the cause is presumed to have any relevant path(s).
+	)
 }
 
 // ErrorWorkspace is returned when an error occurs when handling a workspace
@@ -398,13 +396,4 @@ func ErrorDataTooNew(context string, cause error) error {
 		serum.WithMessageTemplate("while {{context}}, encountered data from an unknown version"),
 		serum.WithDetail("context", context),
 	)
-}
-
-// addDetails is a helper method to get around the fact that doing a type coercion within
-// an expoerted function is not currently allowed by serum.
-// We won't need this if serum supports an equivalent to %w in message templates OR
-// supports adding details when using serum.Errorf
-func addDetails(err error, details [][2]string) {
-	s := err.(*serum.ErrorValue)
-	s.Data.Details = append(s.Data.Details, details...)
 }
