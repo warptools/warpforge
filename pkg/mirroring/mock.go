@@ -10,7 +10,7 @@ type MockPusher struct {
 	wares map[wfapi.WareID]bool
 }
 
-func NewMockPusher(cfg wfapi.MockPushConfig) (MockPusher, error) {
+func newMockPusher(cfg wfapi.MockPushConfig) (MockPusher, error) {
 	return MockPusher{cfg: cfg}, nil
 }
 

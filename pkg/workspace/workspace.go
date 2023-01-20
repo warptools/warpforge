@@ -432,6 +432,11 @@ func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
 
 // GetMirroringConfig will return the MirroringConfig map for this workspace
 // which is read from the .warpforge/mirroring.json config file.
+//
+// Errors:
+//
+// 	- warpforge-error-io -- for errors reading from fsys.
+// 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
 func (ws *Workspace) GetMirroringConfig() (wfapi.MirroringConfig, error) {
 	return dab.MirroringConfigFromFile(ws.fsys, filepath.Join(ws.InternalPath(), dab.MagicFilename_MirroringConfig))
 }

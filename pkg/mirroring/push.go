@@ -1,24 +1,31 @@
 package mirroring
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/serum-errors/go-serum"
+	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
 
 type pusher interface {
+	// Errors:
+	//
+	// 	- warpforge-error-io -- for IO errors that occur during push operations
 	hasWare(wfapi.WareID) (bool, error)
+	// Errors:
+	//
+	// 	- warpforge-error-io -- for IO errors that occur during push operations
 	pushWare(wfapi.WareID, string) error
 }
 
 func pusherFromConfig(cfg wfapi.WarehouseMirroringConfig) (pusher, error) {
 	if cfg.PushConfig.S3 != nil {
-		pusher, err := NewS3Pusher(*cfg.PushConfig.S3)
+		pusher, err := newS3Pusher(*cfg.PushConfig.S3)
 		return &pusher, err
 	} else if cfg.PushConfig.Mock != nil {
-		pusher, err := NewMockPusher(*cfg.PushConfig.Mock)
+		pusher, err := newMockPusher(*cfg.PushConfig.Mock)
 		return &pusher, err
 	} else {
 		// this should be unreachable due to IPLD validation
@@ -26,7 +33,19 @@ func pusherFromConfig(cfg wfapi.WarehouseMirroringConfig) (pusher, error) {
 	}
 }
 
-func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr wfapi.WarehouseAddr, cfg wfapi.WarehouseMirroringConfig) error {
+// PushToWarehouseAddr puts files into a mirror
+//
+// It requires a workspace and catalog to operate on, and the address and configuration
+// for mirroring. The given catalog will be scanned for wares that can be pushed based on
+// the configuration.
+//
+// Errors:
+//
+// 	- warpforge-error-io -- for IO errors that occur during push operations
+//  - warpforge-error-catalog-invalid -- when the provided catalog contains invalid data
+//  - warpforge-error-catalog-missing-entry -- should never occur, as we iterate over the contents of the catalog
+//  - warpforge-error-catalog-parse -- when the provided catalog cannot be parsed
+func PushToWarehouseAddr(log *logging.Logger, ws workspace.Workspace, cat workspace.Catalog, pushAddr wfapi.WarehouseAddr, cfg wfapi.WarehouseMirroringConfig) error {
 	pusher, err := pusherFromConfig(cfg)
 	if err != nil {
 		return err
@@ -62,15 +81,15 @@ func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr
 
 				// it is possible we don't have this ware, in which case we just want to skip over it
 				if _, err := os.Stat(warePath); os.IsNotExist(err) {
-					fmt.Println("no file @", warePath)
+					log.Debug("mirror", "no local copy of wareId %q (expected at %q), skipping", wareId.String(), warePath)
 					continue
 				} else if err != nil {
-					return err
+					return serum.Errorf(wfapi.ECodeIo, "failed to stat %q: %s", warePath, err)
 				}
 
 				// we have a ware to push!
 
-				fmt.Println("push ware: wareId =", wareId, " warePath =", warePath, "pushAddr =", pushAddr)
+				log.Info("mirror", "pushing ware: wareId = %s, warePath = %s, pushAddr = %s", wareId.String(), warePath, pushAddr)
 				hasWare, err := pusher.hasWare(*wareId)
 				if err != nil {
 					return err
@@ -81,7 +100,7 @@ func PushToWarehouseAddr(ws workspace.Workspace, cat workspace.Catalog, pushAddr
 						return err
 					}
 				} else {
-					fmt.Println("bucket already has ware", wareId)
+					log.Debug("mirror", "bucket already has wareId %q, skipping", wareId.String())
 				}
 			}
 		}

@@ -23,8 +23,6 @@ const (
 //
 // 	- warpforge-error-io -- for errors reading from fsys.
 // 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
-// 	- warpforge-error-datatoonew -- if encountering unknown data from a newer version of warpforge!
-//  - warpforge-error-module-invalid -- when module name is invalid
 func MirroringConfigFromFile(fsys fs.FS, filename string) (wfapi.MirroringConfig, error) {
 	const situation = "loading a mirroring config"
 	if strings.HasPrefix(filename, "/") {

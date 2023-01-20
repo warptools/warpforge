@@ -2,7 +2,6 @@ package mirroring
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -11,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/warptools/warpforge/wfapi"
+
+	"github.com/serum-errors/go-serum"
 )
 
 type S3Pusher struct {
@@ -23,7 +24,7 @@ func wareIdToKey(wareId wfapi.WareID) string {
 	return filepath.Join(wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 }
 
-func NewS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
+func newS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
 	config, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(cfg.Region),
 		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
@@ -48,7 +49,7 @@ func NewS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
 		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
-		return S3Pusher{}, fmt.Errorf("could not access bucket %q: %s", cfg.Bucket, err)
+		return S3Pusher{}, serum.Errorf(wfapi.ECodeIo, "could not access bucket %q: %s", cfg.Bucket, err)
 	}
 
 	// list all the objects currently in the bucket
@@ -56,7 +57,7 @@ func NewS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
 		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
-		return S3Pusher{}, fmt.Errorf("could not list contents of bucket %q: %s", cfg.Bucket, err)
+		return S3Pusher{}, serum.Errorf(wfapi.ECodeIo, "could not list contents of bucket %q: %s", cfg.Bucket, err)
 	}
 
 	// store the list of existing keys so we can ignore writes for existing WareIDs
@@ -87,7 +88,7 @@ func (p *S3Pusher) pushWare(wareId wfapi.WareID, localPath string) error {
 	key := wareIdToKey(wareId)
 	file, err := os.Open(localPath)
 	if err != nil {
-		return err
+		return serum.Errorf(wfapi.ECodeIo, "failed to open %q: %s", localPath, err)
 	}
 
 	uploader := manager.NewUploader(p.client)
@@ -98,5 +99,9 @@ func (p *S3Pusher) pushWare(wareId wfapi.WareID, localPath string) error {
 		Body:   file,
 	})
 
-	return err
+	if err != nil {
+		return serum.Errorf(wfapi.ECodeIo, "failed to write to S3 bucket %q: %s", p.cfg.Bucket, err)
+	}
+
+	return nil
 }
