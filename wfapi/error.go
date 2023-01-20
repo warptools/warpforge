@@ -202,7 +202,9 @@ func ErrorFormulaExecutionFailed(cause error) error {
 	)
 }
 
-// DEPRECATED: message adds no value
+// DEPRECATED: This constructor does not add value.
+// Instead, call serum.Error directly to wrap errors.
+//
 // ErrorPlotInvalid is returned when a plot contains invalid data
 //
 // Errors:
