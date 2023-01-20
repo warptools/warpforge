@@ -7,44 +7,36 @@ import (
 	"github.com/serum-errors/go-serum"
 )
 
-// TODO: Add comments for reasons to use or not use particular codes
+// Error codes are loosely of the form "<application>-error-[subsystem]-<kind>".
 const (
-	// ECodeArgument may be used when invalid arguments are provided to the warpforge command line
-	ECodeArgument = "warpforge-error-invalid-argument"
-	// ECodeAlreadyExists may be used when _something_ already exists.
-	// Prefer to use a more specific error code or specify _what_ is missing.
-	ECodeAlreadyExists          = "warpforge-error-already-exists"
-	ECodeCatalogInvalid         = "warpforge-error-catalog-invalid"
-	ECodeCatalogMissingEntry    = "warpforge-error-catalog-missing-entry"
-	ECodeCatalogName            = "warpforge-error-catalog-name"
-	ECodeCatalogParse           = "warpforge-error-catalog-parse"
-	ECodeDataTooNew             = "warpforge-error-datatoonew"
-	ECodeExecutorFailed         = "warpforge-error-executor-failed"
-	ECodeFormulaExecutionFailed = "warpforge-error-formula-execution-failed"
-	ECodeFormulaInvalid         = "warpforge-error-formula-invalid"
-	ECodeGeneratorFailed        = "warpforge-error-generator-failed"
-	ECodeGit                    = "warpforge-error-git"
-	// ECodeInternal is used for errors that are internal and cannot be handled by users.
-	// Try to pick something more specific.
-	ECodeInternal = "warpforge-error-internal"
-	// ECodeInvalid is used when something is invalid.
-	// Prefer to choose a more specific error code.
-	ECodeInvalid             = "warpforge-error-invalid"
-	ECodeIo                  = "warpforge-error-io"
-	ECodeMissing             = "warpforge-error-missing"
-	ECodeModuleInvalid       = "warpforge-error-module-invalid"
-	ECodePlotExecution       = "warpforge-error-plot-execution-failed"
-	ECodePlotInvalid         = "warpforge-error-plot-invalid"
-	ECodePlotStepFailed      = "warpforge-error-plot-step-failed"
-	ECodeSearchingFilesystem = "warpforge-error-searching-filesystem"
-	ECodeSerialization       = "warpforge-error-serialization"
-	ECodeSyscall             = "warpforge-error-syscall"
-	// ECodeUnknown is used for unknown errors. Avoid whenever possible.
-	ECodeUnknown       = "warpforge-error-unknown"
-	ECodeWareIdInvalid = "warpforge-error-wareid-invalid"
-	ECodeWarePack      = "warpforge-error-ware-pack"
-	ECodeWareUnpack    = "warpforge-error-ware-unpack"
-	ECodeWorkspace     = "warpforge-error-workspace"
+	ECodeArgument               = "warpforge-error-invalid-argument"         // ECodeArgument may be used when invalid arguments are provided to the warpforge command line.
+	ECodeAlreadyExists          = "warpforge-error-already-exists"           // ECodeAlreadyExists may be used when _something_ already exists. Specify _what_ when using this code.  Prefer more specific codes.
+	ECodeCatalogInvalid         = "warpforge-error-catalog-invalid"          // ECodeCatalogInvalid may be used when a catalog contains invalid data.
+	ECodeCatalogMissingEntry    = "warpforge-error-catalog-missing-entry"    // ECodeCatalogMissingEntry may be used when a catalog item cannot be found.
+	ECodeCatalogName            = "warpforge-error-catalog-name"             // ECodeCatalogName may be used for invalid catalog names.
+	ECodeCatalogParse           = "warpforge-error-catalog-parse"            // ECodeCatalogParse may be used when parsing catalog data fails.
+	ECodeDataTooNew             = "warpforge-error-datatoonew"               // ErrorDataTooNew is returned when some data was (partially) deserialized, but only enough that we could recognize it as being a newer version of message than this application supports.
+	ECodeExecutorFailed         = "warpforge-error-executor-failed"          // ECodeExecutorFailed wraps executor errors (e.g. runc errors).
+	ECodeFormulaExecutionFailed = "warpforge-error-formula-execution-failed" // EcodeFormulaExecutionFailed wraps generic errors that caused formula execution to fail.
+	ECodeFormulaInvalid         = "warpforge-error-formula-invalid"          // ECodeFormulaInvalid may be used when a formula contains invalid data.
+	ECodeGeneratorFailed        = "warpforge-error-generator-failed"         // ECodeGeneratorFailed may be used when an external plot generator fails.
+	ECodeGit                    = "warpforge-error-git"                      // ECodeGit wraps errors from git libraries or execution.
+	ECodeInternal               = "warpforge-error-internal"                 // ECodeInternal is used for errors that are internal and cannot be handled by users. Prefer more specific codes.
+	ECodeInvalid                = "warpforge-error-invalid"                  // ECodeInvalid is used when something is invalid. Prefer more specific codes.
+	ECodeIo                     = "warpforge-error-io"                       // ECodeIo wraps generic io errors.
+	ECodeMissing                = "warpforge-error-missing"                  // ECodeMissing wraps errors for missing files.
+	ECodeModuleInvalid          = "warpforge-error-module-invalid"           // ECodeModuleInvalid is returned when a module contains invalid data.
+	ECodePlotExecution          = "warpforge-error-plot-execution-failed"    // ECodePlotExecution is used to wrap errors around plot execution.
+	ECodePlotInvalid            = "warpforge-error-plot-invalid"             // ECodePlotInvalid is returned when a plot contains invalid data.
+	ECodePlotStepFailed         = "warpforge-error-plot-step-failed"         // ECodePlotStepFailed is returned execution of a Step within a Plot fails.
+	ECodeSearchingFilesystem    = "warpforge-error-searching-filesystem"     // ECodeSearchingFilesystem is used to wrap filesystem searching errors.
+	ECodeSerialization          = "warpforge-error-serialization"            // ECodeSerialization is used for wrapping generic serialization or deserialization failures.
+	ECodeSyscall                = "warpforge-error-syscall"                  // ECodeSyscall is used to wrap generic syscall errors. Prefer more specific codes.
+	ECodeUnknown                = "warpforge-error-unknown"                  // ECodeUnknown is used for unknown errors. Avoid whenever possible.
+	ECodeWareIdInvalid          = "warpforge-error-wareid-invalid"           // ECodeWareIdInvalid is used for parsing malformed ware IDs.
+	ECodeWarePack               = "warpforge-error-ware-pack"                // ECodeWarePack is used when packing a ware fails.
+	ECodeWareUnpack             = "warpforge-error-ware-unpack"              // ECodeWareUnpack is used when unpacking a ware fails.
+	ECodeWorkspace              = "warpforge-error-workspace"                // ECodeWorkspace is used when an error occurs handling a workspace.
 )
 
 // IsCode reports whether any error in err's chain matches the given code string.
