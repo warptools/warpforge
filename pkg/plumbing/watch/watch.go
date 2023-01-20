@@ -185,7 +185,6 @@ func relativePath(basepath, targpath string) (string, error) {
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
-//    - warpforge-error-initialization -- unable to get working directory or executable path
 //    - warpforge-error-searching-filesystem --
 //    - warpforge-error-module-invalid --
 func (c *Config) Run(ctx context.Context) error {
