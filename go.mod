@@ -17,7 +17,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.17.0
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e
-	github.com/serum-errors/go-serum v0.8.0
+	github.com/serum-errors/go-serum v0.8.1-0.20230120233340-7c9bffa81fc6
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/warpfork/go-testmark v0.11.1-0.20221127032233-5cd7a73883c2
 	go.opentelemetry.io/otel v1.9.0
