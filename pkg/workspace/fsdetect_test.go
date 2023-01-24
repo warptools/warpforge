@@ -27,7 +27,7 @@ func TestHomeDir(t *testing.T) {
 	qt.Assert(t, homedir, qt.Equals, hd[1:])
 }
 
-func TestWorkspaceDetection(t *testing.T) {
+func TestFindWorkspaceStack(t *testing.T) {
 	homedir = "home/user"
 
 	t.Run("with home as default root workspace", func(t *testing.T) {
