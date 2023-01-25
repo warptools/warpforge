@@ -1,5 +1,9 @@
 package wfapi
 
+type MirroringConfigCapsule struct {
+	MirroringConfig *MirroringConfig
+}
+
 type MirroringConfig struct {
 	Keys   []WarehouseAddr
 	Values map[WarehouseAddr]WarehouseMirroringConfig

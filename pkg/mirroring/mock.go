@@ -8,7 +8,6 @@ import (
 
 // A fake pusher that is intended for tests only. This will do nothing when "pushing" wares other than
 // keep track of the wares that have been pushed.
-
 type MockPusher struct {
 	ctx   context.Context
 	cfg   wfapi.MockPushConfig

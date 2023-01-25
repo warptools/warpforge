@@ -3,7 +3,6 @@ package mirroring
 import (
 	"context"
 	"os"
-	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -19,10 +18,6 @@ type S3Pusher struct {
 	client       *s3.Client
 	cfg          wfapi.S3PushConfig
 	existingKeys map[string]bool
-}
-
-func wareIdToKey(wareId wfapi.WareID) string {
-	return filepath.Join(wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 }
 
 func newS3Pusher(ctx context.Context, cfg wfapi.S3PushConfig) (S3Pusher, error) {
@@ -76,7 +71,7 @@ func newS3Pusher(ctx context.Context, cfg wfapi.S3PushConfig) (S3Pusher, error) 
 }
 
 func (p *S3Pusher) hasWare(wareId wfapi.WareID) (bool, error) {
-	key := wareIdToKey(wareId)
+	key := wareId.Subpath()
 	if _, exists := p.existingKeys[key]; exists {
 		// key already exsits in bucket
 		return true, nil
@@ -85,7 +80,7 @@ func (p *S3Pusher) hasWare(wareId wfapi.WareID) (bool, error) {
 }
 
 func (p *S3Pusher) pushWare(wareId wfapi.WareID, localPath string) error {
-	key := wareIdToKey(wareId)
+	key := wareId.Subpath()
 	file, err := os.Open(localPath)
 	if err != nil {
 		return serum.Errorf(wfapi.ECodeIo, "failed to open %q: %s", localPath, err)

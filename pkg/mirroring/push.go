@@ -81,12 +81,16 @@ func PushToWarehouseAddr(ctx context.Context, ws workspace.Workspace, cat worksp
 				// get the path to the data we want to push
 				warePath, _ := ws.WarePath(*wareId)
 
-				// it is possible we don't have this ware, in which case we just want to skip over it
-				if _, err := os.Stat(warePath); os.IsNotExist(err) {
-					log.Debug("mirror", "no local copy of wareId %q (expected at %q), skipping", wareId.String(), warePath)
-					continue
-				} else if err != nil {
-					return serum.Errorf(wfapi.ECodeIo, "failed to stat %q: %s", warePath, err)
+				{
+					// check if we have the ware in our local warehouse
+					// if we do not, we will just skip over it.
+					_, err := os.Stat(warePath)
+					if os.IsNotExist(err) {
+						log.Debug("mirror", "no local copy of wareId %q (expected at %q), skipping", wareId.String(), warePath)
+						continue
+					} else if err != nil {
+						return serum.Errorf(wfapi.ECodeIo, "failed to stat %q: %s", warePath, err)
+					}
 				}
 
 				// we have a ware to push!

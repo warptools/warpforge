@@ -682,14 +682,16 @@ These tests require a workspace with a catalog entry,  which is setup here:
 this file marks the workspace as a root workspace
 ```
 
-[testmark]:# (base-workspace/fs/.warpforge/mirroring.json)
+[testmark]:# (base-workspace/fs/.warpforge/config/mirroring.json)
 ```
 {
-    "ca+mock://mock.warp.tools": {
-		"pushConfig": {
-			"mock": {}
+	"mirroring.v1": {
+		"ca+mock://mock.warp.tools": {
+			"pushConfig": {
+				"mock": {}
+			}
 		}
-    }
+	}
 }
 ```
 

@@ -12,7 +12,7 @@ import (
 const (
 	MagicFilename_Workspace       = ".warpforge"
 	MagicFilename_HomeWorkspace   = ".warphome"
-	MagicFilename_MirroringConfig = "mirroring.json"
+	MagicFilename_MirroringConfig = "config/mirroring.json"
 )
 
 // MirroringConfigFromFile loads a wfapi.MirroringConfig from filesystem path.
@@ -33,11 +33,15 @@ func MirroringConfigFromFile(fsys fs.FS, filename string) (wfapi.MirroringConfig
 		return wfapi.MirroringConfig{}, wfapi.ErrorIo(situation, filename, err)
 	}
 
-	mirroringConfig := wfapi.MirroringConfig{}
-	_, err = ipld.Unmarshal(f, json.Decode, &mirroringConfig, wfapi.TypeSystem.TypeByName("MirroringConfig"))
+	mirroringConfigCapsule := wfapi.MirroringConfigCapsule{}
+	_, err = ipld.Unmarshal(f, json.Decode, &mirroringConfigCapsule, wfapi.TypeSystem.TypeByName("MirroringConfigCapsule"))
 	if err != nil {
 		return wfapi.MirroringConfig{}, wfapi.ErrorSerialization(situation, err)
 	}
 
-	return mirroringConfig, nil
+	if mirroringConfigCapsule.MirroringConfig == nil {
+		return wfapi.MirroringConfig{}, wfapi.ErrorSerialization(situation, err)
+	}
+
+	return *mirroringConfigCapsule.MirroringConfig, nil
 }
