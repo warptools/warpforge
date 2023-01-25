@@ -55,7 +55,7 @@ Getting Started
 Install
 -------
 
-Check that you have Go 1.16+ and that `$GOPATH/bin` (by default, `$HOME/go/bin`) is in your `PATH`.
+Check that you have Go 1.18+ and that `$GOPATH/bin` (by default, `$HOME/go/bin`) is in your `PATH`.
 
 To install `warpforge` and the required plugins to your `GOPATH`, run:
 
