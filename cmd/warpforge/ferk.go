@@ -25,20 +25,25 @@ var ferkCmdDef = cli.Command{
 	),
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "rootfs",
-		},
-		&cli.StringFlag{
-			Name: "cmd",
-		},
-		&cli.BoolFlag{
-			Name: "persist",
-		},
-		&cli.BoolFlag{
-			Name: "no-interactive",
-		},
-		&cli.StringFlag{
 			Name:    "plot",
 			Aliases: []string{"p"},
+			Usage:   "Specify a plot file to use.  If not set, a very minimal default plot with a simple base image will be used.",
+		},
+		&cli.StringFlag{
+			Name:  "rootfs",
+			Usage: "If set, assigns an input in the plot named \"rootfs\".  (This will have no effect unless the plot uses \"pipe::rootfs\" somewhere as an input.)",
+		},
+		&cli.StringFlag{
+			Name:  "cmd",
+			Usage: "If set, replaces the protoformula's action with an exec action with the specified command.  (Otherwise, the protoformula's existing action is used unchanged.)",
+		},
+		&cli.BoolFlag{
+			Name:  "persist",
+			Usage: "If set, adds a mount to the container at \"/persist\" which is read-write to the host at \"./wf-persist/\".",
+		},
+		&cli.BoolFlag{
+			Name:  "no-interactive",
+			Usage: "By default, ferk containers are interactive, and are connected to stdin.  Setting this flag closes stdin to the container immediately, making it behave more like other warpforge run modes.",
 		},
 	},
 }
