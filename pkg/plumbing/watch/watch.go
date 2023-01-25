@@ -26,6 +26,7 @@ import (
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -222,11 +223,6 @@ func absPath(path string) (string, error) {
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 
-	wfCfg, err := config.NewState()
-	if err != nil {
-		return err
-	}
-
 	modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
 	modulePathAbs, err := absPath(modulePath)
 	if err != nil {
@@ -336,7 +332,7 @@ func (c *Config) Run(ctx context.Context) error {
 				ingestCache[path] = hash
 				srv.status = statusRunning
 
-				_, err := exec(innerCtx, wfCfg, c.PlotConfig, modulePathAbs)
+				_, err := exec(innerCtx, c.PlotConfig, modulePathAbs)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
 					srv.status = statusFailed
@@ -368,28 +364,33 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-module-invalid -- when module name is invalid
 //    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
 //    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
-func exec(ctx context.Context, state config.State, pltCfg wfapi.PlotExecConfig, modulePath string) (wfapi.PlotResults, error) {
+//    - warpforge-error-initialization -- when working directory or binary path cannot be found
+func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()
 	result := wfapi.PlotResults{}
 
 	// parse the module, even though it is not currently used
-	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePath[1:]); err != nil {
+	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs[1:]); err != nil {
 		return result, err
 	}
 
-	plotPath := filepath.Join(filepath.Dir(modulePath), dab.MagicFilename_Plot)
+	moduleDirAbs := filepath.Dir(modulePathAbs)
+	plotPath := filepath.Join(moduleDirAbs, dab.MagicFilename_Plot)
 	plot, err := dab.PlotFromFile(os.DirFS("/"), plotPath[1:])
 	if err != nil {
 		return result, err
 	}
 
-	wss, err := config.DefaultWorkspaceStack(state)
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", modulePathAbs)
 	if err != nil {
 		return result, err
 	}
-	exCfg := config.PlotExecConfig(state)
-	exCfg.WorkingDirectory = filepath.Dir(modulePath)
+	exCfg, err := config.PlotExecConfig()
+	if err != nil {
+		return result, err
+	}
+	exCfg.WorkingDirectory = moduleDirAbs
 	result, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
 
 	if err != nil {

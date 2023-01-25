@@ -34,10 +34,6 @@ func cmdStatus(c *cli.Context) error {
 	fmtWarning := color.New(color.FgHiRed, color.Bold)
 	verbose := c.Bool("verbose")
 	ctx := c.Context
-	state, err := config.NewState()
-	if err != nil {
-		return err
-	}
 
 	// display version
 	if verbose {
@@ -51,11 +47,20 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, "\nPlugin Info:\n")
 	}
 
-	if verbose {
-		fmt.Fprintf(c.App.Writer, "binPath = %s\n", config.BinPath(state))
+	binPath, err := config.BinPath()
+	if err != nil {
+		return err
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
 	}
 
-	rioPath := filepath.Join(config.BinPath(state), "rio")
+	if verbose {
+		fmt.Fprintf(c.App.Writer, "binPath = %s\n", binPath)
+	}
+
+	rioPath := filepath.Join(binPath, "rio")
 	if _, err := os.Stat(rioPath); os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, "rio not found (expected at %s)\n", rioPath)
 		pluginsOk = false
@@ -65,14 +70,14 @@ func cmdStatus(c *cli.Context) error {
 		}
 	}
 
-	runcPath := filepath.Join(config.BinPath(state), "runc")
+	runcPath := filepath.Join(binPath, "runc")
 	if _, err := os.Stat(runcPath); os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, "runc not found (expected at %s)\n", runcPath)
 		pluginsOk = false
 	} else {
 		cmdCtx, cmdSpan := tracing.Start(ctx, "exec", trace.WithAttributes(tracing.AttrFullExecNameRunc))
 		defer cmdSpan.End()
-		runcVersionCmd := exec.CommandContext(cmdCtx, filepath.Join(config.BinPath(state), "runc"), "--version")
+		runcVersionCmd := exec.CommandContext(cmdCtx, filepath.Join(binPath, "runc"), "--version")
 		var runcVersionOut bytes.Buffer
 		runcVersionCmd.Stdout = &runcVersionOut
 		err = runcVersionCmd.Run()
@@ -91,12 +96,13 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	fsys := os.DirFS("/")
+
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, dab.MagicFilename_Module)); err == nil {
+	if _, err := os.Stat(filepath.Join(cwd, dab.MagicFilename_Module)); err == nil {
 		isModule = true
-		module, err = dab.ModuleFromFile(fsys, filepath.Join(state.WorkingDirectory, dab.MagicFilename_Module))
+		module, err = dab.ModuleFromFile(fsys, filepath.Join(cwd, dab.MagicFilename_Module))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -111,11 +117,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(state.WorkingDirectory, dab.MagicFilename_Plot))
+	_, err = os.Stat(filepath.Join(cwd, dab.MagicFilename_Plot))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = util.PlotFromFile(filepath.Join(state.WorkingDirectory, dab.MagicFilename_Plot))
+		plot, err = util.PlotFromFile(filepath.Join(cwd, dab.MagicFilename_Plot))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
@@ -139,9 +145,13 @@ func cmdStatus(c *cli.Context) error {
 		for _, input := range plot.Inputs.Values {
 			if input.Basis().Mount != nil {
 				mountCount++
-			} else if input.Basis().Ingest != nil {
+				continue
+			}
+			if input.Basis().Ingest != nil {
 				ingestCount++
-			} else if input.Basis().CatalogRef != nil {
+				continue
+			}
+			if input.Basis().CatalogRef != nil {
 				catalogRefCount++
 				ware, _, err := wss.GetCatalogWare(*input.PlotInputSimple.CatalogRef)
 				if err != nil {
@@ -149,9 +159,10 @@ func cmdStatus(c *cli.Context) error {
 				}
 				if ware == nil {
 					fmt.Fprintf(c.App.Writer, "\tMissing catalog item: %q.\n", input.Basis().CatalogRef.String())
-				} else if err == nil {
-					resolvedCatalogRefCount++
+					continue
 				}
+				resolvedCatalogRefCount++
+				continue
 			}
 		}
 		fmt.Fprintf(c.App.Writer, "\tPlot contains %d catalog inputs. %d/%d catalog inputs resolved successfully.\n", catalogRefCount, resolvedCatalogRefCount, catalogRefCount)
@@ -164,7 +175,6 @@ func cmdStatus(c *cli.Context) error {
 		if mountCount > 0 {
 			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount inputs and is not hermetic!\n", mountCount)
 		}
-
 	} else if isModule {
 		// directory is a module, but has no plot
 		fmt.Fprintf(c.App.Writer, "\tNo plot file for module.\n")
@@ -178,20 +188,20 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	// handle special case for pwd
-	fmt.Fprintf(c.App.Writer, "\t%s (pwd", state.WorkingDirectory)
+	fmt.Fprintf(c.App.Writer, "\t%s (pwd", cwd)
 	if isModule {
 		fmt.Fprintf(c.App.Writer, ", module")
 	}
 	// check if it's a workspace
-	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, ".warpforge")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, ".warpforge")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", workspace")
 	}
 	// check if it's a root workspace
-	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, ".warpforge/root")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, ".warpforge/root")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", root workspace")
 	}
 	// check if it's a git repo
-	if _, err := os.Stat(filepath.Join(state.WorkingDirectory, ".git")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, ".git")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", git repo")
 	}
 
@@ -202,7 +212,7 @@ func cmdStatus(c *cli.Context) error {
 		fs, subPath := ws.Path()
 		path := fmt.Sprintf("%s%s", fs, subPath)
 
-		if path == state.WorkingDirectory {
+		if path == cwd {
 			// we handle pwd earlier, ignore
 			continue
 		}

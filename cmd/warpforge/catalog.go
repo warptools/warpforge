@@ -192,11 +192,10 @@ func cmdCatalogInit(c *cli.Context) error {
 	}
 	catalogName := c.Args().First()
 	var err error
-	state, err := config.NewState()
+	wss, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
-	wss, err := config.DefaultWorkspaceStack(state)
 	catalogPath, err := wss.Root().CatalogPath(catalogName)
 	if err != nil {
 		return err
@@ -462,11 +461,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return fmt.Errorf("invalid input. usage: warpforge catalog release [release name]")
 	}
 	catalogName := c.String("name")
-	state, err := config.NewState()
-	if err != nil {
-		return err
-	}
-	wss, err := config.DefaultWorkspaceStack(state)
+	wss, err := util.OpenWorkspaceSet()
 	if err != nil {
 		return err
 	}
@@ -498,7 +493,10 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return err
 	}
 
-	execCfg := config.PlotExecConfig(state)
+	execCfg, err := config.PlotExecConfig()
+	if err != nil {
+		return err
+	}
 	results, err := plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: &plot}, wfapi.PlotExecConfig{Recursive: false})
 	if err != nil {
 		return err

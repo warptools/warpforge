@@ -239,6 +239,9 @@ func (ws *Workspace) ListCatalogs() ([]string, error) {
 		return []string{""}, nil
 	}
 	catalogsPath := ws.CatalogBasePath()
+	if filepath.IsAbs(catalogsPath) {
+		catalogsPath = catalogsPath[1:]
+	}
 
 	_, err := fs.Stat(ws.fsys, catalogsPath)
 	if os.IsNotExist(err) {

@@ -10,6 +10,7 @@ const (
 	EnvWarpforgeRunPath = "WARPFORGE_RUNPATH"
 	// EnvWarpforgeWarehouse will override the warehouse used for execution
 	EnvWarpforgeWarehouse = "WARPFORGE_WAREHOUSE"
+	EnvWarpforgeDebug     = "WARPFORGE_DEBUG" // Enables debug logging
 )
 
 // NOTE: keep this up to date or the config loader won't load them
@@ -18,4 +19,5 @@ var envKeys = []string{
 	EnvWarpforgePath,
 	EnvWarpforgeRunPath,
 	EnvWarpforgeWarehouse,
+	EnvWarpforgeDebug,
 }

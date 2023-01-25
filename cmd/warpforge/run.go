@@ -15,6 +15,7 @@ import (
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -50,16 +51,15 @@ func cmdRun(c *cli.Context) error {
 		},
 	}
 
-	state, err := config.NewState()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	logger.Debug("", "state: %#v", state)
-
+	logger.Debug("", "pwd: %s", cwd)
 	if !c.Args().Present() {
-		filename := filepath.Join(state.WorkingDirectory, dab.MagicFilename_Module) // execute the module in the current directory
+		filename := filepath.Join(cwd, dab.MagicFilename_Module) // execute the module in the current directory
 		logger.Debug("", "working directory module: %s", filename)
-		_, err = util.ExecModule(ctx, state, nil, pltCfg, filename)
+		_, err = util.ExecModule(ctx, nil, pltCfg, filename)
 		if err != nil {
 			return err
 		}
@@ -77,12 +77,7 @@ func cmdRun(c *cli.Context) error {
 					if c.Bool("verbose") {
 						logger.Debug("", "executing %q", path)
 					}
-					absPath, err := filepath.Abs(path)
-					if err != nil {
-						return err
-					}
-					state.WorkingDirectory = absPath
-					_, err = util.ExecModule(ctx, state, nil, pltCfg, path)
+					_, err = util.ExecModule(ctx, nil, pltCfg, path)
 					if err != nil {
 						return err
 					}
@@ -101,7 +96,7 @@ func cmdRun(c *cli.Context) error {
 			return err
 		}
 		if info.IsDir() {
-			_, err := util.ExecModule(ctx, state, nil, pltCfg, filepath.Join(fileName, dab.MagicFilename_Module))
+			_, err := util.ExecModule(ctx, nil, pltCfg, filepath.Join(fileName, dab.MagicFilename_Module))
 			if err != nil {
 				return err
 			}
@@ -127,17 +122,20 @@ func cmdRun(c *cli.Context) error {
 
 				// run formula
 				frmCfg := wfapi.FormulaExecConfig{}
-				wss, err := config.DefaultWorkspaceStack(state)
+				wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", cwd)
 				if err != nil {
 					return err
 				}
-				frmExecCfg := config.FormulaExecConfig(state)
+				frmExecCfg, err := config.FormulaExecConfig()
+				if err != nil {
+					return err
+				}
 				if _, err := formulaexec.Exec(ctx, frmExecCfg, wss.Root(), frmAndCtx, frmCfg); err != nil {
 					return err
 				}
 			case dab.FileType_Module:
 				logger.Debug("", "executing module")
-				_, err := util.ExecModule(ctx, state, nil, pltCfg, fileName)
+				_, err := util.ExecModule(ctx, nil, pltCfg, fileName)
 				if err != nil {
 					return err
 				}

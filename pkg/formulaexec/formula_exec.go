@@ -324,10 +324,11 @@ func copySpec(spec specs.Spec) (specs.Spec, error) {
 func (cfg internalConfig) newRuncConfig(ctx context.Context, runPath string, baseSpec specs.Spec) (runcConfig, error) {
 	rootWsIntPath := "/" + cfg.RootWs.InternalPath()
 	rc := runcConfig{
-		binPath:   cfg.ExecConfig.BinPath,
-		runPath:   runPath,
-		rootPath:  filepath.Join(rootWsIntPath, "runc-root"),
-		cachePath: filepath.Join(rootWsIntPath, "cache"),
+		binPath:     cfg.ExecConfig.BinPath,
+		runPath:     runPath,
+		rootPath:    filepath.Join(rootWsIntPath, "runc-root"),
+		cachePath:   filepath.Join(rootWsIntPath, "cache"),
+		interactive: false,
 	}
 	_spec, err := copySpec(baseSpec)
 	if err != nil {

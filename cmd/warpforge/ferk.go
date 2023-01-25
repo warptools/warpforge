@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ipld/go-ipld-prime"
@@ -12,7 +14,9 @@ import (
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/config"
+	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/plotexec"
+	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -52,7 +56,7 @@ var ferkCmdDef = cli.Command{
 func cmdFerk(c *cli.Context) error {
 	var err error
 	ctx := c.Context
-
+	log := logging.Ctx(ctx)
 	plot := wfapi.Plot{}
 	if c.String("plot") != "" {
 		// plot was provided, load from file
@@ -125,16 +129,28 @@ func cmdFerk(c *cli.Context) error {
 		},
 	}
 
-	state, err := config.NewState()
+	exCfg, err := config.PlotExecConfig()
 	if err != nil {
 		return err
 	}
-	wss, err := config.DefaultWorkspaceStack(state)
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", exCfg.WorkingDirectory)
 	if err != nil {
 		return err
 	}
-	exCfg := config.PlotExecConfig(state)
-	if _, err := plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg); err != nil {
+	log.Debug("", "working directory: %s", exCfg.WorkingDirectory)
+	for idx, ws := range wss {
+		log.Debug("", "ws %d: %q; home: %t; root: %t", idx, ws.InternalPath(), ws.IsHomeWorkspace(), ws.IsRootWorkspace())
+		wsfs, path := ws.Path()
+		log.Debug("", "ws %d: %q", idx, path)
+		rp := filepath.Join(ws.InternalPath(), "root")
+		_, err := os.Stat(rp)
+		log.Debug("", "ws %d: %q -> %t", idx, rp, err == nil)
+		_, err = fs.Stat(wsfs, rp[1:])
+		log.Debug("", "ws %d: %q -> %t", idx, rp, err == nil)
+	}
+
+	_, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
+	if err != nil {
 		return err
 	}
 

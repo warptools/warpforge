@@ -6,62 +6,79 @@ import (
 
 	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/plotexec"
-	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/wfapi"
+
+	"github.com/serum-errors/go-serum"
 )
 
-func BinPath(state State) string {
+// Errors:
+//
+//    - warpforge-error-initialization -- unable to get executable directory
+func BinPath() (string, error) {
 	// determine the path of the running executable
 	// other binaries (runc, rio) will be located here as well
-	path, ok := state.Env[EnvWarpforgePath]
+	path, ok := os.LookupEnv(EnvWarpforgePath)
 	if ok {
-		return path
+		return path, nil
 	}
-	return filepath.Dir(state.ExecutablePath)
+	executable, err := os.Executable()
+	if err != nil {
+		return "", serum.Error(wfapi.ECodeInitialization,
+			serum.WithMessageLiteral("failed to locate executable path"),
+			serum.WithCause(err),
+		)
+	}
+	return filepath.Dir(executable), nil
 }
 
-func KeepRunDir(state State) bool {
-	_, ok := state.Env[EnvWarpforgeKeepRundir]
+func KeepRunDir() bool {
+	_, ok := os.LookupEnv(EnvWarpforgeKeepRundir)
 	return ok
 }
 
-func RunPathBase(state State) string {
-	if value, ok := state.Env[EnvWarpforgeRunPath]; ok {
+func RunPathBase() string {
+	if value, ok := os.LookupEnv(EnvWarpforgeRunPath); ok {
 		return value
 	}
-	return state.TempDir
+	return os.TempDir()
 }
 
-func WarehousePathOverride(state State) *string {
-	value, ok := state.Env[EnvWarpforgeWarehouse]
+func WarehousePathOverride() *string {
+	value, ok := os.LookupEnv(EnvWarpforgeWarehouse)
 	if !ok {
 		return nil
 	}
 	return &value
 }
 
-// Retrieves workspace stack at state.WorkingDirectory
 // Errors:
 //
-//  - warpforge-error-searching-filesystem -- unexpected error traversing filesystem
-func DefaultWorkspaceStack(state State) (workspace.WorkspaceSet, error) {
-	fsys := os.DirFS("/")
-	wss, err := workspace.FindWorkspaceStack(fsys, "", state.WorkingDirectory[1:])
+//    - warpforge-error-initialization -- unable to get working or executable directories
+func PlotExecConfig() (plotexec.ExecConfig, error) {
+	cfg, err := FormulaExecConfig()
+	return plotexec.ExecConfig(cfg), err
+}
+
+// Errors:
+//
+//    - warpforge-error-initialization -- unable to get working or executable directories
+func FormulaExecConfig() (cfg formulaexec.ExecConfig, _ error) {
+	binpath, err := BinPath()
 	if err != nil {
-		return nil, err
+		return cfg, nil
 	}
-	return wss, nil
-}
-
-func PlotExecConfig(state State) plotexec.ExecConfig {
-	return plotexec.ExecConfig(FormulaExecConfig(state))
-}
-
-func FormulaExecConfig(state State) formulaexec.ExecConfig {
+	wd, err := os.Getwd()
+	if err != nil {
+		return cfg, serum.Error(wfapi.ECodeInitialization,
+			serum.WithMessageLiteral("unable to get working directory"),
+			serum.WithCause(err),
+		)
+	}
 	return formulaexec.ExecConfig{
-		BinPath:          BinPath(state),
-		KeepRunDir:       KeepRunDir(state),
-		RunPathBase:      RunPathBase(state),
-		WhPathOverride:   WarehousePathOverride(state),
-		WorkingDirectory: state.WorkingDirectory,
-	}
+		BinPath:          binpath,
+		KeepRunDir:       KeepRunDir(),
+		RunPathBase:      RunPathBase(),
+		WhPathOverride:   WarehousePathOverride(),
+		WorkingDirectory: wd,
+	}, nil
 }

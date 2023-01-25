@@ -141,23 +141,30 @@ func TestCatalogLookup(t *testing.T) {
 					Data: []byte(mirrorData),
 				},
 			}
-			var err error
-			ws, _, err := FindWorkspace(fsys, "", "home/user/")
-			qt.Assert(t, err, qt.IsNil)
-			qt.Assert(t, ws, qt.IsNotNil)
+			check := func(path string) func(t *testing.T) {
+				return func(t *testing.T) {
+					ws, _, err := FindWorkspace(fsys, "", path)
+					qt.Assert(t, err, qt.IsNil)
+					qt.Assert(t, ws, qt.IsNotNil)
 
-			catName := "test"
-			cat, err := ws.OpenCatalog(catName)
-			qt.Assert(t, err, qt.IsNil)
-			qt.Assert(t, len(cat.Modules()), qt.Equals, 2)
-			qt.Assert(t, cat.Modules()[0], qt.Equals, wfapi.ModuleName("example.com/module"))
-			qt.Assert(t, cat.Modules()[1], qt.Equals, wfapi.ModuleName("example.com/module-two"))
+					catName := "test"
+					cat, err := ws.OpenCatalog(catName)
+					qt.Assert(t, err, qt.IsNil)
+					qt.Assert(t, len(cat.Modules()), qt.Equals, 2)
+					qt.Assert(t, cat.Modules()[0], qt.Equals, wfapi.ModuleName("example.com/module"))
+					qt.Assert(t, cat.Modules()[1], qt.Equals, wfapi.ModuleName("example.com/module-two"))
 
-			wareId, wareAddr, err := ws.GetCatalogWare(ref)
-			qt.Assert(t, err, qt.IsNil)
-			qt.Assert(t, wareId.Hash, qt.Equals, "abcd")
-			qt.Assert(t, wareId.Packtype, qt.Equals, wfapi.Packtype("tar"))
-			qt.Assert(t, *wareAddr, qt.Equals, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
+					wareId, wareAddr, err := ws.GetCatalogWare(ref)
+					qt.Assert(t, err, qt.IsNil)
+					qt.Assert(t, wareId, qt.IsNotNil)
+					qt.Assert(t, wareAddr, qt.IsNotNil)
+					qt.Assert(t, wareId.Hash, qt.Equals, "abcd")
+					qt.Assert(t, wareId.Packtype, qt.Equals, wfapi.Packtype("tar"))
+					qt.Assert(t, *wareAddr, qt.Equals, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
+				}
+			}
+			t.Run("without abs path", check("home/user/"))
+			t.Run("with abs path", check("/home/user/"))
 		})
 		t.Run("catalog-replay", func(t *testing.T) {
 			fsys := fstest.MapFS{

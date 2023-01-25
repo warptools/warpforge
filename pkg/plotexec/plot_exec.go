@@ -193,6 +193,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		}
 
 		if wareId == nil {
+			logger.Debug(LOG_TAG, "failed to resolve catalog reference to ware ID: %s", basis.CatalogRef.String())
 			// failed to find a match in the catalog
 			return wfapi.FormulaInputSimple{},
 				nil,
@@ -419,6 +420,11 @@ func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, p
 	results := wfapi.PlotResults{}
 	logger := logging.Ctx(ctx)
 	logger.Info(LOG_TAG_START, "")
+	defer logger.Info(LOG_TAG_END, "")
+	cfg.debug(ctx)
+	for idx, ws := range wss {
+		logger.Debug(LOG_TAG, "workspace[%d]: %s", idx, ws.InternalPath())
+	}
 
 	// collect the plot inputs
 	// these have an empty string for the step name (e.g., `pipe::foo`)
@@ -523,9 +529,10 @@ func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, p
 		results.Values[name] = *result.Basis().WareID
 	}
 
+	// TODO: This is currently the primary output mechanism of warpforge.
+	// This makes controlling UX a lot harder than it should be.
 	logger.PrintPlotResults(LOG_TAG, results)
 
-	logger.Info(LOG_TAG_END, "")
 	return results, nil
 }
 
@@ -544,7 +551,6 @@ func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, p
 func Exec(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, pltCfg wfapi.PlotExecConfig) (result wfapi.PlotResults, err error) {
 	ctx, span := tracing.StartFn(ctx, "Exec")
 	defer func() { tracing.EndWithStatus(span, err) }()
-	cfg.debug(ctx)
 	if plotCapsule.Plot == nil {
 		return wfapi.PlotResults{}, wfapi.ErrorPlotInvalid("PlotCapsule does not contain a v1 plot")
 	}

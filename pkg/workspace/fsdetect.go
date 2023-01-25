@@ -85,6 +85,9 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 
 // statDir is fs.Stat but returns fs.ErrNotExist if the path is not a dir
 func statDir(fsys fs.FS, path string) (fs.FileInfo, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
 	fi, err := fs.Stat(fsys, path)
 	if err != nil {
 		return fi, err
@@ -162,6 +165,9 @@ func FindRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Worksp
 // checkIsRootWorkspace returns true if the workspace contains the magic "root" file.
 func checkIsRootWorkspace(fsys fs.FS, rootPath string) bool {
 	// check if the root marker file exists
+	if filepath.IsAbs(rootPath) {
+		rootPath = rootPath[1:]
+	}
 	_, err := fs.Stat(fsys, filepath.Join(rootPath, magicWorkspaceDirname, "root"))
 	return err == nil
 }

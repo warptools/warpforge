@@ -50,6 +50,9 @@ type Catalog struct {
 // 	- warpforge-error-io -- when building the module list fails due to I/O error
 // 	- warpforge-error-catalog-invalid -- when the catalog file exists but cannot be opened
 func OpenCatalog(fsys fs.FS, path string) (Catalog, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
 	// check that the catalog path exists
 	// FUTURE: We should add more indicator files here, to help avoid some forms of possible user error and give better messages.
 	if _, err := fs.Stat(fsys, path); err != nil {
@@ -186,10 +189,12 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 
 	// release was found in catalog, attempt to open release file
 	releasePath := cat.releaseFilePath(ref)
+	fmt.Println(releasePath)
 	releaseBytes, errRaw := fs.ReadFile(cat.fsys, releasePath)
 	if os.IsNotExist(errRaw) {
 		return nil, nil
-	} else if errRaw != nil {
+	}
+	if errRaw != nil {
 		return nil, wfapi.ErrorIo("failed to read catalog release file", releasePath, errRaw)
 	}
 
@@ -262,9 +267,8 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	if mirror.ByModule != nil {
 		if len(mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype]) > 0 {
 			return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
-		} else {
-			return &wareId, nil, nil
 		}
+		return &wareId, nil, nil
 	}
 
 	// we have exhausted our options, no mirror exists

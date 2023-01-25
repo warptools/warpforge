@@ -54,32 +54,45 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 		e.TmpDirPrefix = DefaultRootWorkspacePrefix
 	}
 
-	rootWorkspaceDir, err := os.MkdirTemp(e.BasePath, e.TmpDirPrefix)
-	if err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to make temporary directory inside path, %q: %w", e.BasePath, err)
+	rootWorkspaceDir, xerr := os.MkdirTemp(e.BasePath, e.TmpDirPrefix)
+	if xerr != nil {
+		return serum.Error(CodeRunFailure, serum.WithCause(xerr),
+			serum.WithMessageTemplate("failed to make temporary directory inside path, {{basepath|q}}"),
+			serum.WithDetail("basepath", e.BasePath),
+		)
 	}
 
 	if err := workspace.PlaceWorkspace(rootWorkspaceDir, workspace.SetRootWorkspaceOpt()); err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to create root workspace: %w", err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err),
+			serum.WithMessageLiteral("failed to create root workspace"),
+		)
 	}
 
 	localWorkspaceDir := filepath.Join(rootWorkspaceDir, "local")
 	if err := os.Mkdir(localWorkspaceDir, 0755|os.ModeDir); err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to make directory: %q: %w", localWorkspaceDir, err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err),
+			serum.WithMessageTemplate("failed to make directory: {{workspace}}"),
+			serum.WithDetail("workspace", localWorkspaceDir),
+		)
 	}
 
 	if err := workspace.PlaceWorkspace(localWorkspaceDir); err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to create local workspace at path: %q: %w", localWorkspaceDir, err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err),
+			serum.WithMessageTemplate("failed to create local workspace at path: %q: %w"),
+			serum.WithDetail("workspace", localWorkspaceDir),
+		)
 	}
 
 	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", localWorkspaceDir[1:])
 	if err != nil {
-		return serum.Errorf(CodeRunFailure, "unable to find workspace stack: %w", err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to find workspace stack: %w"),
+		)
 	}
 
 	plotCapsule := wfapi.PlotCapsule{}
 	if _, err := ipld.Unmarshal([]byte(util.DefaultPlotJson), json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule")); err != nil {
-		return serum.Errorf(CodeRunFailure, "failed to deserialize default plot: %w", err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err), serum.WithMessageLiteral("failed to deserialize default plot"))
 	}
 	if plotCapsule.Plot == nil {
 		return serum.Errorf(CodeRunFailure, "Execution failed: plot capsule missing plot")
@@ -90,7 +103,9 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 		return serum.Error(CodeRunFailure, serum.WithCause(err))
 	}
 	if err := wss.Tidy(ctx, *plotCapsule.Plot, true); err != nil {
-		return serum.Errorf(CodeRunFailure, "Execution failed: %w", err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err),
+			serum.WithMessageLiteral("Execution failed"),
+		)
 	}
 
 	pltCfg := wfapi.PlotExecConfig{
@@ -99,18 +114,16 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 			DisableMemoization: true,
 		},
 	}
-	state, err := config.NewState()
-	if err != nil {
-		return serum.Error(CodeRunFailure,
-			serum.WithMessageLiteral("Initialization failed"),
-			serum.WithCause(err),
-		)
-	}
 
-	exCfg := config.PlotExecConfig(state)
+	exCfg, err := config.PlotExecConfig()
+	if err != nil {
+		return serum.Error(CodeRunFailure, serum.WithCause(err))
+	}
 	result, err := plotexec.Exec(ctx, exCfg, wss, plotCapsule, pltCfg)
 	if err != nil {
-		return serum.Errorf(CodeRunFailure, "Execution failed: %w", err)
+		return serum.Error(CodeRunFailure, serum.WithCause(err),
+			serum.WithMessageLiteral("Execution failed"),
+		)
 	}
 
 	invariant := wfapi.PlotResults{

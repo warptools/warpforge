@@ -13,7 +13,6 @@ import (
 
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
-	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
@@ -111,34 +110,46 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 //    - warpforge-error-workspace -- when opening the workspace set fails
 //    - warpforge-error-datatoonew -- when error is too new
 //    - warpforge-error-searching-filesystem -- unexpected error traversing filesystem
-func ExecModule(ctx context.Context, state config.State, wss workspace.WorkspaceSet, pltCfg wfapi.PlotExecConfig, fileName string) (result wfapi.PlotResults, err error) {
+//    - warpforge-error-path-absolute -- fail to canonicalize module path
+//    - warpforge-error-initialization -- fail to get working directory or executable path
+func ExecModule(ctx context.Context, wss workspace.WorkspaceSet, pltCfg wfapi.PlotExecConfig, fileName string) (result wfapi.PlotResults, err error) {
 	ctx, span := tracing.StartFn(ctx, "execModule")
 	defer func() { tracing.EndWithStatus(span, err) }()
-	logger := logging.Ctx(ctx)
-	logger.Debug("", "state; %#v", state)
 
 	fsys := os.DirFS("/")
-
-	if wss == nil {
-		_wss, err := config.DefaultWorkspaceStack(state)
-		if err != nil {
-			return result, err
-		}
-		wss = _wss
-	}
 
 	// parse the module, even though it is not currently used
 	if _, err := dab.ModuleFromFile(fsys, fileName); err != nil {
 		return result, err
 	}
+	modulePath := filepath.Dir(fileName)
+	modulePath, xerr := filepath.Abs(modulePath)
+	if xerr != nil {
+		return result, serum.Error(wfapi.ECodePathAbs, serum.WithCause(xerr),
+			serum.WithMessageTemplate("unable to canonicalize module path {{path|q}}"),
+			serum.WithDetail("path", fileName),
+		)
+	}
 
-	plot, werr := dab.PlotFromFile(fsys, filepath.Join(filepath.Dir(fileName), dab.MagicFilename_Plot))
+	if wss == nil {
+		var werr error
+		wss, werr = workspace.FindWorkspaceStack(fsys, "", modulePath[1:])
+		if werr != nil {
+			return result, werr
+		}
+	}
+
+	plot, werr := dab.PlotFromFile(fsys, filepath.Join(modulePath, dab.MagicFilename_Plot))
 	if werr != nil {
 		return result, werr
 	}
 
-	execCfg := config.PlotExecConfig(state)
-	execCfg.WorkingDirectory = filepath.Dir(fileName)
+	execCfg, err := config.PlotExecConfig()
+	if err != nil {
+		return result, err
+	}
+	// TODO: Eventually we need to be more clear about what is relative to working directory and what is relative to modules
+	execCfg.WorkingDirectory = modulePath
 	result, werr = plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
 
 	if werr != nil {
