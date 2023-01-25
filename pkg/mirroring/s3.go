@@ -32,7 +32,7 @@ func newS3Pusher(ctx context.Context, cfg wfapi.S3PushConfig) (S3Pusher, error) 
 			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 				return aws.Endpoint{
 					URL:               cfg.Endpoint,
-					HostnameImmutable: true,
+					HostnameImmutable: true, // prevent the S3 client from mangling the user-provided endpoint
 					SigningRegion:     cfg.Region,
 				}, nil
 			})),
@@ -40,7 +40,7 @@ func newS3Pusher(ctx context.Context, cfg wfapi.S3PushConfig) (S3Pusher, error) 
 	)
 
 	if err != nil {
-		panic(err)
+		return S3Pusher{}, serum.Errorf(wfapi.ECodeIo, "could not connect to S3 endpoint %q with region %q: %s", cfg.Endpoint, cfg.Region, err)
 	}
 
 	client := s3.NewFromConfig(config)
