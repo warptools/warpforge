@@ -394,6 +394,24 @@ warpforge catalog --name=test generate-html
 
 ### Mirror a Catalog
 
+The base workspace does not have mirror information to avoid using the network by default. We will override
+the `_mirrors.json` file to test mirroring to a mock remote warehouse.
+
+[testmark]:# (base-workspace/then-mirror/fs/.warpforge/catalogs/test/warpsys.org/busybox/_mirrors.json)
+```json
+{
+	"catalogmirrors.v1": {
+		"byModule": {
+			"warpsys.org/busybox": {
+				"tar": ["ca+mock://example.warp.tools"]
+			}
+		}
+	}
+}
+```
+
+Now we can test mirroring:
+
 [testmark]:# (base-workspace/then-mirror/sequence)
 ```
 warpforge catalog --name=test mirror
@@ -623,7 +641,7 @@ warpforge --json run
 ```
 { "log": { "Msg": "inputs:" } } 
 { "log": { "Msg": "type = catalog ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static" } } 
-{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9" } } 
+{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = none" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
 { "log": { "Msg": "ware mount: wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
@@ -655,13 +673,7 @@ These tests require a workspace with a catalog entry,  which is setup here:
 {
 	"catalogmirrors.v1": {
 		"byWare": {
-			"tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9": ["https://warpsys.s3.amazonaws.com/warehouse/4z9/DCT/4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9"]
 		},
-		"byModule": {
-			"warpsys.org/busybox": {
-				"tar": ["ca+mock://mock.warp.tools"]
-			}
-		}
 	}
 }
 ```
