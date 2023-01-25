@@ -28,10 +28,9 @@ func pusherFromConfig(ctx context.Context, cfg wfapi.WarehouseMirroringConfig) (
 	} else if cfg.PushConfig.Mock != nil {
 		pusher, err := newMockPusher(ctx, *cfg.PushConfig.Mock)
 		return &pusher, err
-	} else {
-		// this should be unreachable due to IPLD validation
-		panic("no supported push configuration provided")
 	}
+	// this should be unreachable due to IPLD validation
+	panic("no supported push configuration provided")
 }
 
 // PushToWarehouseAddr puts files into a mirror
@@ -46,7 +45,9 @@ func pusherFromConfig(ctx context.Context, cfg wfapi.WarehouseMirroringConfig) (
 //  - warpforge-error-catalog-invalid -- when the provided catalog contains invalid data
 //  - warpforge-error-catalog-missing-entry -- should never occur, as we iterate over the contents of the catalog
 //  - warpforge-error-catalog-parse -- when the provided catalog cannot be parsed
-func PushToWarehouseAddr(ctx context.Context, log *logging.Logger, ws workspace.Workspace, cat workspace.Catalog, pushAddr wfapi.WarehouseAddr, cfg wfapi.WarehouseMirroringConfig) error {
+func PushToWarehouseAddr(ctx context.Context, ws workspace.Workspace, cat workspace.Catalog, pushAddr wfapi.WarehouseAddr, cfg wfapi.WarehouseMirroringConfig) error {
+	log := logging.Ctx(ctx)
+
 	pusher, err := pusherFromConfig(ctx, cfg)
 	if err != nil {
 		return err

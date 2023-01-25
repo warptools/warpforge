@@ -80,9 +80,8 @@ func (p *S3Pusher) hasWare(wareId wfapi.WareID) (bool, error) {
 	if _, exists := p.existingKeys[key]; exists {
 		// key already exsits in bucket
 		return true, nil
-	} else {
-		return false, nil
 	}
+	return false, nil
 }
 
 func (p *S3Pusher) pushWare(wareId wfapi.WareID, localPath string) error {
