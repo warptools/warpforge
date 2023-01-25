@@ -760,7 +760,7 @@ func cmdMirror(c *cli.Context) error {
 
 	for wareAddr, cfg := range configs.Values {
 		logger.Info("mirror", "mirroring to warehouse %q", wareAddr)
-		err = mirroring.PushToWarehouseAddr(logger, *wsSet.Root(), cat, wareAddr, cfg)
+		err = mirroring.PushToWarehouseAddr(ctx, logger, *wsSet.Root(), cat, wareAddr, cfg)
 		if err != nil {
 			return err
 		}

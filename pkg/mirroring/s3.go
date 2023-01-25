@@ -15,6 +15,7 @@ import (
 )
 
 type S3Pusher struct {
+	ctx          context.Context
 	client       *s3.Client
 	cfg          wfapi.S3PushConfig
 	existingKeys map[string]bool
@@ -24,8 +25,8 @@ func wareIdToKey(wareId wfapi.WareID) string {
 	return filepath.Join(wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 }
 
-func newS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
-	config, err := config.LoadDefaultConfig(context.TODO(),
+func newS3Pusher(ctx context.Context, cfg wfapi.S3PushConfig) (S3Pusher, error) {
+	config, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(cfg.Region),
 		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
 			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -45,7 +46,7 @@ func newS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
 	client := s3.NewFromConfig(config)
 
 	// make sure we can access the specified bucket
-	_, err = client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
@@ -53,7 +54,7 @@ func newS3Pusher(cfg wfapi.S3PushConfig) (S3Pusher, error) {
 	}
 
 	// list all the objects currently in the bucket
-	result, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+	result, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: aws.String(cfg.Bucket),
 	})
 	if err != nil {
@@ -93,7 +94,7 @@ func (p *S3Pusher) pushWare(wareId wfapi.WareID, localPath string) error {
 
 	uploader := manager.NewUploader(p.client)
 
-	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
+	_, err = uploader.Upload(p.ctx, &s3.PutObjectInput{
 		Bucket: &p.cfg.Bucket,
 		Key:    &key,
 		Body:   file,
