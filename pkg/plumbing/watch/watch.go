@@ -182,11 +182,11 @@ func relativePath(basepath, targpath string) (string, error) {
 //    - warpforge-error-git --
 //    - warpforge-error-io -- when socket path is too long
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
+//    - warpforge-error-module-invalid --
+//    - warpforge-error-searching-filesystem --
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
-//    - warpforge-error-searching-filesystem --
-//    - warpforge-error-module-invalid --
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
@@ -340,18 +340,18 @@ func (c *Config) Run(ctx context.Context) error {
 // Errors:
 //
 //    - warpforge-error-catalog-invalid --
-//    - warpforge-error-catalog-parse --
-//    - warpforge-error-git --
-//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
 //    - warpforge-error-catalog-missing-entry --
+//    - warpforge-error-catalog-parse --
+//    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
+//    - warpforge-error-git --
+//    - warpforge-error-initialization -- when working directory or binary path cannot be found
+//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
+//    - warpforge-error-module-invalid -- when module name is invalid
 //    - warpforge-error-plot-execution-failed --
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
+//    - warpforge-error-searching-filesystem -- when finding workspace stack fails
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-module-invalid -- when module name is invalid
-//    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
-//    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
-//    - warpforge-error-initialization -- when working directory or binary path cannot be found
 //    - warpforge-error-workspace-missing -- when opening the workspace set fails
 func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
