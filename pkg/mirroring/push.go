@@ -95,12 +95,12 @@ func PushToWarehouseAddr(ctx context.Context, ws workspace.Workspace, cat worksp
 
 				// we have a ware to push!
 
-				log.Info("mirror", "pushing ware: wareId = %s, warePath = %s, pushAddr = %s", wareId.String(), warePath, pushAddr)
 				hasWare, err := pusher.hasWare(*wareId)
 				if err != nil {
 					return err
 				}
 				if !hasWare {
+					log.Info("mirror", "pushing ware: wareId = %s, warePath = %s, pushAddr = %s", wareId.String(), warePath, pushAddr)
 					err := pusher.pushWare(*wareId, warePath)
 					if err != nil {
 						return err
