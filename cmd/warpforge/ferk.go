@@ -181,5 +181,14 @@ func cmdFerk_selectPlot(c *cli.Context) (plot *wfapi.Plot, plotDir string, err e
 	}
 	m, p, f, _, _, err := dab.FindActionableFromFS(os.DirFS("/"), pth, "", false, dab.ActionableSearch_Any)
 	_, _ = m, f // TODO support these
+	if err != nil {
+		return nil, "", err
+	}
+	if p == nil {
+		return nil, "", serum.Error(wfapi.ECodeMissing,
+			serum.WithMessageTemplate("could not find a plot given path {{path|q}}"),
+			serum.WithDetail("path", pth),
+		)
+	}
 	return p, pth, err
 }

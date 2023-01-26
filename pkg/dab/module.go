@@ -193,12 +193,16 @@ func validateDNS1123Subdomain(value string) error {
 // 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
 // 	- warpforge-error-datatoonew -- if encountering unknown data from a newer version of warpforge!
 //  - warpforge-error-module-invalid -- when module name is invalid
+//  - warpforge-error-missing -- when file does not exist
 func ModuleFromFile(fsys fs.FS, filename string) (*wfapi.Module, error) {
 	const situation = "loading a module"
 	if filepath.IsAbs(filename) {
 		filename = filename[1:]
 	}
 	f, err := fs.ReadFile(fsys, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, serum.Error(wfapi.ECodeMissing, serum.WithCause(err))
+	}
 	if err != nil {
 		return nil, wfapi.ErrorIo(situation, filename, err)
 	}
@@ -229,6 +233,7 @@ func ModuleFromFile(fsys fs.FS, filename string) (*wfapi.Module, error) {
 // 	- warpforge-error-io -- for errors reading from fsys.
 // 	- warpforge-error-serialization -- for errors from try to parse the data as a Plot.
 // 	- warpforge-error-datatoonew -- if encountering unknown data from a newer version of warpforge!
+//  - warpforge-error-missing -- when file does not exist
 func PlotFromFile(fsys fs.FS, filename string) (*wfapi.Plot, error) {
 	const situation = "loading a plot"
 
@@ -236,6 +241,9 @@ func PlotFromFile(fsys fs.FS, filename string) (*wfapi.Plot, error) {
 		filename = filename[1:]
 	}
 	f, err := fs.ReadFile(fsys, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, serum.Error(wfapi.ECodeMissing, serum.WithCause(err))
+	}
 	if err != nil {
 		return nil, wfapi.ErrorIo(situation, filename, err)
 	}

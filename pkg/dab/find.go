@@ -129,14 +129,14 @@ func FindActionableFromFS(
 		if accept&ActionableSearch_Module > 0 {
 			foundPath = filepath.Join(basisPath, remainingSearchPath, "module.wf")
 			m, e2 = ModuleFromFile(fsys, foundPath)
-			if !errors.Is(e2, fs.ErrNotExist) { // notexist is ignored.
+			if serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
 				// Any error that's just just notexist: means our search has blind spots: error out.
 				err = wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", e2)
 				return
 			}
 			// A module may also have a plot next to it; load that eagerly too.
 			p, e2 = PlotFromFile(fsys, filepath.Join(basisPath, remainingSearchPath, "plot.wf"))
-			if !errors.Is(e2, fs.ErrNotExist) {
+			if serum.Code(e2) != wfapi.ECodeMissing {
 				err = wfapi.ErrorSearchingFilesystem("loading plot associated with a module", e2)
 			}
 			return
@@ -145,7 +145,7 @@ func FindActionableFromFS(
 		if accept&ActionableSearch_Plot > 0 {
 			foundPath = filepath.Join(basisPath, remainingSearchPath, "plot.wf")
 			p, e2 = PlotFromFile(fsys, foundPath)
-			if !errors.Is(e2, fs.ErrNotExist) { // notexist is ignored.
+			if serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
 				// Any error that's just just notexist: means our search has blind spots: error out.
 				err = wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", e2)
 				return
