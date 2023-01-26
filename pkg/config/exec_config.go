@@ -19,7 +19,14 @@ func BinPath() (string, error) {
 	// other binaries (runc, rio) will be located here as well
 	path, ok := os.LookupEnv(EnvWarpforgePath)
 	if ok {
-		return path, nil
+		if filepath.IsAbs(path) {
+			return filepath.Clean(path), nil
+		}
+		return "", serum.Error(wfapi.ECodeInitialization,
+			serum.WithMessageTemplate("Environment variable {{env}} must be an absolute path: {{path}}"),
+			serum.WithDetail("env", EnvWarpforgePath),
+			serum.WithDetail("path", path),
+		)
 	}
 	executable, err := os.Executable()
 	if err != nil {

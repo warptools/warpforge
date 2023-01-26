@@ -264,7 +264,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 			WareID: &wfapi.WareID{},
 		}
 
-		path, errRaw := filepath.Abs(basis.Ingest.GitIngest.HostPath)
+		path, errRaw := filepath.Abs(basis.Ingest.GitIngest.HostPath) //FIXME: This will always be relative to os.Getwd
 		if errRaw != nil {
 			return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorIo("failed to convert git host path to absolute path", basis.Ingest.GitIngest.HostPath, errRaw)
 		}

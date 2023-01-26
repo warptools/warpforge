@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,7 +28,7 @@ import (
 func BinPath(bin string) (string, error) {
 	path, override := os.LookupEnv(config.EnvWarpforgePath)
 	if override {
-		abs, err := filepath.Abs(path)
+		abs, err := filepath.Abs(path) // FIXME: relies on os.Getwd
 		if err != nil {
 			return "", serum.Error(wfapi.ECodeIo,
 				serum.WithMessageTemplate("failed to canonicalize {{env}}: {{path}}"),
@@ -93,6 +94,17 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 	return *plotCapsule.Plot, nil
 }
 
+// canonicalize is like filepath.Abs but assumes we already have a working directory path which is absolute
+func canonicalizePath(pwd, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	if !filepath.IsAbs(pwd) {
+		panic(fmt.Sprintf("working directory must be an absolute path: %q", pwd))
+	}
+	return filepath.Join(pwd, path)
+}
+
 // ExecModule executes the given module file with the default plot file in the same directory.
 //
 // Errors:
@@ -110,7 +122,6 @@ func PlotFromFile(filename string) (wfapi.Plot, error) {
 //    - warpforge-error-workspace -- when opening the workspace set fails
 //    - warpforge-error-datatoonew -- when error is too new
 //    - warpforge-error-searching-filesystem -- unexpected error traversing filesystem
-//    - warpforge-error-path-absolute -- fail to canonicalize module path
 //    - warpforge-error-initialization -- fail to get working directory or executable path
 func ExecModule(ctx context.Context, wss workspace.WorkspaceSet, pltCfg wfapi.PlotExecConfig, fileName string) (result wfapi.PlotResults, err error) {
 	ctx, span := tracing.StartFn(ctx, "execModule")
@@ -122,14 +133,12 @@ func ExecModule(ctx context.Context, wss workspace.WorkspaceSet, pltCfg wfapi.Pl
 	if _, err := dab.ModuleFromFile(fsys, fileName); err != nil {
 		return result, err
 	}
-	modulePath := filepath.Dir(fileName)
-	modulePath, xerr := filepath.Abs(modulePath)
-	if xerr != nil {
-		return result, serum.Error(wfapi.ECodePathAbs, serum.WithCause(xerr),
-			serum.WithMessageTemplate("unable to canonicalize module path {{path|q}}"),
-			serum.WithDetail("path", fileName),
-		)
+
+	execCfg, err := config.PlotExecConfig()
+	if err != nil {
+		return result, err
 	}
+	modulePath := canonicalizePath(execCfg.WorkingDirectory, filepath.Dir(fileName))
 
 	if wss == nil {
 		var werr error
@@ -144,12 +153,6 @@ func ExecModule(ctx context.Context, wss workspace.WorkspaceSet, pltCfg wfapi.Pl
 		return result, werr
 	}
 
-	execCfg, err := config.PlotExecConfig()
-	if err != nil {
-		return result, err
-	}
-	// TODO: Eventually we need to be more clear about what is relative to working directory and what is relative to modules
-	execCfg.WorkingDirectory = modulePath
 	result, werr = plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
 
 	if werr != nil {

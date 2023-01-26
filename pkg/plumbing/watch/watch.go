@@ -196,17 +196,15 @@ func generateSocketPath(path string) (string, error) {
 	return sockPath, nil
 }
 
-// absPath is an alias for filepath.Abs with warpforge error codes
-//
-// Errors:
-//
-//   - warpforge-error-io -- unable to convert path to absolute
-func absPath(path string) (string, error) {
-	result, err := filepath.Abs(path)
-	if err != nil {
-		return result, wfapi.ErrorIo("unable to get absolute path", path, err)
+// canonicalize is like filepath.Abs but assumes we already have a working directory path which is absolute
+func canonicalizePath(pwd, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
 	}
-	return result, nil
+	if !filepath.IsAbs(pwd) {
+		panic(fmt.Sprintf("working directory must be an absolute path: %q", pwd))
+	}
+	return filepath.Join(pwd, path)
 }
 
 // Run will execute the watch command
@@ -220,14 +218,17 @@ func absPath(path string) (string, error) {
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
+//    - warpforge-error-initialization -- unable to get working directory or executable path
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 
-	modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
-	modulePathAbs, err := absPath(modulePath)
-	if err != nil {
-		return err
+	wd, xerr := os.Getwd()
+	if xerr != nil {
+		return serum.Error(wfapi.ECodeInitialization, serum.WithCause(xerr), serum.WithMessageLiteral("unable to get working directory"))
 	}
+
+	modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
+	modulePathAbs := canonicalizePath(wd, modulePath)
 
 	// TODO: currently we read the module/plot from the provided path.
 	// instead, we should read it from the git cache dir
@@ -261,10 +262,7 @@ func (c *Config) Run(ctx context.Context) error {
 
 	srv := server{status: statusRunning}
 	if c.Socket {
-		absPath, absErr := filepath.Abs(c.Path)
-		if absErr != nil {
-			return wfapi.ErrorIo("could not get absolute path", c.Path, absErr)
-		}
+		absPath := canonicalizePath(wd, c.Path)
 		sockPath, err := generateSocketPath(absPath)
 		if err != nil {
 			return err
