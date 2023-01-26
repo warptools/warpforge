@@ -122,9 +122,8 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 		"cache",
 		string(wareId.Packtype),
 		"fileset",
-		wareId.Hash[0:3],
-		wareId.Hash[3:6],
-		wareId.Hash), nil
+		wareId.Subpath(),
+	), nil
 }
 
 // Returns the path to a ware within the workspace's warehouse directory
@@ -137,12 +136,9 @@ func (ws *Workspace) WarePath(wareId wfapi.WareID) (string, error) {
 	}
 	return filepath.Join(
 		"/",
-		ws.rootPath,
-		".warpforge",
-		"warehouse",
-		wareId.Hash[0:3],
-		wareId.Hash[3:6],
-		wareId.Hash), nil
+		ws.WarehousePath(),
+		wareId.Subpath(),
+	), nil
 }
 
 // IsRootWorkspace returns true if the workspace is a root workspace
