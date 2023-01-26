@@ -9,6 +9,7 @@ import (
 
 	"github.com/serum-errors/go-serum"
 
+	"github.com/warptools/warpforge/pkg/dab"
 	_ "github.com/warptools/warpforge/pkg/testutil"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -118,6 +119,24 @@ func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 		"cache",
 		string(wareId.Packtype),
 		"fileset",
+		wareId.Hash[0:3],
+		wareId.Hash[3:6],
+		wareId.Hash), nil
+}
+
+// Returns the path to a ware within the workspace's warehouse directory
+// Errors:
+//
+//    - warpforge-error-wareid-invalid -- when a malformed WareID is provided
+func (ws *Workspace) WarePath(wareId wfapi.WareID) (string, error) {
+	if len(wareId.Hash) < 7 {
+		return "", wfapi.ErrorWareIdInvalid(wareId)
+	}
+	return filepath.Join(
+		"/",
+		ws.rootPath,
+		".warpforge",
+		"warehouse",
 		wareId.Hash[0:3],
 		wareId.Hash[3:6],
 		wareId.Hash), nil
@@ -409,4 +428,15 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error)
 func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
 	path := filepath.Join("/", ws.InternalPath(), "warehouse")
 	return wfapi.WarehouseAddr("ca+file://" + path)
+}
+
+// GetMirroringConfig will return the MirroringConfig map for this workspace
+// which is read from the .warpforge/mirroring.json config file.
+//
+// Errors:
+//
+// 	- warpforge-error-io -- for errors reading from fsys.
+// 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
+func (ws *Workspace) GetMirroringConfig() (wfapi.MirroringConfig, error) {
+	return dab.MirroringConfigFromFile(ws.fsys, filepath.Join(ws.InternalPath(), dab.MagicFilename_MirroringConfig))
 }

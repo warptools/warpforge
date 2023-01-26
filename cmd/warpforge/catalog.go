@@ -21,6 +21,8 @@ import (
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/cataloghtml"
 	"github.com/warptools/warpforge/pkg/dab"
+	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/mirroring"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
@@ -139,6 +141,15 @@ var catalogCmdDef = cli.Command{
 					Usage: "URL for warehouse to use for download links",
 				},
 			},
+		},
+		{
+			Name:  "mirror",
+			Usage: "Mirror the contents of a catalog to remote warehouses",
+			Action: util.ChainCmdMiddleware(cmdMirror,
+				util.CmdMiddlewareLogging,
+				util.CmdMiddlewareTracingConfig,
+				util.CmdMiddlewareTracingSpan,
+			),
 		},
 	},
 }
@@ -725,4 +736,35 @@ func cmdGenerateHtml(c *cli.Context) error {
 	fmt.Printf("published HTML for catalog %q to %s\n", catalogName, outputPath)
 
 	return nil
+}
+
+func cmdMirror(c *cli.Context) error {
+	ctx := c.Context
+	logger := logging.Ctx(ctx)
+
+	wsSet, err := util.OpenWorkspaceSet()
+	if err != nil {
+		return err
+	}
+
+	catalogName := c.String("name")
+	cat, err := wsSet.Root().OpenCatalog(catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to open catalog %q: %s", catalogName, err)
+	}
+
+	configs, err := wsSet.Root().GetMirroringConfig()
+	if err != nil {
+		return err
+	}
+
+	for wareAddr, cfg := range configs.Values {
+		logger.Info("mirror", "mirroring to warehouse %q", wareAddr)
+		err = mirroring.PushToWarehouseAddr(ctx, *wsSet.Root(), cat, wareAddr, cfg)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }

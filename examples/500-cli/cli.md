@@ -392,6 +392,31 @@ warpforge catalog ls
 warpforge catalog --name=test generate-html
 ```
 
+### Mirror a Catalog
+
+The base workspace does not have mirror information to avoid using the network by default. We will override
+the `_mirrors.json` file to test mirroring to a mock remote warehouse.
+
+[testmark]:# (base-workspace/then-mirror/fs/.warpforge/catalogs/test/warpsys.org/busybox/_mirrors.json)
+```json
+{
+	"catalogmirrors.v1": {
+		"byModule": {
+			"warpsys.org/busybox": {
+				"tar": ["ca+mock://example.warp.tools"]
+			}
+		}
+	}
+}
+```
+
+Now we can test mirroring:
+
+[testmark]:# (base-workspace/then-mirror/sequence)
+```
+warpforge catalog --name=test mirror
+```
+
 ### Add an Item to a Catalog
 
 #### tar
@@ -648,7 +673,7 @@ These tests require a workspace with a catalog entry,  which is setup here:
 {
 	"catalogmirrors.v1": {
 		"byWare": {
-		}
+		},
 	}
 }
 ```
@@ -669,7 +694,18 @@ These tests require a workspace with a catalog entry,  which is setup here:
 this file marks the workspace as a root workspace
 ```
 
-
+[testmark]:# (base-workspace/fs/.warpforge/config/mirroring.json)
+```
+{
+	"mirroring.v1": {
+		"ca+mock://mock.warp.tools": {
+			"pushConfig": {
+				"mock": {}
+			}
+		}
+	}
+}
+```
 
 [testmark]:# (base-workspace/script)
 ```

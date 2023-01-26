@@ -327,6 +327,8 @@ func makeWareMount(ctx context.Context,
 			} else {
 				// this is a network address, pass it to rio as is
 				src = string(v)
+				// HACK
+				src = strings.Replace(src, "ca+s3", "ca+https", 1)
 			}
 		}
 	}

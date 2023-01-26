@@ -2,6 +2,7 @@ package wfapi
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 type WareID struct {
@@ -11,6 +12,10 @@ type WareID struct {
 
 func (w WareID) String() string {
 	return fmt.Sprintf("%s:%s", w.Packtype, w.Hash)
+}
+
+func (w WareID) Subpath() string {
+	return filepath.Join(w.Hash[0:3], w.Hash[3:6], w.Hash)
 }
 
 type Packtype string
