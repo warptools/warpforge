@@ -74,6 +74,7 @@ func cmdRun(c *cli.Context) error {
 					return err
 				}
 				if filepath.Base(path) == dab.MagicFilename_Module {
+					path = filepath.Join(cwd, path) // need to provide absolute path
 					if c.Bool("verbose") {
 						logger.Debug("", "executing %q", path)
 					}
