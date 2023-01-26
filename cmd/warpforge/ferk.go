@@ -14,6 +14,7 @@ import (
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
 	"github.com/warptools/warpforge/pkg/config"
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/workspace"
@@ -32,7 +33,14 @@ var ferkCmdDef = cli.Command{
 		&cli.StringFlag{
 			Name:    "plot",
 			Aliases: []string{"p"},
-			Usage:   "Specify a plot file to use.  If not set, a very minimal default plot with a simple base image will be used.",
+			Usage:   "Specify a plot file or module directory to use.  The current directory is used by default.  If the current directory isn't a module, or if this flag is explicitly set to empty string, a very minimal default plot with a simple base image will be used.",
+			Value:   ".",
+		},
+		&cli.StringFlag{
+			Name:    "step",
+			Aliases: []string{"s"},
+			Usage:   "Name a step in the plot that we want to run interactively.  Any other steps leading up to it will be evaluated noninteractively.",
+			Value:   "ferk",
 		},
 		&cli.StringFlag{
 			Name:  "rootfs",
@@ -57,41 +65,32 @@ func cmdFerk(c *cli.Context) error {
 	var err error
 	ctx := c.Context
 	log := logging.Ctx(ctx)
-	plot := wfapi.Plot{}
-	var plotFile string
-	if c.String("plot") != "" {
-		plotFile := c.String("plot")
-		// plot was provided, load from file
-		plot, err = util.PlotFromFile(plotFile)
-		if err != nil {
-			return serum.Error(wfapi.ECodePlotInvalid, serum.WithMessageTemplate("plot file {{file}} not parsed"), serum.WithCause(err), serum.WithDetail("file", plotFile))
-		}
-	} else {
-		// no plot provided, generate the basic default plot from json template
-		_, err := ipld.Unmarshal([]byte(util.FerkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
-		if err != nil {
-			return wfapi.ErrorSerialization("error parsing template plot", err)
-		}
 
-		// set a fake plotFile value
-		plotFile = "plot.wf"
-
-		// convert rootfs input string to PlotInput
-		// this requires additional quoting to be parsed correctly by ipld
-		if c.String("rootfs") != "" {
-			// custom value provided, override default
-			rootfsStr := fmt.Sprintf("\"%s\"", c.String("rootfs"))
-			rootfs := wfapi.PlotInput{}
-			_, err := ipld.Unmarshal([]byte(rootfsStr), json.Decode, &rootfs, wfapi.TypeSystem.TypeByName("PlotInput"))
-			if err != nil {
-				return wfapi.ErrorSerialization("error parsing rootfs input", err)
-			}
-			plot.Inputs.Values["rootfs"] = rootfs
-		}
+	plot, plotDir, err := cmdFerk_selectPlot(c)
+	if err != nil {
+		return err
 	}
 
-	if _, exists := plot.Steps.Values["ferk"]; !exists {
-		return wfapi.ErrorPlotInvalid(`requires a step named "ferk"`)
+	stepName := c.String("step")
+	// FUTURE: this isn't supporting nested subplots, and probably should.
+	if _, exists := plot.Steps.Values[wfapi.StepName(stepName)]; !exists {
+		return serum.Error(wfapi.ECodeArgument,
+			serum.WithMessageTemplate("the step requested for interactivity -- {{step|q}} -- is not present in the plot"),
+			serum.WithDetail("step", stepName),
+		)
+	}
+
+	// apply rootfs flag if applicable
+	if c.String("rootfs") != "" {
+		// custom value provided, override default
+		rootfsStr := fmt.Sprintf("\"%s\"", c.String("rootfs"))
+		rootfs := wfapi.PlotInput{}
+		// TODO this is a silly way to go about this: assigning the string to a representation-level builder is much more direct and correct.
+		_, err = ipld.Unmarshal([]byte(rootfsStr), json.Decode, &rootfs, wfapi.TypeSystem.TypeByName("PlotInput"))
+		if err != nil {
+			return wfapi.ErrorSerialization("error parsing rootfs input", err)
+		}
+		plot.Inputs.Values["rootfs"] = rootfs
 	}
 
 	// set command to execute
@@ -134,7 +133,6 @@ func cmdFerk(c *cli.Context) error {
 		},
 	}
 
-	plotDir := filepath.Dir(plotFile)
 	exCfg, err := config.PlotExecConfig(&plotDir)
 	if err != nil {
 		return err
@@ -155,10 +153,33 @@ func cmdFerk(c *cli.Context) error {
 		log.Debug("", "ws %d: %q -> %t", idx, rp, err == nil)
 	}
 
-	_, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
+	_, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: plot}, pltCfg)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func cmdFerk_selectPlot(c *cli.Context) (plot *wfapi.Plot, plotDir string, err error) {
+	// If emptystring plot: make a default one.
+	if c.String("plot") == "" {
+		_, err = ipld.Unmarshal([]byte(util.FerkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+		if err != nil {
+			panic(err) // This is a fixed value at compile time.  It can't fail unless there's a bug.
+		}
+		return
+	}
+
+	// Look for module and plot files.
+	// If we received a filename: expect that to be a plot.
+	//   (In this case, we'll have no idea what a module name is!)
+	// If it's a dir: look for a module, and then look for its plot.
+	pth, err := filepath.Abs(c.String("plot"))
+	if err != nil {
+		return
+	}
+	m, p, f, _, _, err := dab.FindActionableFromFS(os.DirFS("/"), pth, "", false, dab.ActionableSearch_Any)
+	_, _ = m, f // TODO support these
+	return p, pth, err
 }

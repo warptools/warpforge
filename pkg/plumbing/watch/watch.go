@@ -378,7 +378,7 @@ func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string
 		return result, err
 	}
 	exCfg.WorkingDirectory = moduleDirAbs
-	result, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
+	result, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: plot}, pltCfg)
 
 	if err != nil {
 		return result, wfapi.ErrorPlotExecutionFailed(err)

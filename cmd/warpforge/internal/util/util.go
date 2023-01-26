@@ -128,7 +128,7 @@ func ExecModule(ctx context.Context, wss workspace.WorkspaceSet, pltCfg wfapi.Pl
 		return result, werr
 	}
 
-	result, werr = plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
+	result, werr = plotexec.Exec(ctx, execCfg, wss, wfapi.PlotCapsule{Plot: plot}, pltCfg)
 
 	if werr != nil {
 		return result, wfapi.ErrorPlotExecutionFailed(werr)

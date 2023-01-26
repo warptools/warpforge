@@ -98,17 +98,15 @@ func cmdStatus(c *cli.Context) error {
 	fsys := os.DirFS("/")
 
 	// check if pwd is a module, read module and set flag
-	isModule := false
-	var module wfapi.Module
+	var module *wfapi.Module
 	if _, err := os.Stat(filepath.Join(cwd, dab.MagicFilename_Module)); err == nil {
-		isModule = true
 		module, err = dab.ModuleFromFile(fsys, filepath.Join(cwd, dab.MagicFilename_Module))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
 	}
 
-	if isModule {
+	if module != nil {
 		fmt.Fprintf(c.App.Writer, "Module %q:\n", module.Name)
 	} else {
 		fmt.Fprintf(c.App.Writer, "No module in this directory.\n")
@@ -118,7 +116,7 @@ func cmdStatus(c *cli.Context) error {
 	var plot wfapi.Plot
 	hasPlot := false
 	_, err = os.Stat(filepath.Join(cwd, dab.MagicFilename_Plot))
-	if isModule && err == nil {
+	if module != nil && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
 		plot, err = util.PlotFromFile(filepath.Join(cwd, dab.MagicFilename_Plot))
@@ -175,7 +173,7 @@ func cmdStatus(c *cli.Context) error {
 		if mountCount > 0 {
 			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount inputs and is not hermetic!\n", mountCount)
 		}
-	} else if isModule {
+	} else if module != nil {
 		// directory is a module, but has no plot
 		fmt.Fprintf(c.App.Writer, "\tNo plot file for module.\n")
 	}
@@ -189,7 +187,7 @@ func cmdStatus(c *cli.Context) error {
 
 	// handle special case for pwd
 	fmt.Fprintf(c.App.Writer, "\t%s (pwd", cwd)
-	if isModule {
+	if module != nil {
 		fmt.Fprintf(c.App.Writer, ", module")
 	}
 	// check if it's a workspace
@@ -249,7 +247,7 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, ")\n")
 	}
 
-	if isModule && hasPlot {
+	if module != nil && hasPlot {
 		fmtBold.Fprintf(c.App.Writer, "\nYou can evaluate this module with the `%s run` command.\n", os.Args[0])
 	}
 
