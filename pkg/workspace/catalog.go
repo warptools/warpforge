@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -41,15 +43,30 @@ type Catalog struct {
 // Note that you can get a similar object through `Workspace.OpenCatalog()`,
 // which is often more convenient.
 //
+// Will return an empty catalog object if the directory does not exist.
+//
 // Errors:
 //
 // 	- warpforge-error-io -- when building the module list fails due to I/O error
-// 	- warpforge-error-catalog-invalid -- when the catalog does not exist
+// 	- warpforge-error-catalog-invalid -- when the catalog file exists but cannot be opened
 func OpenCatalog(fsys fs.FS, path string) (Catalog, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
 	// check that the catalog path exists
 	// FUTURE: We should add more indicator files here, to help avoid some forms of possible user error and give better messages.
-	if _, errRaw := fs.Stat(fsys, path); os.IsNotExist(errRaw) {
-		return Catalog{}, wfapi.ErrorCatalogInvalid(path, "catalog does not exist")
+	if _, err := fs.Stat(fsys, path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return Catalog{
+				fsys: fsys,
+				path: path,
+			}, nil
+		}
+		return Catalog{}, serum.Error(wfapi.ECodeCatalogInvalid,
+			serum.WithMessageTemplate("catalog not found at path {{path | q}}"),
+			serum.WithDetail("path", path),
+			serum.WithCause(err),
+		)
 	}
 
 	cat := Catalog{
@@ -58,8 +75,7 @@ func OpenCatalog(fsys fs.FS, path string) (Catalog, error) {
 	}
 
 	// build a list of the modules in this catalog
-	err := cat.updateModuleList()
-	if err != nil {
+	if err := cat.updateModuleList(); err != nil {
 		return Catalog{}, err
 	}
 
@@ -173,10 +189,12 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 
 	// release was found in catalog, attempt to open release file
 	releasePath := cat.releaseFilePath(ref)
+	fmt.Println(releasePath)
 	releaseBytes, errRaw := fs.ReadFile(cat.fsys, releasePath)
 	if os.IsNotExist(errRaw) {
 		return nil, nil
-	} else if errRaw != nil {
+	}
+	if errRaw != nil {
 		return nil, wfapi.ErrorIo("failed to read catalog release file", releasePath, errRaw)
 	}
 
@@ -249,9 +267,8 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	if mirror.ByModule != nil {
 		if len(mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype]) > 0 {
 			return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
-		} else {
-			return &wareId, nil, nil
 		}
+		return &wareId, nil, nil
 	}
 
 	// we have exhausted our options, no mirror exists

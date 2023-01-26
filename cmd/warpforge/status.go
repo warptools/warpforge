@@ -12,8 +12,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
-	"github.com/warptools/warpforge/pkg/formulaexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -35,11 +35,6 @@ func cmdStatus(c *cli.Context) error {
 	verbose := c.Bool("verbose")
 	ctx := c.Context
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not get current directory")
-	}
-
 	// display version
 	if verbose {
 		fmt.Fprintf(c.App.Writer, "Warpforge Version: %s\n\n", VERSION)
@@ -52,10 +47,15 @@ func cmdStatus(c *cli.Context) error {
 		fmt.Fprintf(c.App.Writer, "\nPlugin Info:\n")
 	}
 
-	binPath, err := formulaexec.GetBinPath()
+	binPath, err := config.BinPath()
 	if err != nil {
-		return fmt.Errorf("could not get binPath: %s", err)
+		return err
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
 	if verbose {
 		fmt.Fprintf(c.App.Writer, "binPath = %s\n", binPath)
 	}
@@ -96,12 +96,13 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	fsys := os.DirFS("/")
+
 	// check if pwd is a module, read module and set flag
 	isModule := false
 	var module wfapi.Module
-	if _, err := os.Stat(filepath.Join(pwd, dab.MagicFilename_Module)); err == nil {
+	if _, err := os.Stat(filepath.Join(cwd, dab.MagicFilename_Module)); err == nil {
 		isModule = true
-		module, err = dab.ModuleFromFile(fsys, filepath.Join(pwd, dab.MagicFilename_Module))
+		module, err = dab.ModuleFromFile(fsys, filepath.Join(cwd, dab.MagicFilename_Module))
 		if err != nil {
 			return fmt.Errorf("failed to open module file: %s", err)
 		}
@@ -116,11 +117,11 @@ func cmdStatus(c *cli.Context) error {
 	// display module and plot info
 	var plot wfapi.Plot
 	hasPlot := false
-	_, err = os.Stat(filepath.Join(pwd, dab.MagicFilename_Plot))
+	_, err = os.Stat(filepath.Join(cwd, dab.MagicFilename_Plot))
 	if isModule && err == nil {
 		// module.wf and plot.wf exists, read the plot
 		hasPlot = true
-		plot, err = util.PlotFromFile(filepath.Join(pwd, dab.MagicFilename_Plot))
+		plot, err = util.PlotFromFile(filepath.Join(cwd, dab.MagicFilename_Plot))
 		if err != nil {
 			return fmt.Errorf("failed to open plot file: %s", err)
 		}
@@ -144,9 +145,13 @@ func cmdStatus(c *cli.Context) error {
 		for _, input := range plot.Inputs.Values {
 			if input.Basis().Mount != nil {
 				mountCount++
-			} else if input.Basis().Ingest != nil {
+				continue
+			}
+			if input.Basis().Ingest != nil {
 				ingestCount++
-			} else if input.Basis().CatalogRef != nil {
+				continue
+			}
+			if input.Basis().CatalogRef != nil {
 				catalogRefCount++
 				ware, _, err := wss.GetCatalogWare(*input.PlotInputSimple.CatalogRef)
 				if err != nil {
@@ -154,9 +159,10 @@ func cmdStatus(c *cli.Context) error {
 				}
 				if ware == nil {
 					fmt.Fprintf(c.App.Writer, "\tMissing catalog item: %q.\n", input.Basis().CatalogRef.String())
-				} else if err == nil {
-					resolvedCatalogRefCount++
+					continue
 				}
+				resolvedCatalogRefCount++
+				continue
 			}
 		}
 		fmt.Fprintf(c.App.Writer, "\tPlot contains %d catalog inputs. %d/%d catalog inputs resolved successfully.\n", catalogRefCount, resolvedCatalogRefCount, catalogRefCount)
@@ -169,7 +175,6 @@ func cmdStatus(c *cli.Context) error {
 		if mountCount > 0 {
 			fmt.Fprintf(c.App.Writer, "\tWarning: plot contains %d mount inputs and is not hermetic!\n", mountCount)
 		}
-
 	} else if isModule {
 		// directory is a module, but has no plot
 		fmt.Fprintf(c.App.Writer, "\tNo plot file for module.\n")
@@ -183,20 +188,20 @@ func cmdStatus(c *cli.Context) error {
 	}
 
 	// handle special case for pwd
-	fmt.Fprintf(c.App.Writer, "\t%s (pwd", pwd)
+	fmt.Fprintf(c.App.Writer, "\t%s (pwd", cwd)
 	if isModule {
 		fmt.Fprintf(c.App.Writer, ", module")
 	}
 	// check if it's a workspace
-	if _, err := os.Stat(filepath.Join(pwd, ".warpforge")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, ".warpforge")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", workspace")
 	}
 	// check if it's a root workspace
-	if _, err := os.Stat(filepath.Join(pwd, ".warpforge/root")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, ".warpforge/root")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", root workspace")
 	}
 	// check if it's a git repo
-	if _, err := os.Stat(filepath.Join(pwd, ".git")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, ".git")); !os.IsNotExist(err) {
 		fmt.Fprintf(c.App.Writer, ", git repo")
 	}
 
@@ -207,7 +212,7 @@ func cmdStatus(c *cli.Context) error {
 		fs, subPath := ws.Path()
 		path := fmt.Sprintf("%s%s", fs, subPath)
 
-		if path == pwd {
+		if path == cwd {
 			// we handle pwd earlier, ignore
 			continue
 		}

@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"unicode"
 
@@ -88,4 +89,18 @@ func Printable(s string) string {
 		}
 		return -1
 	}, s)
+}
+
+func StartFn(ctx context.Context, defaultName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	pc, fname, line, ok := runtime.Caller(1)
+	fn := runtime.FuncForPC(pc)
+	if ok && fn != nil {
+		opts = append(opts, trace.WithAttributes(
+			attribute.String("filename", fname),
+			attribute.Int("line", line),
+		))
+		return TracerFromCtx(ctx).Start(ctx, fn.Name(), opts...)
+	}
+
+	return TracerFromCtx(ctx).Start(ctx, defaultName, opts...)
 }

@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/plotexec"
@@ -195,6 +196,17 @@ func generateSocketPath(path string) (string, error) {
 	return sockPath, nil
 }
 
+// canonicalize is like filepath.Abs but assumes we already have a working directory path which is absolute
+func canonicalizePath(pwd, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	if !filepath.IsAbs(pwd) {
+		panic(fmt.Sprintf("working directory must be an absolute path: %q", pwd))
+	}
+	return filepath.Join(pwd, path)
+}
+
 // Run will execute the watch command
 //
 // Errors:
@@ -206,8 +218,18 @@ func generateSocketPath(path string) (string, error) {
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
+//    - warpforge-error-initialization -- unable to get working directory or executable path
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
+
+	wd, xerr := os.Getwd()
+	if xerr != nil {
+		return serum.Error(wfapi.ECodeInitialization, serum.WithCause(xerr), serum.WithMessageLiteral("unable to get working directory"))
+	}
+
+	modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
+	modulePathAbs := canonicalizePath(wd, modulePath)
+
 	// TODO: currently we read the module/plot from the provided path.
 	// instead, we should read it from the git cache dir
 	plot, err := dab.PlotFromFile(os.DirFS(c.Path), dab.MagicFilename_Plot)
@@ -240,10 +262,7 @@ func (c *Config) Run(ctx context.Context) error {
 
 	srv := server{status: statusRunning}
 	if c.Socket {
-		absPath, absErr := filepath.Abs(c.Path)
-		if absErr != nil {
-			return wfapi.ErrorIo("could not get absolute path", c.Path, absErr)
-		}
+		absPath := canonicalizePath(wd, c.Path)
 		sockPath, err := generateSocketPath(absPath)
 		if err != nil {
 			return err
@@ -284,6 +303,8 @@ func (c *Config) Run(ctx context.Context) error {
 			r, err := git.CloneContext(gitCtx, memory.NewStorage(), nil, &git.CloneOptions{
 				URL: "file://" + path,
 			})
+			// this is where things are kind of weird. We already initialized a lot of stuff but the new clone could have
+			// different plot/ingests/workspace stack etc. Currently we handle as few of these potential inconsistencies as possible.
 			tracing.EndWithStatus(gitSpan, err)
 			if err != nil {
 				return serum.Error(wfapi.ECodeGit,
@@ -309,8 +330,7 @@ func (c *Config) Run(ctx context.Context) error {
 				ingestCache[path] = hash
 				srv.status = statusRunning
 
-				modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
-				_, err := execModule(innerCtx, c.PlotConfig, modulePath)
+				_, err := exec(innerCtx, c.PlotConfig, modulePathAbs)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
 					srv.status = statusFailed
@@ -325,15 +345,12 @@ func (c *Config) Run(ctx context.Context) error {
 	}
 }
 
-// DEPRECATED: This should be refactored significantly in the near future to remove reliance on PWD in plot exec.
-// ExecModule executes the given module file with the default plot file in the same directory.
-// WARNING: This function calls Chdir and may not change back on errors
+// exec executes default plot file in the same directory.
 //
 // Errors:
 //
 //    - warpforge-error-catalog-invalid --
 //    - warpforge-error-catalog-parse --
-//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
 //    - warpforge-error-git --
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
 //    - warpforge-error-catalog-missing-entry --
@@ -341,53 +358,41 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-workspace -- when opening the workspace set fails
 //    - warpforge-error-module-invalid -- when module name is invalid
-func execModule(ctx context.Context, config wfapi.PlotExecConfig, modulePath string) (wfapi.PlotResults, error) {
+//    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
+//    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
+//    - warpforge-error-initialization -- when working directory or binary path cannot be found
+func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()
 	result := wfapi.PlotResults{}
 
-	pwd, nerr := os.Getwd()
-	if nerr != nil {
-		return result, serum.Errorf(wfapi.ECodeUnknown, "unable to get current directory: %w", nerr)
-	}
-
-	modulePathAbs, err := filepath.Abs(modulePath)
-	if err != nil {
-		return result, wfapi.ErrorIo("unable to get absolute path", modulePathAbs, err)
-	}
 	// parse the module, even though it is not currently used
-	if _, werr := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs[1:]); werr != nil {
-		return result, werr
+	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs[1:]); err != nil {
+		return result, err
 	}
 
-	plot, werr := dab.PlotFromFile(os.DirFS("/"), filepath.Join(filepath.Dir(modulePathAbs), dab.MagicFilename_Plot)[1:])
-	if werr != nil {
-		return result, werr
-	}
-
-	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", pwd[1:])
+	moduleDirAbs := filepath.Dir(modulePathAbs)
+	plotPath := filepath.Join(moduleDirAbs, dab.MagicFilename_Plot)
+	plot, err := dab.PlotFromFile(os.DirFS("/"), plotPath[1:])
 	if err != nil {
-		return result, wfapi.ErrorWorkspace(pwd, err)
+		return result, err
 	}
 
-	tmpDir := filepath.Dir(modulePathAbs)
-	// FIXME: it would be nice if we could avoid changing directories.
-	//  This generally means removing Getwd calls from pkg libs
-	if nerr := os.Chdir(tmpDir); nerr != nil {
-		return result, wfapi.ErrorIo("cannot change directory", tmpDir, nerr)
+	wss, err := workspace.FindWorkspaceStack(os.DirFS("/"), "", modulePathAbs)
+	if err != nil {
+		return result, err
 	}
-
-	result, werr = plotexec.Exec(ctx, wss, wfapi.PlotCapsule{Plot: &plot}, config)
-
-	if nerr := os.Chdir(pwd); nerr != nil {
-		return result, wfapi.ErrorIo("cannot return to directory", pwd, nerr)
+	exCfg, err := config.PlotExecConfig()
+	if err != nil {
+		return result, err
 	}
+	exCfg.WorkingDirectory = moduleDirAbs
+	result, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
 
-	if werr != nil {
-		return result, wfapi.ErrorPlotExecutionFailed(werr)
+	if err != nil {
+		return result, wfapi.ErrorPlotExecutionFailed(err)
 	}
 
 	return result, nil

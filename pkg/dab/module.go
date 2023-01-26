@@ -3,6 +3,7 @@ package dab
 import (
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -193,7 +194,7 @@ func validateDNS1123Subdomain(value string) error {
 //  - warpforge-error-module-invalid -- when module name is invalid
 func ModuleFromFile(fsys fs.FS, filename string) (wfapi.Module, error) {
 	const situation = "loading a module"
-	if strings.HasPrefix(filename, "/") {
+	if filepath.IsAbs(filename) {
 		filename = filename[1:]
 	}
 	f, err := fs.ReadFile(fsys, filename)
@@ -230,7 +231,7 @@ func ModuleFromFile(fsys fs.FS, filename string) (wfapi.Module, error) {
 func PlotFromFile(fsys fs.FS, filename string) (wfapi.Plot, error) {
 	const situation = "loading a plot"
 
-	if strings.HasPrefix(filename, "/") {
+	if filepath.IsAbs(filename) {
 		filename = filename[1:]
 	}
 	f, err := fs.ReadFile(fsys, filename)

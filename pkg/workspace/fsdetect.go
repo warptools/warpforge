@@ -85,6 +85,9 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 
 // statDir is fs.Stat but returns fs.ErrNotExist if the path is not a dir
 func statDir(fsys fs.FS, path string) (fs.FileInfo, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
 	fi, err := fs.Stat(fsys, path)
 	if err != nil {
 		return fi, err
@@ -162,6 +165,9 @@ func FindRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Worksp
 // checkIsRootWorkspace returns true if the workspace contains the magic "root" file.
 func checkIsRootWorkspace(fsys fs.FS, rootPath string) bool {
 	// check if the root marker file exists
+	if filepath.IsAbs(rootPath) {
+		rootPath = rootPath[1:]
+	}
 	_, err := fs.Stat(fsys, filepath.Join(rootPath, magicWorkspaceDirname, "root"))
 	return err == nil
 }
@@ -207,4 +213,23 @@ func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) error {
 		}
 	}
 	return nil
+}
+
+// CreateOrOpenHomeWorkspace will attempt to create the home workspace if it does not exist
+//
+// Errors:
+//
+//    - warpforge-error-io -- when creating the workspace fails
+//    - warpforge-error-workspace -- when workspace directory fails to open
+func CreateOrOpenHomeWorkspace() (*Workspace, error) {
+	hws, err := OpenHomeWorkspace(os.DirFS("/"))
+	if err == nil {
+		return hws, nil
+	}
+
+	path := filepath.Join("/", homedir, magicWorkspaceDirname)
+	if err := PlaceWorkspace(path, SetRootWorkspaceOpt()); err != nil {
+		return nil, err
+	}
+	return OpenHomeWorkspace(os.DirFS("/"))
 }

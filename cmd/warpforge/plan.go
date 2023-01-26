@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,40 +27,8 @@ var planCmdDef = cli.Command{
 	},
 }
 
-func cmdPlanGenerate(c *cli.Context) error {
-	logger := logging.Ctx(c.Context)
-	pwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not get current directory")
-	}
-
-	input := c.Args().First()
-
-	results := map[string][]byte{}
-	if !c.Args().Present() {
-		// no args, generate on current directory
-		results, err = util.GenerateDir(pwd)
-	} else if filepath.Base(input) == "..." {
-		// recursively generate plots
-		results, err = util.GenerateDirRecusive(filepath.Dir(c.Args().First()))
-	} else {
-		// input is a file or directory to generate
-		info, err := os.Stat(input)
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			results, err = util.GenerateDir(input)
-		} else {
-			// this is a file, so put one item into our results map
-			results[input], err = util.GenerateFile(input)
-		}
-	}
-
-	if err != nil {
-		return err
-	}
-
+func writePlanResults(ctx context.Context, results map[string][]byte) error {
+	logger := logging.Ctx(ctx)
 	for path, bytes := range results {
 		// determine the output path for this item
 		// this is done by replacing the extension with .wf
@@ -69,9 +37,55 @@ func cmdPlanGenerate(c *cli.Context) error {
 		fnameSplit := strings.Split(fname, ".")
 		outputFile := filepath.Join(dir, fnameSplit[0]+".wf")
 
-		logger.Debug("generate", fmt.Sprintf("%s -> %s", path, outputFile))
+		logger.Debug("generate", "%s -> %s", path, outputFile)
 		os.WriteFile(outputFile, bytes, 0644)
+		//TODO: handle error
+	}
+	return nil
+}
+
+func cmdPlanGenerate(c *cli.Context) error {
+
+	if !c.Args().Present() {
+		// no args, generate on current directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		results, err := util.GenerateDir(cwd)
+		if err != nil {
+			return err
+		}
+		return writePlanResults(c.Context, results)
+	}
+	input := c.Args().First()
+
+	if filepath.Base(input) == "..." {
+		// recursively generate plots
+		results, err := util.GenerateDirRecusive(filepath.Dir(input))
+		if err != nil {
+			return err
+		}
+		return writePlanResults(c.Context, results)
 	}
 
-	return nil
+	// input is a file or directory to generate
+	info, err := os.Stat(input)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		results, err := util.GenerateDir(input)
+		if err != nil {
+			return err
+		}
+		return writePlanResults(c.Context, results)
+	}
+
+	// this is a file, so put one item into our results map
+	data, err := util.GenerateFile(input)
+	if err != nil {
+		return err
+	}
+	return writePlanResults(c.Context, map[string][]byte{input: data})
 }

@@ -623,11 +623,16 @@ the default catalog, which was installed and updated in the previous section.
 
 [testmark]:# (base-workspace/then-quickstart/sequence)
 ```
-warpforge --quiet quickstart warpforge.org/my-quickstart-module
+warpforge quickstart warpforge.org/my-quickstart-module
 ```
 
-[testmark]:# (base-workspace/then-quickstart/output)
+[testmark]:# (base-workspace/then-quickstart/stdout)
 ```
+Successfully created module.wf and plot.wf for module "warpforge.org/my-quickstart-module".
+Ensure your catalogs are up to date by running `warpforge catalog update`.
+You can check status of this module with `warpforge status`.
+You can run this module with `warpforge run`.
+Once you've run the Hello World example, edit the 'script' section of plot.wf to customize what happens.
 ```
 
 This "hello world" example can the be run normally.
@@ -805,17 +810,20 @@ warpforge plan generate plot.star
 (note, we setup the fs for all the generate tests here to avoid repetition)
 
 [testmark]:# (plan-generate/fs/plot.star)
-``
+```
+#+warplark version 0
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 
 [testmark]:# (plan-generate/fs/a/plot.star)
 ```
+#+warplark version 0
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 
 [testmark]:# (plan-generate/fs/b/plot.star)
 ```
+#+warplark version 0
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 
