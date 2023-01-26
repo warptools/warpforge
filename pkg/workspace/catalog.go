@@ -189,7 +189,6 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 
 	// release was found in catalog, attempt to open release file
 	releasePath := cat.releaseFilePath(ref)
-	fmt.Println(releasePath)
 	releaseBytes, errRaw := fs.ReadFile(cat.fsys, releasePath)
 	if os.IsNotExist(errRaw) {
 		return nil, nil
