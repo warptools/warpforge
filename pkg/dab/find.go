@@ -25,6 +25,28 @@ const (
 	ActionableSearch_Any ActionableSearch = ActionableSearch_Formula | ActionableSearch_Module | ActionableSearch_Plot
 )
 
+func stat(fsys fs.FS, path string) (fs.FileInfo, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
+	fi, err := fs.Stat(fsys, path)
+	if err != nil {
+		return nil, serum.Error(wfapi.ECodeMissing, serum.WithCause(err))
+	}
+	return fi, nil
+}
+
+func open(fsys fs.FS, path string) (fs.File, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
+	f, err := fsys.Open(path)
+	if err != nil {
+		return f, serum.Error(wfapi.ECodeIo, serum.WithCause(err))
+	}
+	return f, nil
+}
+
 // FindActionableFromFS loads either module (and plot) from the fileystem,
 // or instead a Formula,
 // while also accepting directories as input and applying reasonable heuristics.
@@ -59,6 +81,8 @@ const (
 // or an error; or all four of them may be nil at once if the search found nothing.
 // The foundPath and remainingSearchPath values are always returned,
 // even in the case of errors.
+//
+// Errors: none
 func FindActionableFromFS(
 	fsys fs.FS,
 	basisPath string, searchPath string, searchUp bool,
@@ -74,13 +98,13 @@ func FindActionableFromFS(
 	// if it is a file, that's its own whole detection procedure (and means no further search);
 	// if it's not a file, we can procede to the behavior for dir feature detection (without popping).
 	foundPath = filepath.Join(basisPath, remainingSearchPath)
-	fi, e2 := fs.Stat(fsys, foundPath)
+	fi, e2 := stat(fsys, foundPath)
 	if e2 != nil {
 		err = e2
 		return
 	}
 	if fi.Mode()&^fs.ModePerm == 0 {
-		fh, e2 := fsys.Open(foundPath)
+		fh, e2 := open(fsys, foundPath)
 		defer fh.Close()
 		if e2 != nil {
 			err = e2
