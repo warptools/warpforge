@@ -192,7 +192,7 @@ func (c *Config) Run(ctx context.Context) error {
 	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
 
 	log.Debug("", "search path: %s", searchPath)
-	ws, _, err := workspace.FindWorkspace(c.Fsys, "", searchPath[1:])
+	ws, _, err := workspace.FindWorkspace(c.Fsys, "", searchPath)
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func (c *Config) Run(ctx context.Context) error {
 		return err
 	}
 	log.Debug("", "ws path: %s", wsPath)
-	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath[1:])
+	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath)
 	if err != nil {
 		return err
 	}
@@ -359,13 +359,13 @@ func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string
 	result := wfapi.PlotResults{}
 
 	// parse the module, even though it is not currently used
-	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs[1:]); err != nil {
+	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs); err != nil {
 		return result, err
 	}
 
 	moduleDirAbs := filepath.Dir(modulePathAbs)
 	plotPath := filepath.Join(moduleDirAbs, dab.MagicFilename_Plot)
-	plot, err := dab.PlotFromFile(os.DirFS("/"), plotPath[1:])
+	plot, err := dab.PlotFromFile(os.DirFS("/"), plotPath)
 	if err != nil {
 		return result, err
 	}

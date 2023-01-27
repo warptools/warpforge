@@ -152,7 +152,7 @@ var Status2Phase = map[workspaceapi.ModuleStatus]Phase{
 
 func Code2Phase(code string) Phase {
 	switch code {
-	case ECodeSparkNoModule:
+	case ECodeSparkNoModule, ECodeSparkNoWorkspace:
 		return Phase_NoModule
 	case ECodeSparkNoSocket:
 		return Phase_NoSocket

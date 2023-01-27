@@ -50,12 +50,13 @@ func getwd() (string, error) {
 
 // Errors:
 //
-//    - warpforge-spark-no-module -- module not found
-//    - warpforge-spark-no-socket -- when socket does not dial or does not exist
-//    - warpforge-spark-internal -- all other errors
-//    - warpforge-spark-server -- server response was an error
-//    - warpforge-error-invalid -- invalid arguments
-//    - warpforge-error-io -- unable to get working directory
+//   - warpforge-spark-no-workspace -- can't find workspace
+//   - warpforge-spark-no-module -- module not found
+//   - warpforge-spark-no-socket -- when socket does not dial or does not exist
+//   - warpforge-spark-internal -- all other errors
+//   - warpforge-spark-server -- server response was an error
+//   - warpforge-error-invalid -- invalid arguments
+//   - warpforge-error-io -- unable to get working directory
 func cmdSpark(c *cli.Context) error {
 	if c.Args().Len() > 1 {
 		return serum.Errorf(wfapi.ECodeInvalid, "too many args")
@@ -71,6 +72,7 @@ func cmdSpark(c *cli.Context) error {
 		OutputMarkup:     c.String("format-markup"),
 		OutputStyle:      c.String("format-style"),
 		OutputColor:      !c.Bool("no-color"),
+		OutputStream:     c.App.Writer,
 	}
 	err = cfg.Run(c.Context)
 	if errors.Is(err, context.Canceled) {

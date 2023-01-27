@@ -5,77 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net"
 	"testing"
 	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	ipld "github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/codec"
-	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
-	rfmtjson "github.com/polydawn/refmt/json"
-	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/testutil/nettest"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
 )
-
-// Uses net.Pipe for testing connections
-type pipeListener struct {
-	connections chan net.Conn
-	ctx         context.Context
-	done        chan struct{}
-}
-
-// Errors: none
-func (p *pipeListener) Close() error {
-	// closing channel will unblock accept
-	close(p.done)
-	return nil
-}
-
-// Errors:
-//
-//   - EOF --
-//   - CONTEXT --
-func (p *pipeListener) Accept() (net.Conn, error) {
-	select {
-	case <-p.done:
-		return nil, serum.Error("EOF", serum.WithCause(io.EOF))
-	case <-p.ctx.Done():
-		return nil, serum.Error("CONTEXT", serum.WithCause(p.ctx.Err()))
-	case conn := <-p.connections:
-		return conn, nil
-	}
-}
-func (p *pipeListener) Addr() net.Addr { return nil }
-
-// Errors:
-//
-//   - CONTEXT --
-func (p *pipeListener) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
-	serverConn, clientConn := net.Pipe()
-	deadline := time.Now().Add(5 * time.Second)
-	clientConn.SetDeadline(deadline) // will cause tests to fail if they block
-	select {
-	case <-ctx.Done():
-		return nil, serum.Error("CONTEXT", serum.WithCause(ctx.Err()))
-	case p.connections <- serverConn:
-		return clientConn, nil
-	}
-}
-
-func NewPipeListener(ctx context.Context) *pipeListener {
-	return &pipeListener{
-		ctx:         ctx,
-		connections: make(chan net.Conn),
-		done:        make(chan struct{}),
-	}
-}
 
 func NewLogBuffers(t *testing.T, ctx context.Context) (context.Context, func()) {
 	stdout := &bytes.Buffer{}
@@ -84,17 +27,8 @@ func NewLogBuffers(t *testing.T, ctx context.Context) (context.Context, func()) 
 	ctx = logger.WithContext(ctx)
 	return ctx, func() {
 		t.Log("---")
-		stdoutData, err := io.ReadAll(stdout)
-		if err != nil {
-			t.Log("unable to read stdout")
-		}
-		t.Logf("flush stdout:\n%s", string(stdoutData))
-
-		stderrData, err := io.ReadAll(stderr)
-		if err != nil {
-			t.Log("unable to read stderr")
-		}
-		t.Logf("flush stderr:\n%s", string(stderrData))
+		t.Logf("flush stdout:\n%s", stdout.String())
+		t.Logf("flush stderr:\n%s", stderr.String())
 	}
 }
 
@@ -115,7 +49,7 @@ func TestServerShutdown(t *testing.T) {
 	ctx, flushLogs := NewLogBuffers(t, ctx)
 	t.Cleanup(func() { flushLogs() })
 
-	listener := NewPipeListener(ctx)
+	listener := nettest.NewPipeListener(ctx)
 
 	hist := &historian{}
 	srv := &server{
@@ -139,25 +73,6 @@ func TestServerShutdown(t *testing.T) {
 	}
 }
 
-func streamEncode(n datamodel.Node, w io.Writer) error {
-	return dagjson.Marshal(n, rfmtjson.NewEncoder(w, rfmtjson.EncodeOptions{
-		Line:   []byte{'\n'},
-		Indent: []byte{'\t'},
-	}), dagjson.EncodeOptions{
-		EncodeLinks: false,
-		EncodeBytes: false,
-		MapSortMode: codec.MapSortMode_None,
-	})
-}
-
-func streamDecode(na datamodel.NodeAssembler, r io.Reader) error {
-	return dagjson.DecodeOptions{
-		ParseLinks:         false,
-		ParseBytes:         false,
-		DontParseBeyondEnd: true, // This is critical for streaming over a socket
-	}.Decode(na, r)
-}
-
 func TestRoundtrip_Streaming(t *testing.T) {
 	var err error
 	buf := &bytes.Buffer{}
@@ -166,7 +81,7 @@ func TestRoundtrip_Streaming(t *testing.T) {
 		ID:   "1",
 		Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{Echo: &echo}},
 	}
-	err = ipld.MarshalStreaming(buf, streamEncode, &request, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	err = ipld.MarshalStreaming(buf, Encoder, &request, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	qt.Assert(t, err, qt.IsNil)
 	t.Log("write:\n", buf.String())
 	r, w := io.Pipe()
@@ -175,7 +90,7 @@ func TestRoundtrip_Streaming(t *testing.T) {
 	t.Cleanup(func() { w.Close(); r.Close() })
 	ch := make(chan struct{})
 	go func() {
-		_, err = ipld.UnmarshalStreaming(r, streamDecode, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
+		_, err = ipld.UnmarshalStreaming(r, Decoder, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
 		ch <- struct{}{}
 	}()
 	select {
@@ -240,7 +155,7 @@ func TestServerEcho(t *testing.T) {
 	ctx, flushLogs := NewLogBuffers(t, ctx)
 	t.Cleanup(func() { flushLogs() })
 
-	listener := NewPipeListener(ctx)
+	listener := nettest.NewPipeListener(ctx)
 	t.Cleanup(func() { listener.Close() })
 
 	srv := &server{
@@ -297,7 +212,7 @@ func TestServerModuleStatus(t *testing.T) {
 	ctx, flushLogs := NewLogBuffers(t, ctx)
 	t.Cleanup(func() { flushLogs() })
 
-	listener := NewPipeListener(ctx)
+	listener := nettest.NewPipeListener(ctx)
 	t.Cleanup(func() { listener.Close() })
 
 	hist := &historian{}
