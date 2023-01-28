@@ -364,6 +364,63 @@ there's only one record in this map.
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
+## Relative Paths
+
+Plots can have relative paths for mounts. These paths are relative to the
+plot file itself. This example executes a module from a different directory
+to demonstrate how relative paths work.
+
+[testmark]:# (base-workspace/then-test-mounts/sequence)
+```
+warpforge --json --quiet run module
+```
+
+[testmark]:# (base-workspace/then-test-mounts/fs/module/module.wf)
+```
+{
+	"module.v1": {
+		"name": "test"
+	}
+}
+```
+
+[testmark]:# (base-workspace/then-test-mounts/fs/module/test.txt)
+```
+hello from a mounted file!
+```
+
+[testmark]:# (base-workspace/then-test-mounts/fs/module/plot.wf)
+```
+{
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
+		},
+		"steps": {
+			"one": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs"
+						"/mnt": "mount:overlay:."
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/sh",
+								"-c",
+								"cat /mnt/test.txt"
+							]
+						}
+					},
+					"outputs": {}
+				}
+			}
+		},
+		"outputs": {}
+	}
+}
+```
+
 ## Catalog Operations
 
 [testmark]:# (catalog/tags=net/fs/.warpforge/root)

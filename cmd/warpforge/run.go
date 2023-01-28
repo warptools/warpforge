@@ -127,7 +127,8 @@ func cmdRun(c *cli.Context) error {
 				if err != nil {
 					return err
 				}
-				frmExecCfg, err := config.FormulaExecConfig()
+				formulaDir := filepath.Dir(fileName)
+				frmExecCfg, err := config.FormulaExecConfig(&formulaDir)
 				if err != nil {
 					return err
 				}
