@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
@@ -185,10 +187,12 @@ func rioUnpack(ctx context.Context, wareID wfapi.WareID, path string, addrs []wf
 	}
 	rioArgs = append(rioArgs, wareID.String(), path)
 
-	rioPath, err := util.BinPath("rio")
+	binPath, err := config.BinPath()
 	if err != nil {
 		return fmt.Errorf("failed to get path to rio")
 	}
+	rioPath := filepath.Join(binPath, "rio")
+
 	cmdCtx, cmdSpan := tracing.Start(ctx, "rio unpack", trace.WithAttributes(tracing.AttrFullExecNameRio))
 	defer cmdSpan.End()
 	rioCmd := exec.CommandContext(

@@ -157,10 +157,11 @@ var catalogCmdDef = cli.Command{
 
 func scanWareId(ctx context.Context, packType wfapi.Packtype, addr wfapi.WarehouseAddr) (wfapi.WareID, error) {
 	result := wfapi.WareID{}
-	rioPath, err := util.BinPath("rio")
+	binPath, err := config.BinPath()
 	if err != nil {
 		return result, fmt.Errorf("failed to get path to rio")
 	}
+	rioPath := filepath.Join(binPath, "rio")
 	cmdCtx, cmdSpan := tracing.Start(ctx, "rio scan", trace.WithAttributes(tracing.AttrFullExecNameRio))
 	defer cmdSpan.End()
 	rioScan := exec.CommandContext(

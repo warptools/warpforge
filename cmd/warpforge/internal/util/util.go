@@ -20,32 +20,6 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-// BinPath is a helper function for finding the path to internally used binaries (e.g, rio, runc)
-//
-// Errors:
-//
-//    - warpforge-error-io -- When the path to this executable can't be found
-func BinPath(bin string) (string, error) {
-	path, override := os.LookupEnv(config.EnvWarpforgePath)
-	if override {
-		abs, err := filepath.Abs(path) // FIXME: relies on os.Getwd
-		if err != nil {
-			return "", serum.Error(wfapi.ECodeIo,
-				serum.WithMessageTemplate("failed to canonicalize {{env}}: {{path}}"),
-				serum.WithDetail("path", path),
-				serum.WithCause(err),
-				serum.WithDetail("env", config.EnvWarpforgePath),
-			)
-		}
-		return filepath.Join(abs, bin), nil
-	}
-	path, err := os.Executable()
-	if err != nil {
-		return "", wfapi.ErrorIo("failed to locate binary path", "", err)
-	}
-	return filepath.Join(path, bin), nil
-}
-
 // OpenWorkspaceSet opens the default WorkspaceSet.
 // This consists of:
 //   workspace stack: a workspace stack starting at the current working directory,
