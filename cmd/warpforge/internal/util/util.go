@@ -108,7 +108,8 @@ func ExecModule(ctx context.Context, wss workspace.WorkspaceSet, pltCfg wfapi.Pl
 		return result, err
 	}
 
-	execCfg, err := config.PlotExecConfig()
+	moduleDir := filepath.Dir(fileName)
+	execCfg, err := config.PlotExecConfig(&moduleDir)
 	if err != nil {
 		return result, err
 	}

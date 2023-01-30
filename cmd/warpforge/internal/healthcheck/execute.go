@@ -115,7 +115,7 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 		},
 	}
 
-	exCfg, err := config.PlotExecConfig()
+	exCfg, err := config.PlotExecConfig(&e.BasePath)
 	if err != nil {
 		return serum.Error(CodeRunFailure, serum.WithCause(err))
 	}

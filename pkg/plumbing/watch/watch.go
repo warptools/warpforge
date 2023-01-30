@@ -384,7 +384,7 @@ func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string
 	if err != nil {
 		return result, err
 	}
-	exCfg, err := config.PlotExecConfig()
+	exCfg, err := config.PlotExecConfig(&modulePathAbs)
 	if err != nil {
 		return result, err
 	}

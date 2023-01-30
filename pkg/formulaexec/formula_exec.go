@@ -86,8 +86,11 @@ type ExecConfig struct {
 	RunPathBase string
 	// WarehousePathOverride overrides the directory where outputs are stored.
 	WhPathOverride *string
-	// WorkingDirectory will be where relative paths are based from.
+	// WorkingDirectory is the directory we are running warpforge from
 	WorkingDirectory string
+	// FormulaDirectory is the location of the formula (or module) being run
+	// Relative mount paths are relative to this path
+	FormulaDirectory string
 }
 
 func (cfg *ExecConfig) debug(ctx context.Context) {
@@ -845,7 +848,7 @@ func execFormula(ctx context.Context, cfg internalConfig) (wfapi.RunRecord, erro
 					hostPath = inputSimple.Mount.HostPath
 				} else {
 					// otherwise, use relative path
-					hostPath = filepath.Join(cfg.WorkingDirectory, inputSimple.Mount.HostPath)
+					hostPath = filepath.Join(cfg.FormulaDirectory, inputSimple.Mount.HostPath)
 				}
 			}
 

@@ -494,7 +494,7 @@ func cmdCatalogRelease(c *cli.Context) error {
 		return err
 	}
 
-	execCfg, err := config.PlotExecConfig()
+	execCfg, err := config.PlotExecConfig(nil)
 	if err != nil {
 		return err
 	}

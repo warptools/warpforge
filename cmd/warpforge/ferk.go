@@ -58,11 +58,13 @@ func cmdFerk(c *cli.Context) error {
 	ctx := c.Context
 	log := logging.Ctx(ctx)
 	plot := wfapi.Plot{}
+	var plotFile string
 	if c.String("plot") != "" {
+		plotFile := c.String("plot")
 		// plot was provided, load from file
-		plot, err = util.PlotFromFile(c.String("plot"))
+		plot, err = util.PlotFromFile(plotFile)
 		if err != nil {
-			return serum.Error(wfapi.ECodePlotInvalid, serum.WithMessageTemplate("plot file {{file}} not parsed"), serum.WithCause(err), serum.WithDetail("file", c.String("plot")))
+			return serum.Error(wfapi.ECodePlotInvalid, serum.WithMessageTemplate("plot file {{file}} not parsed"), serum.WithCause(err), serum.WithDetail("file", plotFile))
 		}
 	} else {
 		// no plot provided, generate the basic default plot from json template
@@ -70,6 +72,9 @@ func cmdFerk(c *cli.Context) error {
 		if err != nil {
 			return wfapi.ErrorSerialization("error parsing template plot", err)
 		}
+
+		// set a fake plotFile value
+		plotFile = "plot.wf"
 
 		// convert rootfs input string to PlotInput
 		// this requires additional quoting to be parsed correctly by ipld
@@ -129,7 +134,8 @@ func cmdFerk(c *cli.Context) error {
 		},
 	}
 
-	exCfg, err := config.PlotExecConfig()
+	plotDir := filepath.Dir(plotFile)
+	exCfg, err := config.PlotExecConfig(&plotDir)
 	if err != nil {
 		return err
 	}
