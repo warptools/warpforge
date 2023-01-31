@@ -34,7 +34,6 @@ var ferkCmdDef = cli.Command{
 			Name:    "plot",
 			Aliases: []string{"p"},
 			Usage:   "Specify a plot file or module directory to use.  The current directory is used by default.  If the current directory isn't a module, or if this flag is explicitly set to empty string, a very minimal default plot with a simple base image will be used.",
-			Value:   ".",
 		},
 		&cli.StringFlag{
 			Name:    "step",
@@ -65,6 +64,10 @@ func cmdFerk(c *cli.Context) error {
 	var err error
 	ctx := c.Context
 	log := logging.Ctx(ctx)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return serum.Errorf(wfapi.ECodeIo, "failed to get working directory")
+	}
 
 	plot, plotDir, err := cmdFerk_selectPlot(c)
 	if err != nil {
@@ -133,7 +136,11 @@ func cmdFerk(c *cli.Context) error {
 		},
 	}
 
-	exCfg, err := config.PlotExecConfig(&plotDir)
+	// if no plotDir was provided, use the working directory
+	if plotDir == nil {
+		plotDir = &cwd
+	}
+	exCfg, err := config.PlotExecConfig(plotDir)
 	if err != nil {
 		return err
 	}
@@ -161,15 +168,17 @@ func cmdFerk(c *cli.Context) error {
 	return nil
 }
 
-func cmdFerk_selectPlot(c *cli.Context) (plot *wfapi.Plot, plotDir string, err error) {
+func cmdFerk_selectPlot(c *cli.Context) (*wfapi.Plot, *string, error) {
 	// If emptystring plot: make a default one.
 	if c.String("plot") == "" {
-		_, err = ipld.Unmarshal([]byte(util.FerkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
+		plot := wfapi.Plot{}
+		_, err := ipld.Unmarshal([]byte(util.FerkPlotTemplate), json.Decode, &plot, wfapi.TypeSystem.TypeByName("Plot"))
 		if err != nil {
 			panic(err) // This is a fixed value at compile time.  It can't fail unless there's a bug.
 		}
-		return
+		return &plot, nil, nil
 	}
+	fmt.Println("plot is", c.String("plot"))
 
 	// Look for module and plot files.
 	// If we received a filename: expect that to be a plot.
@@ -177,18 +186,18 @@ func cmdFerk_selectPlot(c *cli.Context) (plot *wfapi.Plot, plotDir string, err e
 	// If it's a dir: look for a module, and then look for its plot.
 	pth, err := filepath.Abs(c.String("plot"))
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 	m, p, f, _, _, err := dab.FindActionableFromFS(os.DirFS("/"), pth, "", false, dab.ActionableSearch_Any)
 	_, _ = m, f // TODO support these
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	if p == nil {
-		return nil, "", serum.Error(wfapi.ECodeMissing,
+		return nil, nil, serum.Error(wfapi.ECodeMissing,
 			serum.WithMessageTemplate("could not find a plot given path {{path|q}}"),
 			serum.WithDetail("path", pth),
 		)
 	}
-	return p, pth, err
+	return p, &pth, err
 }
