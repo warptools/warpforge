@@ -93,11 +93,20 @@ func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, erro
 //   - warpforge-spark-no-socket -- when socket does not dial or does not exist
 //   - warpforge-spark-internal -- all other errors
 //   - warpforge-spark-server  -- server responded with an error
+//   - warpforge-error-invalid -- invalid configuration
 func (c *Config) Run(ctx context.Context) error {
+	markup, err := ValidateMarkup(c.OutputMarkup)
+	if err != nil {
+		return err
+	}
+	style, err := ValidateStyle(c.OutputStyle)
+	if err != nil {
+		return err
+	}
 	answer, err := c.run(ctx)
 	frm := formatter{
-		Markup: ValidateMarkup(c.OutputMarkup),
-		Style:  ValidateStyle(c.OutputStyle),
+		Markup: markup,
+		Style:  style,
 		color:  c.OutputColor,
 	}
 	output := frm.format(ctx, answer, err)

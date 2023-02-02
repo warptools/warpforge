@@ -9,6 +9,7 @@ import (
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
+	"github.com/warptools/warpforge/wfapi"
 )
 
 type formatter struct {
@@ -70,6 +71,7 @@ func (f formatter) format(ctx context.Context, a workspaceapi.ModuleStatusAnswer
 	}
 }
 
+// Markup tells spark how to decorate the output.
 type Markup string
 
 const (
@@ -86,26 +88,43 @@ var MarkupList = []Markup{
 	MarkupPango,
 }
 
-func ValidateMarkup(input string) Markup {
+// Checks that the markup format is recognized.
+//
+// Errors:
+//
+//   - warpforge-error-invalid -- input is not a valid markup string
+func ValidateMarkup(input string) (Markup, error) {
 	input = strings.ToLower(input)
 	for _, m := range MarkupList {
 		if input == string(m) {
-			return m
+			return m, nil
 		}
 	}
-	return DefaultMarkup
+	return DefaultMarkup, serum.Error(wfapi.ECodeInvalid,
+		serum.WithMessageTemplate("unrecognized markup {{markup|q}}"),
+		serum.WithDetail("markup", input),
+	)
 }
 
-func ValidateStyle(input string) Style {
+// Checks that the style format is recognized.
+//
+// Errors:
+//
+//   - warpforge-error-invalid -- input is not a valid style string
+func ValidateStyle(input string) (Style, error) {
 	input = strings.ToLower(input)
 	for _, s := range StyleList {
 		if input == string(s) {
-			return s
+			return s, nil
 		}
 	}
-	return DefaultStyle
+	return DefaultStyle, serum.Error(wfapi.ECodeInvalid,
+		serum.WithMessageTemplate("unrecognized style {{style|q}}"),
+		serum.WithDetail("style", input),
+	)
 }
 
+// Style tells spark what kind of output to use.
 type Style string
 
 const (

@@ -81,6 +81,8 @@ func TestFailedDial(t *testing.T) {
 		},
 		Dialer:       pl,
 		OutputStream: buf,
+		OutputMarkup: string(DefaultMarkup),
+		OutputStyle:  string(DefaultStyle),
 	}
 
 	pl.Timeout = 0
@@ -107,6 +109,8 @@ func TestSpark(t *testing.T) {
 		},
 		Dialer:       pl,
 		OutputStream: buf,
+		OutputMarkup: string(DefaultMarkup),
+		OutputStyle:  string(DefaultStyle),
 	}
 
 	expect := workspaceapi.ModuleStatusQuery{

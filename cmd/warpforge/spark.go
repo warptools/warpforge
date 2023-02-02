@@ -22,7 +22,7 @@ var sparkCmdDef = cli.Command{
 		"Will attempt to find a module within a workspace and query for the build status of that module.",
 		"You may set the output markup based on the needed output. For example, use bash markup to put the output in your terminal prompt.",
 		"You may set the output style for different output text: 'api' for raw codes, 'phase' for short ascii strings, 'pretty' for short unicode strings.",
-	}, "\n"),
+	}, "\n   "),
 	Description: "[module path]: The search path for the module within a workspace. Will default to the current directory if not set.",
 	Action: util.ChainCmdMiddleware(cmdSpark,
 		util.CmdMiddlewareLogging,
@@ -42,7 +42,7 @@ var sparkCmdDef = cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "no-color",
-			Usage: "Disables colored output",
+			Usage: "Disables colored output. This mostly is equivalent to markup=none.",
 		},
 	},
 	ArgsUsage: "[module path]",
