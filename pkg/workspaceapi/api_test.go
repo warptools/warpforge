@@ -150,7 +150,8 @@ func GenerateSchemaTypes() {
 
 func TestModuleStatusUnion(t *testing.T) {
 	ms := ModuleStatusUnion{ModuleStatusUnion_NoInfo: &ModuleStatusUnion_NoInfo{}}
-	result := UnionField(ms)
+	result, err := unionField(&ms, TypeSystem.TypeByName("ModuleStatusUnion"))
+	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, result, qt.Equals, "ModuleStatusUnion_NoInfo")
 	typ := TypeSystem.TypeByName(result)
 	qt.Assert(t, typ, qt.IsNotNil)

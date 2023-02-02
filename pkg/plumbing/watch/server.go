@@ -258,7 +258,8 @@ type handler struct {
 func (h *handler) handle(ctx context.Context, ID string, req workspaceapi.RpcRequest) (*workspaceapi.RpcResponse, error) {
 	logger := logging.Ctx(ctx)
 	tag := handlerTag(ctx)
-	logger.Debug(tag, "request type: %s", workspaceapi.UnionField(req))
+	kind, _ := req.Kind()
+	logger.Debug(tag, "request type: %s", kind)
 	if ID == "" {
 		return nil, nil
 	}

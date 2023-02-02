@@ -1,8 +1,6 @@
 package workspaceapi
 
 import (
-	"reflect"
-
 	"github.com/warptools/warpforge/wfapi"
 
 	"github.com/ipld/go-ipld-prime/node/bindnode"
@@ -37,10 +35,43 @@ type RpcRequest struct {
 	*ModuleStatusQuery
 }
 
+// Errors:
+//
+//   - warpforge-error-unknown -- Unable to extract union key
+func (r *RpcRequest) Kind() (string, error) {
+	sch := TypeSystem.TypeByName("RpcRequest")
+	return unionField(r, sch)
+}
+
+// Errors:
+//
+//   - warpforge-error-unknown -- Unable to extract union key
+func unionField(i interface{}, sch schema.Type) (string, error) {
+	n := bindnode.Wrap(i, sch)
+	iter := n.MapIterator()
+	key, _, err := iter.Next()
+	if err != nil {
+		return "", serum.Error(wfapi.ECodeUnknown, serum.WithCause(err))
+	}
+	result, err := key.AsString()
+	if err != nil {
+		return "", serum.Error(wfapi.ECodeUnknown, serum.WithCause(err))
+	}
+	return result, nil
+}
+
 type RpcResponse struct {
 	*Echo
 	*ModuleStatusAnswer
 	*Error
+}
+
+// Errors:
+//
+//   - warpforge-error-unknown -- Unable to extract union key
+func (r *RpcResponse) Kind() (string, error) {
+	sch := TypeSystem.TypeByName("RpcResponse")
+	return unionField(r, sch)
 }
 
 type RpcData struct {
@@ -129,28 +160,6 @@ type ModuleStatusUnion struct {
 	ModuleStatusUnion_FailedProvisioning *ModuleStatusUnion_FailedProvisioning
 	ModuleStatusUnion_ExecutedSuccess    *ModuleStatusUnion_ExecutedSuccess
 	ModuleStatusUnion_ExecutedFailed     *ModuleStatusUnion_ExecutedFailed
-}
-
-func UnionField(i interface{}) string {
-	rv := reflect.ValueOf(i)
-	unionIdx := -1
-	var unionField reflect.Value
-	for idx := 0; idx < rv.NumField(); idx++ {
-		field := rv.Field(idx)
-		if field.IsNil() {
-			continue
-		}
-		if unionIdx == -1 {
-			unionIdx = idx
-			unionField = field
-			continue
-		}
-		panic("union has multiple types")
-	}
-	if unionIdx == -1 {
-		panic("union has no type")
-	}
-	return unionField.Type().Elem().Name()
 }
 
 type ModuleStatusUnion_NoInfo struct {
