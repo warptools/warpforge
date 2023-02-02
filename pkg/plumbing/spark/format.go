@@ -39,6 +39,7 @@ func (f formatter) formatStyle(a workspaceapi.ModuleStatusAnswer, err error) str
 		return string(a.Status)
 	}
 }
+
 func (f formatter) format(ctx context.Context, a workspaceapi.ModuleStatusAnswer, err error) string {
 	logger := logging.Ctx(ctx)
 	logger.Debug("", "output formatter: %#v", f)
@@ -124,7 +125,7 @@ const (
 	DefaultStyle  = StylePretty
 )
 
-// Phase is a 3-character code for all output conditions.
+// Phase is a 3-character ASCII code for all output conditions.
 type Phase string
 
 const (
@@ -136,7 +137,7 @@ const (
 	Phase_Queued     Phase = "inq" // queued in warpforge.
 	Phase_InProgress Phase = "wip" // actively running, like, we're streaming logs out.
 	Phase_Rejected   Phase = "rej" // module rejected by a warpforge
-	Phase_Saving     Phase = "sav" // done, ran user code completely, now saving user outputs. //TODO
+	Phase_Saving     Phase = "sav" // done, ran user code completely, now saving user outputs. //TODO: Not sure if we'll actually use this?
 	Phase_DoneGood   Phase = "yay" // done, ran user code completely: zero exit.
 	Phase_DoneNoGood Phase = "aww" // done, ran user code completely: non-zero exit.
 )

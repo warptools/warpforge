@@ -153,22 +153,6 @@ func getIngests(plot wfapi.Plot) map[string]string {
 	return ingests
 }
 
-// filepath.Rel + serum
-// Errors:
-//
-//   - warpforge-error-searching-filesystem --
-func relativePath(basepath, targpath string) (string, error) {
-	result, err := filepath.Rel(basepath, targpath)
-	if err != nil {
-		return "", serum.Error(wfapi.ECodeSearchingFilesystem, serum.WithCause(err),
-			serum.WithMessageLiteral("unable to find relative path from {{basePath|q}} to {{targPath|q}}"),
-			serum.WithDetail("basePath", basepath),
-			serum.WithDetail("targPath", targpath),
-		)
-	}
-	return result, nil
-}
-
 // Run will execute the watch command
 //
 // Errors:
@@ -192,10 +176,6 @@ func (c *Config) Run(ctx context.Context) error {
 		return err
 	}
 	_, wsPath := ws.Path()
-	searchPath, err = relativePath("/"+wsPath, searchPath)
-	if err != nil {
-		return err
-	}
 	log.Debug("", "ws path: %s", wsPath)
 	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath)
 	if err != nil {

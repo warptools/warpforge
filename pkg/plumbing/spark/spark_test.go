@@ -74,7 +74,7 @@ func TestFailedDial(t *testing.T) {
 	buf := &bytes.Buffer{}
 	cfg := Config{
 		WorkingDirectory: "/test/workspace",
-		Path:             "",
+		ModulePath:       "",
 		Fsys: &fstest.MapFS{
 			"test/workspace/module.wf":  &fstest.MapFile{Mode: 0755},
 			"test/workspace/.warpforge": &fstest.MapFile{Mode: 0755 | fs.ModeDir},
@@ -100,7 +100,7 @@ func TestSpark(t *testing.T) {
 	buf := &bytes.Buffer{}
 	cfg := Config{
 		WorkingDirectory: "/test/workspace",
-		Path:             "",
+		ModulePath:       "",
 		Fsys: &fstest.MapFS{
 			"test/workspace/module.wf":  &fstest.MapFile{Mode: 0755},
 			"test/workspace/.warpforge": &fstest.MapFile{Mode: 0755 | fs.ModeDir},

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
@@ -16,7 +17,13 @@ import (
 
 var sparkCmdDef = cli.Command{
 	Name:  "spark",
-	Usage: "TODO", // TODO:
+	Usage: "Experimental RPC for getting module build status from the watch server",
+	UsageText: strings.Join([]string{
+		"Will attempt to find a module within a workspace and query for the build status of that module.",
+		"You may set the output markup based on the needed output. For example, use bash markup to put the output in your terminal prompt.",
+		"You may set the output style for different output text: 'api' for raw codes, 'phase' for short ascii strings, 'pretty' for short unicode strings.",
+	}, "\n"),
+	Description: "[module path]: The search path for the module within a workspace. Will default to the current directory if not set.",
 	Action: util.ChainCmdMiddleware(cmdSpark,
 		util.CmdMiddlewareLogging,
 		util.CmdMiddlewareTracingConfig,
@@ -33,8 +40,12 @@ var sparkCmdDef = cli.Command{
 			Value: string(spark.DefaultStyle),
 			Usage: "Set output format." + fmt.Sprintf("%s", spark.StyleList),
 		},
-		&cli.BoolFlag{Name: "no-color"},
+		&cli.BoolFlag{
+			Name:  "no-color",
+			Usage: "Disables colored output",
+		},
 	},
+	ArgsUsage: "[module path]",
 }
 
 // Errors:
@@ -67,7 +78,7 @@ func cmdSpark(c *cli.Context) error {
 	}
 	cfg := &spark.Config{
 		Fsys:             os.DirFS("/"),
-		Path:             c.Args().Get(0),
+		ModulePath:       c.Args().Get(0),
 		WorkingDirectory: wd,
 		OutputMarkup:     c.String("format-markup"),
 		OutputStyle:      c.String("format-style"),
