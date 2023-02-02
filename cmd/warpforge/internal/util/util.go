@@ -86,6 +86,7 @@ func canonicalizePath(pwd, path string) string {
 //    - warpforge-error-catalog-invalid --
 //    - warpforge-error-catalog-parse --
 //    - warpforge-error-git --
+//    - warpforge-error-missing -- when a required file is missing
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
 //    - warpforge-error-catalog-missing-entry --
 //    - warpforge-error-module-invalid -- when the module data is invalid

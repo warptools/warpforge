@@ -82,7 +82,15 @@ func open(fsys fs.FS, path string) (fs.File, error) {
 // The foundPath and remainingSearchPath values are always returned,
 // even in the case of errors.
 //
-// Errors: none
+// Errors:
+//
+//  - warpforge-error-datatoonew -- when found data is not supported by this version of warpforge
+//  - warpforge-error-invalid-argument -- when a file contains the wrong content for its filename
+//  - warpforge-error-io -- when an IO error occurs during search
+//  - warpforge-error-missing -- when an expected file is missing
+//  - warpforge-error-module-invalid -- when a read module contains invalid data
+//  - warpforge-error-searching-filesystem -- when the search of the filesystem produces an invalid result
+//  - warpforge-error-serialization -- when IPLD deserialization fails
 func FindActionableFromFS(
 	fsys fs.FS,
 	basisPath string, searchPath string, searchUp bool,
