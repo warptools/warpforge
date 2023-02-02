@@ -5,7 +5,6 @@ import (
 
 	"github.com/warptools/warpforge/wfapi"
 
-	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/schema"
 	"github.com/serum-errors/go-serum"
@@ -15,14 +14,14 @@ const (
 	ModuleInterestLevel_Query ModuleInterestLevel = "Query"
 	ModuleInterestLevel_Run   ModuleInterestLevel = "Run"
 )
+
+// ECodeRpc* errors have significance over the wire for the workspace api.
 const (
-	ECodeRpcMethodNotFound = "warpforge-error-rpc-method-not-found"
-	ECodeRpcInternal       = "warpforge-error-rpc-internal"
-	ECodeRpcSerialization  = "warpforge-error-rpc-serialization"
-	ECodeRpcUnknown        = "warpforge-error-rpc-unknown"
-	ECodeRpcConnection     = "warpforge-error-rpc-connection"
-	ECodeRpcMissingData    = "warpforge-error-rpc-missing-data"
-	ECodeRpcExtraData      = "warpforge-error-rpc-extra-data"
+	ECodeRpcConnection     = "warpforge-error-rpc-connection"       // ECodeRpcConnection for connection errors
+	ECodeRpcInternal       = "warpforge-error-rpc-internal"         // ECodeRpcInternal means the RPC had an internal error
+	ECodeRpcMethodNotFound = "warpforge-error-rpc-method-not-found" // ECodeRpcMethodNotFound means an RPC has an invalid request type
+	ECodeRpcSerialization  = "warpforge-error-rpc-serialization"    // ECodeRpcSerialization errors due to serialization or deserialization of RPC data
+	ECodeRpcUnknown        = "warpforge-error-rpc-unknown"          // ECodeRpcUnknown for unknown errors such as receiving an error response without a code.
 )
 
 const (
@@ -99,16 +98,6 @@ func (e *Error) AsSerumData() *serum.Data {
 		Details: e.Details.Details(),
 		Cause:   e.Cause.serum(),
 	}
-}
-
-func bindnodeCopy(data datamodel.Node, i interface{}, t schema.Type) (interface{}, error) {
-	np := bindnode.Prototype(i, t)
-	nb := np.NewBuilder()
-	if err := datamodel.Copy(data, nb); err != nil {
-		return nil, err
-	}
-	result := bindnode.Unwrap(nb.Build())
-	return result, nil
 }
 
 type ModuleStatusQuery struct {

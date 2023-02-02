@@ -48,6 +48,8 @@ type ModuleStatusAnswer struct {
 	status ModuleStatus
 }
 
+
+# This will most likely be replaced with union structs.
 type ModuleStatus enum {
 	| NoInfo ("noinfo")
 	| Queuing ("queuing")
