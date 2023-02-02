@@ -44,13 +44,7 @@ type Config struct {
 	PlotConfig wfapi.PlotExecConfig
 }
 
-// Extremely basic status responses for the watch server
-const (
-	statusRunning = -1
-	statusOkay    = 0
-	statusFailed  = 1
-)
-
+// isSocket returns true if the the fs.ModeSocket bit is set.
 func isSocket(m fs.FileMode) bool {
 	return m&fs.ModeSocket != 0
 }
@@ -137,6 +131,7 @@ func canonicalizePath(pwd, path string) string {
 	return filepath.Join(pwd, path)
 }
 
+// getIngests returns all the "ingest" inputs used in a plot.
 func getIngests(plot wfapi.Plot) map[string]string {
 	ingests := make(map[string]string)
 	var allInputs []wfapi.PlotInput
@@ -234,7 +229,7 @@ func (c *Config) Run(ctx context.Context) error {
 	}
 	hist := &historian{}
 	srv := server{
-		handler: handler{statusFetcher: hist.getStatus},
+		handler: rpcHandler{statusFetcher: hist.getStatus},
 	}
 	hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
 	if c.Socket {

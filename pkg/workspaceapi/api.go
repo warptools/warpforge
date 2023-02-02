@@ -16,7 +16,7 @@ const (
 // ECodeRpc* errors have significance over the wire for the workspace api.
 const (
 	ECodeRpcConnection     = "warpforge-error-rpc-connection"       // ECodeRpcConnection for connection errors
-	ECodeRpcInternal       = "warpforge-error-rpc-internal"         // ECodeRpcInternal means the RPC had an internal error
+	ECodeRpcMethodInternal = "warpforge-error-rpc-method-internal"  // ECodeRpcMethodInternal means the RPC method was called but returned an error.
 	ECodeRpcMethodNotFound = "warpforge-error-rpc-method-not-found" // ECodeRpcMethodNotFound means an RPC has an invalid request type
 	ECodeRpcSerialization  = "warpforge-error-rpc-serialization"    // ECodeRpcSerialization errors due to serialization or deserialization of RPC data
 	ECodeRpcUnknown        = "warpforge-error-rpc-unknown"          // ECodeRpcUnknown for unknown errors such as receiving an error response without a code.

@@ -54,7 +54,7 @@ func TestServerShutdown(t *testing.T) {
 	hist := &historian{}
 	srv := &server{
 		listener: listener,
-		handler:  handler{statusFetcher: hist.getStatus},
+		handler:  rpcHandler{statusFetcher: hist.getStatus},
 	}
 
 	done := make(chan struct{})
@@ -100,7 +100,7 @@ func TestServerEcho(t *testing.T) {
 
 	srv := &server{
 		listener: listener,
-		handler:  handler{},
+		handler:  rpcHandler{},
 	}
 	go srv.serve(ctx)
 
@@ -158,7 +158,7 @@ func TestServerModuleStatus(t *testing.T) {
 	hist := &historian{}
 	srv := &server{
 		listener: listener,
-		handler:  handler{statusFetcher: hist.getStatus},
+		handler:  rpcHandler{statusFetcher: hist.getStatus},
 	}
 	hist.setStatus("foobar", map[string]string{}, workspaceapi.ModuleStatus_ExecutedSuccess)
 	go srv.serve(ctx)

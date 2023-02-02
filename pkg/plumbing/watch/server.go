@@ -10,8 +10,6 @@ import (
 
 	ipld "github.com/ipld/go-ipld-prime"
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/ipld/go-ipld-prime/datamodel"
-	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/logging"
@@ -19,13 +17,16 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
+// Log tags for the server. Used to easily distinguish server/handler logs from plot/formula/etc logs.
 const (
 	LogTag_Server         = "╬═  server"
-	LogTag_DefaultHandler = "╬═? handler"
+	LogTag_DefaultHandler = "╬═? handler" // Default log tag for handler that doesn't have a connection ID
 )
 
+// key for context.Context used to set/retrieve handler logging tag
 type handlerTagKey struct{}
 
+// handlerTag retrieves the handler logging tag from context
 func handlerTag(ctx context.Context) string {
 	value := ctx.Value(handlerTagKey{})
 	if value == nil {
@@ -34,21 +35,24 @@ func handlerTag(ctx context.Context) string {
 	return value.(string)
 }
 
+// setHandlerTag returns a new context with the given handler logging tag value
 func setHandlerTag(ctx context.Context, tag string) context.Context {
 	return context.WithValue(ctx, handlerTagKey{}, tag)
 }
 
-// server stores the current status of the plot execution and responds to clients
+// server stores the current status of the plot execution and responds to clients.
 type server struct {
-	listener    net.Listener
-	handler     handler
-	nowFn       func() time.Time
-	readTimeout *time.Duration
-	acceptCount int
+	listener    net.Listener     // Where connections come from.
+	handler     rpcHandler       // Handles actual RPCs.
+	nowFn       func() time.Time // Should return _now_ for the purposes of setting deadlines. If nil, time.Now will be used.
+	readTimeout *time.Duration   // Timeout for deadlines.
+	acceptCount int              // Tracing metric. Used in log tags for handlers.
 }
 
-const DefaultReadTimeout = 5 * time.Second
+const DefaultReadTimeout = 5 * time.Second // Default read timeout for connections. See net.Conn.SetReadDeadline, server.setReadDeadline.
 
+// now returns the result of time.Now
+// May be overridden by setting nowFn
 func (s *server) now() time.Time {
 	if s.nowFn == nil {
 		return time.Now()
@@ -56,6 +60,10 @@ func (s *server) now() time.Time {
 	return s.nowFn()
 }
 
+// setReadDeadline sets the connection read deadline based on server configuration.
+// This should prevent connections from getting stuck waiting for a client request.
+// The default deadline is DefaultReadTimout from time.Now.
+//
 // Errors:
 //
 //   - warpforge-error-internal -- failed to set connection read deadline
@@ -77,6 +85,8 @@ func (s *server) setReadDeadline(conn net.Conn) error {
 	return nil
 }
 
+// NextRPC returns the next RPC object on the decoder's stream.
+//
 // Errors:
 //
 //    - warpforge-error-rpc-serialization -- bad connection or invalid json
@@ -176,35 +186,21 @@ func (s *server) handle(ctx context.Context, conn net.Conn) (err error) {
 	}
 }
 
+// sendError is a helper to serialize error responses to the client.
+// sendError will panic if the error response to serialize is nil.
+//
 // Errors:
 //
-//    - warpforge-error-rpc-serialization -- unable to convert ipld node to struct
-func NodeToRpcRequest(data datamodel.Node) (*workspaceapi.RpcRequest, error) {
-	np := bindnode.Prototype(&workspaceapi.RpcRequest{}, workspaceapi.TypeSystem.TypeByName("RpcRequest"))
-	nb := np.NewBuilder()
-	if err := datamodel.Copy(data, nb); err != nil {
-		return nil, serum.Error(workspaceapi.ECodeRpcSerialization, serum.WithCause(err),
-			serum.WithMessageLiteral("RpcRequest is invalid"),
-		)
-	}
-	request := bindnode.Unwrap(nb.Build()).(*workspaceapi.RpcRequest)
-	return request, nil
-}
-
-func sendError(ctx context.Context, conn net.Conn, rpc workspaceapi.Rpc, err error) error {
-	if err == nil {
+//   - warpforge-error-serialization --
+func sendError(ctx context.Context, conn net.Conn, rpc workspaceapi.Rpc, response error) error {
+	if response == nil {
 		panic("server cannot send nil error")
 	}
-	code := serum.Code(err)
+	code := serum.Code(response)
 	if code == "" {
 		code = workspaceapi.ECodeRpcUnknown
 	}
-	if err != nil {
-		return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
-			serum.WithMessageLiteral("unable to serialize error"),
-		)
-	}
-	err = ipld.MarshalStreaming(conn, ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
+	err := ipld.MarshalStreaming(conn, ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	if err != nil {
 		return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
 			serum.WithMessageLiteral("unable to send rpc error response"),
@@ -251,15 +247,17 @@ func listener(ctx context.Context, sockPath string) (net.Listener, error) {
 	return l, nil
 }
 
-type handler struct {
+// rpcHandler handles the actual RpcRequests.
+type rpcHandler struct {
 	statusFetcher func(ctx context.Context, path string) (workspaceapi.ModuleStatus, error)
 }
 
-func (h *handler) handle(ctx context.Context, ID string, req workspaceapi.RpcRequest) (*workspaceapi.RpcResponse, error) {
+// handle selects and calls method to handle request and errors if the method is not implemented.
+func (h *rpcHandler) handle(ctx context.Context, ID string, req workspaceapi.RpcRequest) (*workspaceapi.RpcResponse, error) {
 	logger := logging.Ctx(ctx)
 	tag := handlerTag(ctx)
-	kind, _ := req.Kind()
-	logger.Debug(tag, "request type: %s", kind)
+	kind, err := req.Kind()
+	logger.Debug(tag, "request type: %q: err: %v", kind, err)
 	if ID == "" {
 		return nil, nil
 	}
@@ -267,19 +265,21 @@ func (h *handler) handle(ctx context.Context, ID string, req workspaceapi.RpcReq
 	case req.ModuleStatusQuery != nil:
 		return h.methodModuleStatus(ctx, *req.ModuleStatusQuery)
 	default:
-		// TODO: reflect magic could tell you more about this, and allow us to do method registration.
+		// NOTE: strictly speaking, this should be unreachable by virtue of ipld schema validation.
+		// Reaching this means we failed to implement a method in the schema.
 		logger.Debug(tag, "method not found")
 		return nil, serum.Error(workspaceapi.ECodeRpcMethodNotFound)
 	}
 }
 
-func (h *handler) methodModuleStatus(ctx context.Context, req workspaceapi.ModuleStatusQuery) (*workspaceapi.RpcResponse, error) {
+// methodModuleStatus finds the status for module based on the ModuleStatusQuery.
+func (h *rpcHandler) methodModuleStatus(ctx context.Context, req workspaceapi.ModuleStatusQuery) (*workspaceapi.RpcResponse, error) {
 	logger := logging.Ctx(ctx)
 	tag := handlerTag(ctx)
 	status, err := h.statusFetcher(ctx, req.Path)
 	if err != nil {
 		logger.Debug(tag, "unable to get status")
-		return nil, serum.Error(workspaceapi.ECodeRpcInternal, serum.WithCause(err))
+		return nil, serum.Error(workspaceapi.ECodeRpcMethodInternal, serum.WithCause(err))
 	}
 	result := &workspaceapi.RpcResponse{ModuleStatusAnswer: &workspaceapi.ModuleStatusAnswer{
 		Path:   req.Path,
