@@ -358,11 +358,11 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-workspace -- when opening the workspace set fails
 //    - warpforge-error-module-invalid -- when module name is invalid
 //    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
 //    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
 //    - warpforge-error-initialization -- when working directory or binary path cannot be found
+//    - warpforge-error-workspace-missing -- when opening the workspace set fails
 func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()

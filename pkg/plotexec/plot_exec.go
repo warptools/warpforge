@@ -80,7 +80,7 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot open
 func plotInputToFormulaInput(ctx context.Context,
 	cfg ExecConfig,
 	wss workspace.WorkspaceSet,
@@ -122,7 +122,7 @@ func plotInputToFormulaInput(ctx context.Context,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot open
 func plotInputToFormulaInputSimple(ctx context.Context,
 	cfg ExecConfig,
 	wss workspace.WorkspaceSet,
@@ -342,7 +342,6 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 //    - warpforge-error-executor-failed -- when the execution step of the formula fails
 //    - warpforge-error-ware-unpack -- when a ware unpack operation fails for a formula input
 //    - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
-//    - warpforge-error-workspace -- when an invalid workspace is provided
 //    - warpforge-error-formula-invalid -- when an invalid formula is provided
 //    - warpforge-error-git -- when an error handing a git ingest occurs
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
@@ -351,7 +350,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
 //    - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot open
 func execProtoformula(ctx context.Context,
 	cfg ExecConfig,
 	wss workspace.WorkspaceSet,
@@ -412,7 +411,7 @@ func execProtoformula(ctx context.Context,
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot be opened
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot be opened
 func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, plot wfapi.Plot, pltCfg wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execPlot")
 	defer span.End()
@@ -547,7 +546,7 @@ func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, p
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot be opened
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot be opened
 func Exec(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, pltCfg wfapi.PlotExecConfig) (result wfapi.PlotResults, err error) {
 	ctx, span := tracing.StartFn(ctx, "Exec")
 	defer func() { tracing.EndWithStatus(span, err) }()

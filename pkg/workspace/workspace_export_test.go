@@ -13,19 +13,35 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-func TestWorkspaceCatalogPath(t *testing.T) {
-	rootPath := "home/user/workspace"
+func TestOpenHomeWorkspace(t *testing.T) {
+	ws, err := workspace.OpenHomeWorkspace(fstest.MapFS{})
+	qt.Assert(t, err, qt.IsNotNil)
+	qt.Assert(t, ws, qt.IsNil)
+
 	fsys := fstest.MapFS{
-		"home/user/.warpforge/root":      &fstest.MapFile{Mode: 0644 | fs.ModeDir},
-		"home/user/workspace/.warpforge": &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"home/user/.warphome": &fstest.MapFile{Mode: 0644 | fs.ModeDir},
 	}
-	ws, err := workspace.OpenWorkspace(fsys, rootPath)
+	t.Log(fsys)
+	ws, err = workspace.OpenHomeWorkspace(fsys)
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, ws.InternalPath(), qt.Equals, "home/user/.warphome")
+}
+
+func TestLocalWorkspaceCatalogPath(t *testing.T) {
+	localPath := "test-workspace/local"
+	fsys := fstest.MapFS{
+		"test-workspace/.warpforge/root":  &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/.warpforge":       &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/local/.warpforge": &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+	}
+	ws, err := workspace.OpenWorkspace(fsys, localPath)
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, ws.IsRootWorkspace(), qt.IsFalse)
+	qt.Assert(t, ws.IsHomeWorkspace(), qt.IsFalse)
 	t.Run("empty catalog name", func(t *testing.T) {
 		result, err := ws.CatalogPath("")
 		qt.Check(t, err, qt.IsNil)
-		qt.Check(t, result, qt.Equals, "home/user/workspace/.warpforge/catalog")
+		qt.Check(t, result, qt.Equals, "test-workspace/local/.warpforge/catalog")
 	})
 
 	for _, tt := range []struct {
@@ -74,6 +90,7 @@ func TestWorkspaceCatalogPath(t *testing.T) {
 		},
 	} {
 		t.Run(tt.testCase, func(t *testing.T) {
+			tt := tt
 			result, err := ws.CatalogPath(tt.input)
 			expectedErr := wfapi.ErrorCatalogName(tt.input, "named catalogs must be in a root workspace")
 			qt.Check(t, err, qt.DeepEquals, expectedErr)
@@ -83,14 +100,15 @@ func TestWorkspaceCatalogPath(t *testing.T) {
 }
 
 func TestRootWorkspaceCatalogPath(t *testing.T) {
-	rootPath := "home/user"
+	rootPath := "test-workspace"
 	fsys := fstest.MapFS{
-		"home/user/.warpforge":      &fstest.MapFile{Mode: 0644 | fs.ModeDir},
-		"home/user/.warpforge/root": &fstest.MapFile{Mode: 0644},
+		"test-workspace/.warpforge":      &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/.warpforge/root": &fstest.MapFile{Mode: 0644},
 	}
 	ws, err := workspace.OpenWorkspace(fsys, rootPath)
 	qt.Assert(t, err, qt.IsNil)
 	qt.Assert(t, ws.IsRootWorkspace(), qt.IsTrue)
+	qt.Assert(t, ws.IsHomeWorkspace(), qt.IsFalse)
 	for _, tt := range []struct {
 		testCase string
 		input    string
@@ -106,7 +124,7 @@ func TestRootWorkspaceCatalogPath(t *testing.T) {
 		{
 			testCase: "valid catalog name",
 			input:    "foo",
-			output:   "home/user/.warpforge/catalogs/foo",
+			output:   "test-workspace/.warpforge/catalogs/foo",
 			err:      nil,
 		},
 		{
