@@ -10,15 +10,19 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
+// Historian is a minimal placeholder for an actor tracking module state.
 type historian struct {
-	m       sync.RWMutex
+	m       sync.RWMutex // Locking strategy is a simple global lock for now. Reconsider this strategy over time.
 	records map[string]*moduleHistory
 }
+
+// ModuleHistory contains data required for history of a single module state
 type moduleHistory struct {
 	// we likely want to store more records and information.
 	recent workspaceapi.ModuleStatus
 }
 
+// setStatus will set the current state of a module
 func (h *historian) setStatus(path string, ingests map[string]string, status workspaceapi.ModuleStatus) {
 	if h == nil {
 		return
@@ -36,6 +40,7 @@ func (h *historian) setStatus(path string, ingests map[string]string, status wor
 	record.recent = status
 }
 
+// getStatus will retrieve the most recent state of a module
 func (h *historian) getStatus(ctx context.Context, path string) (workspaceapi.ModuleStatus, error) {
 	if h == nil {
 		return workspaceapi.ModuleStatus_NoInfo, serum.Error(wfapi.ECodeInternal, serum.WithMessageLiteral("historian not provisioned"))

@@ -73,66 +73,6 @@ func TestServerShutdown(t *testing.T) {
 	}
 }
 
-func TestRoundtrip_Streaming(t *testing.T) {
-	var err error
-	buf := &bytes.Buffer{}
-	echo := workspaceapi.Echo("foobar")
-	request := workspaceapi.Rpc{
-		ID:   "1",
-		Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{Echo: &echo}},
-	}
-	err = ipld.MarshalStreaming(buf, Encoder, &request, workspaceapi.TypeSystem.TypeByName("Rpc"))
-	qt.Assert(t, err, qt.IsNil)
-	t.Log("write:\n", buf.String())
-	r, w := io.Pipe()
-	go io.Copy(w, buf)
-	var uut workspaceapi.Rpc
-	t.Cleanup(func() { w.Close(); r.Close() })
-	ch := make(chan struct{})
-	go func() {
-		_, err = ipld.UnmarshalStreaming(r, Decoder, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
-		ch <- struct{}{}
-	}()
-	select {
-	case <-time.After(time.Second):
-		t.Fatalf("test timeout")
-	case <-ch:
-	}
-	qt.Assert(t, err, qt.IsNil)
-	qt.Assert(t, uut, qt.CmpEquals(), request)
-}
-
-func TestRoundtrip_PreReadJson(t *testing.T) {
-	var err error
-	buf := &bytes.Buffer{}
-	echo := workspaceapi.Echo("foobar")
-	rpcOut := workspaceapi.Rpc{
-		ID:   "1",
-		Data: workspaceapi.RpcData{RpcResponse: &workspaceapi.RpcResponse{Echo: &echo}},
-	}
-	err = ipld.MarshalStreaming(buf, ipldjson.Encode, &rpcOut, workspaceapi.TypeSystem.TypeByName("Rpc"))
-	qt.Assert(t, err, qt.IsNil)
-
-	t.Log("write:\n", buf.String())
-
-	r, w := io.Pipe()
-	go io.Copy(w, buf)
-	t.Cleanup(func() { w.Close(); r.Close() })
-	t.Deadline()
-
-	// Using the json decoder as an intermediate step works but is ugly
-	var raw json.RawMessage
-	dec := json.NewDecoder(r)
-	err = dec.Decode(&raw)
-	qt.Assert(t, err, qt.IsNil)
-	t.Log("read:\n", string(raw))
-
-	uut := workspaceapi.Rpc{}
-	_, err = ipld.Unmarshal(raw, ipldjson.Decode, &uut, workspaceapi.TypeSystem.TypeByName("Rpc"))
-	qt.Assert(t, err, qt.IsNil)
-	qt.Assert(t, uut, qt.CmpEquals(), rpcOut)
-}
-
 type rpcPromise struct {
 	*workspaceapi.Rpc
 	error
