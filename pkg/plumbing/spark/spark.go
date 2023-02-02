@@ -62,14 +62,7 @@ func (n *netDialer) Dial(ctx context.Context) (net.Conn, error) {
 	return conn, nil
 }
 
-const (
-	// ECodeDial is an io error resulting from a net dial
-	ECodeDial = wfapi.ECodeIo + "-dial"
-	// ECodeQuery is used when a query fails for unknown reasons
-	ECodeQuery = "warpforge-error-query"
-)
-
-// Custom error codes for spark output sentinels.
+// ECodeSpark* error codes are used for spark output sentinels.
 const (
 	ECodeSparkNoModule    = "warpforge-spark-no-module"    // locally can't find module path
 	ECodeSparkNoWorkspace = "warpforge-spark-no-workspace" // locally can't find workspace
