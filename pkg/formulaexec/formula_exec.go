@@ -259,45 +259,46 @@ func isSymbolicLink(m fs.FileMode) bool {
 	return m&fs.ModeSymlink == fs.ModeSymlink
 }
 
-func getBinMounts(binPath string) []specs.Mount {
+func getBinMounts(ctx context.Context, binPath string) []specs.Mount {
 	wfBinMount := specs.Mount{
 		Source:      binPath,
 		Destination: containerBinPath(),
 		Type:        "none",
 		Options:     []string{"rbind", "ro"},
 	}
+	log := logging.Ctx(ctx)
 	result := []specs.Mount{wfBinMount}
-	binFiles, err := ioutil.ReadDir(binPath) // note that this doesn't support nested directories.
+	rioPath := filepath.Join(binPath, "rio")
+	fi, err := os.Lstat(rioPath)
 	if err != nil {
+		log.Info(LOG_TAG, "rio not found: %v", err)
 		return result
 	}
-	for _, file := range binFiles {
-		if file == nil || !isSymbolicLink(file.Mode()) {
-			continue
+	if !isSymbolicLink(fi.Mode()) {
+		return result
+	}
+	for isSymbolicLink(fi.Mode()) {
+		p, err := os.Readlink(rioPath)
+		if err != nil {
+			log.Info(LOG_TAG, "could not read symbolic link for rio %q: %v", rioPath, err)
+			return result
 		}
-		path := filepath.Join(binPath, file.Name())
-		dst := wfBinMount.Destination
-		for _, p := range getMountDirSymlinks(path) {
-			src := filepath.Dir(p)
-			k, err := os.Readlink(p)
-			if err != nil || filepath.IsAbs(k) {
-				dst = src
-			} else {
-				dst = filepath.Join(dst, filepath.Dir(k))
-			}
-
-			if isDuplicateMount(result, src, dst) {
-				continue
-			}
-			symMount := specs.Mount{
-				Source:      src,
-				Destination: dst,
-				Type:        "none",
-				Options:     []string{"rbind", "ro"},
-			}
-			result = append(result, symMount)
+		rioPath = p
+		fi, err = os.Lstat(rioPath)
+		if err != nil {
+			log.Info(LOG_TAG, "could not find rio via link %q: %v", rioPath, err)
+			return result
 		}
 	}
+	dst := filepath.Join(containerBinPath(), "rio")
+	log.Debug(LOG_TAG, "mounting rio via symbolic link %q->%q", rioPath, dst)
+	symMount := specs.Mount{
+		Source:      rioPath,
+		Destination: dst,
+		Type:        "none",
+		Options:     []string{"bind", "ro"},
+	}
+	result = append(result, symMount)
 	return result
 }
 
@@ -429,7 +430,7 @@ func (cfg internalConfig) newRuncConfig(ctx context.Context, runPath string, bas
 		rc.spec.Mounts = append(rc.spec.Mounts, wfWarehouseMount)
 	}
 
-	wfBinMounts := getBinMounts(rc.binPath)
+	wfBinMounts := getBinMounts(ctx, rc.binPath)
 	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMounts...)
 
 	// check if /dev/tty exists
