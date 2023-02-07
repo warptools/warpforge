@@ -178,7 +178,6 @@ func cmdFerk_selectPlot(c *cli.Context) (*wfapi.Plot, *string, error) {
 		}
 		return &plot, nil, nil
 	}
-	fmt.Println("plot is", c.String("plot"))
 
 	// Look for module and plot files.
 	// If we received a filename: expect that to be a plot.

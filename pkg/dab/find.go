@@ -18,9 +18,9 @@ type ActionableSearch uint8
 
 const (
 	ActionableSearch_None    ActionableSearch = 0
-	ActionableSearch_Formula ActionableSearch = 1      // Use this bitflag to indicate a formula is an acceptable search result.
-	ActionableSearch_Module  ActionableSearch = 1 << 1 // Use this bitflag to indicate a module is an acceptable search result.  Modules almost always have a plot associated with them, which will also be loaded by most search functions.
-	ActionableSearch_Plot    ActionableSearch = 1 << 2 // A module can always also have a plot; use this if a bare plot (no module) is acceptable.
+	ActionableSearch_Formula ActionableSearch = 1 << (iota - 1) // Use this bitflag to indicate a formula is an acceptable search result.
+	ActionableSearch_Module                                     // Use this bitflag to indicate a module is an acceptable search result.  Modules almost always have a plot associated with them, which will also be loaded by most search functions.
+	ActionableSearch_Plot                                       // A module can always also have a plot; use this if a bare plot (no module) is acceptable.
 
 	ActionableSearch_Any ActionableSearch = ActionableSearch_Formula | ActionableSearch_Module | ActionableSearch_Plot
 )
@@ -104,7 +104,7 @@ func FindActionableFromFS(
 	// First round: this may be a file, and may be one of any of the types.
 	// Stat it and consider that first:
 	// if it is a file, that's its own whole detection procedure (and means no further search);
-	// if it's not a file, we can procede to the behavior for dir feature detection (without popping).
+	// if it's not a file, we can proceed to the behavior for dir feature detection (without popping).
 	foundPath = filepath.Join(basisPath, remainingSearchPath)
 	fi, e2 := stat(fsys, foundPath)
 	if e2 != nil {
@@ -137,14 +137,14 @@ func FindActionableFromFS(
 		if accept&ActionableSearch_Module > 0 {
 			foundPath = filepath.Join(basisPath, remainingSearchPath, "module.wf")
 			m, e2 = ModuleFromFile(fsys, foundPath)
-			if serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
+			if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
 				// Any error that's just just notexist: means our search has blind spots: error out.
 				err = wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", e2)
 				return
 			}
 			// A module may also have a plot next to it; load that eagerly too.
 			p, e2 = PlotFromFile(fsys, filepath.Join(basisPath, remainingSearchPath, "plot.wf"))
-			if serum.Code(e2) != wfapi.ECodeMissing {
+			if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing {
 				err = wfapi.ErrorSearchingFilesystem("loading plot associated with a module", e2)
 			}
 			return
@@ -153,7 +153,7 @@ func FindActionableFromFS(
 		if accept&ActionableSearch_Plot > 0 {
 			foundPath = filepath.Join(basisPath, remainingSearchPath, "plot.wf")
 			p, e2 = PlotFromFile(fsys, foundPath)
-			if serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
+			if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
 				// Any error that's just just notexist: means our search has blind spots: error out.
 				err = wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", e2)
 				return

@@ -48,7 +48,7 @@ func GuessDocumentType(scanMe []byte, keywords []string) (string, error) {
 	// However, a good codec API to accomplish this task efficiently must support token stepping,
 	// because we want to return after a few tokens rather than the whole stream
 	// (and perhaps to be really optimal, it would be nice to even be able to return a buffer of the tokens and a codec that can be resumed).
-	// Regretably, `codec ipld.Decoder` does not expose support for token stepping;
+	// Regrettably, `codec ipld.Decoder` does not expose support for token stepping;
 	// and though the refmt code they're based on does support token stepping, that's polevaulting quite a few layers
 	// (and would not be able to replay any buffered tokens into the ipld.Decoder interface again, either).
 	//
