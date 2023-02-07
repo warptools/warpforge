@@ -93,7 +93,7 @@ func canonicalizePath(pwd, path string) string {
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-workspace -- when opening the workspace set fails
+//    - warpforge-error-workspace-missing -- when opening the workspace set fails
 //    - warpforge-error-datatoonew -- when error is too new
 //    - warpforge-error-searching-filesystem -- unexpected error traversing filesystem
 //    - warpforge-error-initialization -- fail to get working directory or executable path

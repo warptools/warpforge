@@ -35,11 +35,11 @@ type Workspace struct {
 //
 // Errors:
 //
-//    - warpforge-error-workspace -- when the workspace directory fails to open
+//    - warpforge-error-workspace-missing -- when the workspace directory does not exist
 func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, error) {
-	_, err := statDir(fsys, filepath.Join(rootPath, magicWorkspaceDirname))
+	_, err := statWorkspace(fsys, filepath.Join(rootPath, magicWorkspaceDirname))
 	if err != nil {
-		return nil, wfapi.ErrorWorkspace(rootPath, err)
+		return nil, err
 	}
 	return openWorkspace(fsys, rootPath), nil
 }
@@ -76,13 +76,15 @@ func openHomeWorkspace(fsys fs.FS) *Workspace {
 //
 // Errors:
 //
-//    - warpforge-error-workspace -- when the workspace directory fails to open
+//    - warpforge-error-workspace-missing -- when the workspace directory does not exist
 func OpenHomeWorkspace(fsys fs.FS) (*Workspace, error) {
-	workspace, err := OpenWorkspace(fsys, homedir)
-	if err == nil {
-		workspace.isHomeWorkspace = true
-		workspace.isRootWorkspace = true
+	_, err := statWorkspace(fsys, filepath.Join(homedir, magicHomeWorkspaceDirname))
+	if err != nil {
+		return nil, err
 	}
+	workspace := openHomeWorkspace(fsys)
+	workspace.isHomeWorkspace = true
+	workspace.isRootWorkspace = true
 	return workspace, err
 }
 

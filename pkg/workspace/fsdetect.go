@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -57,23 +56,29 @@ func init() {
 func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, remainingSearchPath string, err error) {
 	// Our search loops over searchPath, popping a path segment off at the end of every round.
 	//  Keep the given searchPath in hand; we might need it for an error report.
-	searchAt := searchPath
+	basisPath = filepath.Clean(basisPath)
+	searchAt := filepath.Join(basisPath, searchPath)
 	for {
 		// Assume the search path exists and is a dir (we'll get a reasonable error anyway if it's not);
 		//  join that path with our search target and try to open it.
-		_, err := statDir(fsys, filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
+		magicPath := filepath.Join(searchAt, magicWorkspaceDirname)
+		_, err := statWorkspace(fsys, magicPath)
 		if err == nil {
-			ws := openWorkspace(fsys, filepath.Join(basisPath, searchAt))
-			return ws, filepath.Dir(searchAt), nil
+			ws := openWorkspace(fsys, searchAt)
+			rel, _ := filepath.Rel(basisPath, searchAt)
+			rel = filepath.Dir(rel)
+			if rel == "." {
+				rel = ""
+			}
+			return ws, rel, nil
 		}
-		if errors.Is(err, fs.ErrNotExist) { // no such thing?  oh well.  pop a segment and keep looking.
-			searchAt = filepath.Dir(searchAt)
-			// If popping a searchAt segment got us down to nothing,
-			//  and we didn't find anything here either,
-			//   that's it: return NotFound.
-			if searchAt == "/" || searchAt == "." {
+		if serum.Code(err) == wfapi.ECodeWorkspaceMissing { // no such thing?  oh well.  pop a segment and keep looking.
+			// Went all the way up to basis path and didn't find it.
+			// return NotFound
+			if searchAt == basisPath || searchAt == "." {
 				return nil, "", nil
 			}
+			searchAt = filepath.Dir(searchAt)
 			// ... otherwise: continue, with popped searchAt.
 			continue
 		}
@@ -83,19 +88,29 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 	}
 }
 
-// statDir is fs.Stat but returns fs.ErrNotExist if the path is not a dir
-func statDir(fsys fs.FS, path string) (fs.FileInfo, error) {
+// statWorkspace is fs.Stat but returns an error if the path is not a dir
+//
+// Errors:
+//
+//    - warpforge-error-workspace-missing -- workspace does not exist
+func statWorkspace(fsys fs.FS, path string) (fs.FileInfo, error) {
 	if filepath.IsAbs(path) {
 		path = path[1:]
 	}
 	fi, err := fs.Stat(fsys, path)
 	if err != nil {
-		return fi, err
+		return fi, serum.Error(wfapi.ECodeWorkspaceMissing, serum.WithCause(err),
+			serum.WithMessageTemplate("file {{path|q}} does not exist"),
+			serum.WithDetail("path", path),
+		)
 	}
 	if !fi.IsDir() {
-		return fi, fs.ErrNotExist
+		return fi, serum.Error(wfapi.ECodeWorkspaceMissing, serum.WithCause(fs.ErrNotExist),
+			serum.WithMessageTemplate("file {{path|q}} is not a directory"),
+			serum.WithDetail("path", path),
+		)
 	}
-	return fi, err
+	return fi, nil
 }
 
 // FindWorkspaceStack works similarly to FindWorkspace, but finds all workspaces, not just the nearest one.
@@ -121,6 +136,9 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss Workspace
 			return
 		}
 		if ws == nil {
+			break
+		}
+		if len(wss) > 0 && wss[len(wss)-1].rootPath == ws.rootPath {
 			break
 		}
 		wss = append(wss, ws)
@@ -220,7 +238,7 @@ func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) error {
 // Errors:
 //
 //    - warpforge-error-io -- when creating the workspace fails
-//    - warpforge-error-workspace -- when workspace directory fails to open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot be opened
 func CreateOrOpenHomeWorkspace() (*Workspace, error) {
 	hws, err := OpenHomeWorkspace(os.DirFS("/"))
 	if err == nil {

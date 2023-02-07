@@ -38,6 +38,7 @@ const (
 	ECodeWareUnpack             = "warpforge-error-ware-unpack"              // ECodeWareUnpack is used when unpacking a ware fails.
 	ECodeWorkspace              = "warpforge-error-workspace"                // ECodeWorkspace is used when an error occurs handling a workspace.
 	ECodeInitialization         = "warpforge-error-initialization"           // ECodeInitialization is used for errors during loading configuration and environment
+	ECodeWorkspaceMissing       = "warpforge-error-workspace-missing"        // ECodeWorkspace is used when an expected workspace does not exist.
 )
 
 // IsCode reports whether any error in err's chain matches the given code string.
