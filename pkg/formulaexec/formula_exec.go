@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -171,6 +172,7 @@ func containerScriptPath() string {
 }
 
 func getMountDirSymlinks(start string) []string {
+	//FIXME: This function is not implemented in an easily testable way.
 	paths := []string{}
 	path := start
 
@@ -222,15 +224,7 @@ func getNetworkMounts() []specs.Mount {
 			for _, p := range getMountDirSymlinks(path) {
 				dir := filepath.Dir(p)
 
-				// ignore duplicate mounts
-				duplicate := false
-				for _, m := range mounts {
-					if m.Source == dir {
-						duplicate = true
-						break
-					}
-				}
-				if duplicate {
+				if isDuplicateMount(mounts, dir, dir) {
 					continue
 				}
 
@@ -246,6 +240,66 @@ func getNetworkMounts() []specs.Mount {
 	}
 
 	return mounts
+}
+
+// isDuplicateMount returns true if the source or destination is in mounts
+func isDuplicateMount(mounts []specs.Mount, src string, dst string) bool {
+	for _, m := range mounts {
+		if m.Source == src {
+			return true
+		}
+		if m.Destination == dst {
+			return true
+		}
+	}
+	return false
+}
+
+func isSymbolicLink(m fs.FileMode) bool {
+	return m&fs.ModeSymlink == fs.ModeSymlink
+}
+
+func getBinMounts(ctx context.Context, binPath string) []specs.Mount {
+	wfBinMount := specs.Mount{
+		Source:      binPath,
+		Destination: containerBinPath(),
+		Type:        "none",
+		Options:     []string{"rbind", "ro"},
+	}
+	log := logging.Ctx(ctx)
+	result := []specs.Mount{wfBinMount}
+	rioPath := filepath.Join(binPath, "rio")
+	fi, err := os.Lstat(rioPath)
+	if err != nil {
+		log.Info(LOG_TAG, "rio not found: %v", err)
+		return result
+	}
+	if !isSymbolicLink(fi.Mode()) {
+		return result
+	}
+	for isSymbolicLink(fi.Mode()) {
+		p, err := os.Readlink(rioPath)
+		if err != nil {
+			log.Info(LOG_TAG, "could not read symbolic link for rio %q: %v", rioPath, err)
+			return result
+		}
+		rioPath = p
+		fi, err = os.Lstat(rioPath)
+		if err != nil {
+			log.Info(LOG_TAG, "could not find rio via link %q: %v", rioPath, err)
+			return result
+		}
+	}
+	dst := filepath.Join(containerBinPath(), "rio")
+	log.Debug(LOG_TAG, "mounting rio via symbolic link %q->%q", rioPath, dst)
+	symMount := specs.Mount{
+		Source:      rioPath,
+		Destination: dst,
+		Type:        "none",
+		Options:     []string{"bind", "ro"},
+	}
+	result = append(result, symMount)
+	return result
 }
 
 // newRuncSpec executes "runc spec" for the given parameters and parses the result
@@ -375,13 +429,9 @@ func (cfg internalConfig) newRuncConfig(ctx context.Context, runPath string, bas
 		}
 		rc.spec.Mounts = append(rc.spec.Mounts, wfWarehouseMount)
 	}
-	wfBinMount := specs.Mount{
-		Source:      rc.binPath,
-		Destination: containerBinPath(),
-		Type:        "none",
-		Options:     []string{"rbind", "ro"},
-	}
-	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMount)
+
+	wfBinMounts := getBinMounts(ctx, rc.binPath)
+	rc.spec.Mounts = append(rc.spec.Mounts, wfBinMounts...)
 
 	// check if /dev/tty exists
 	rc.spec.Process.Terminal = false // default to disabled where no tty exists (e.g. github actions)

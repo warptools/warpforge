@@ -5,7 +5,8 @@ MODULE := $(shell go list -m)
 install:
 	@echo "Installing plugins..."
 	mkdir -p $(GOBIN)
-	cp ./plugins/* $(GOBIN)
+# ignore errors when copying plugins (cp does not like copying over symbolic links)
+	-cp ./plugins/* $(GOBIN)
 	@echo "Building and installing warpforge..."
 	go install ./...
 	@echo "Install complete!"
