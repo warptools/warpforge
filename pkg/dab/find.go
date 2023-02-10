@@ -2,7 +2,6 @@ package dab
 
 import (
 	"bufio"
-	"errors"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -86,6 +85,7 @@ func open(fsys fs.FS, path string) (fs.File, error) {
 //
 //  - warpforge-error-datatoonew -- when found data is not supported by this version of warpforge
 //  - warpforge-error-invalid-argument -- when a file contains the wrong content for its filename
+//  - warpforge-error-invalid-argument -- when searchPath is absolute
 //  - warpforge-error-io -- when an IO error occurs during search
 //  - warpforge-error-missing -- when an expected file is missing
 //  - warpforge-error-module-invalid -- when a read module contains invalid data
@@ -99,6 +99,18 @@ func FindActionableFromFS(
 	m *wfapi.Module, p *wfapi.Plot, f *wfapi.Formula,
 	foundPath string, remainingSearchPath string, err error,
 ) {
+	defer func() {
+		if remainingSearchPath == "." {
+			// canonicalize to an empty string for an empty remaining search path
+			remainingSearchPath = ""
+		}
+	}()
+	if filepath.IsAbs(searchPath) {
+		err = serum.Error(wfapi.ECodeArgument,
+			serum.WithMessageTemplate("search path {{path|q}} may not be an absolute path"),
+			serum.WithDetail("path", searchPath),
+		)
+	}
 	remainingSearchPath = searchPath
 
 	// First round: this may be a file, and may be one of any of the types.
@@ -107,22 +119,27 @@ func FindActionableFromFS(
 	// if it's not a file, we can proceed to the behavior for dir feature detection (without popping).
 	foundPath = filepath.Join(basisPath, remainingSearchPath)
 	fi, e2 := stat(fsys, foundPath)
-	if e2 != nil {
+	if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing {
 		err = e2
 		return
 	}
-	if fi.Mode()&^fs.ModePerm == 0 {
+	if e2 == nil && fi.Mode().IsRegular() {
+		remainingSearchPath = filepath.Dir(remainingSearchPath)
 		fh, e2 := open(fsys, foundPath)
 		defer fh.Close()
 		if e2 != nil {
 			err = e2
 			return
 		}
-		m, p, f, err = findActionableFromFile(fh, accept)
+		m, p, f, err = guessActionableFromFile(fh, accept)
+		if err != nil {
+			return
+		}
 		if m != nil { // If a module was found, a plot may also exist as a sibling file.
-			p, e2 = PlotFromFile(fsys, filepath.Join(filepath.Dir(filepath.Join(basisPath, remainingSearchPath)), "plot.wf"))
-			if !errors.Is(e2, fs.ErrNotExist) {
-				err = wfapi.ErrorSearchingFilesystem("loading plot associated with a module", e2)
+			plotPath := filepath.Join(filepath.Dir(foundPath), MagicFilename_Plot)
+			p, err = optionalPlotFromFile(fsys, plotPath)
+			if err != nil {
+				return
 			}
 		}
 		return
@@ -135,27 +152,17 @@ func FindActionableFromFS(
 	for {
 		// Peek for module.
 		if accept&ActionableSearch_Module > 0 {
-			foundPath = filepath.Join(basisPath, remainingSearchPath, "module.wf")
-			m, e2 = ModuleFromFile(fsys, foundPath)
-			if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
-				// Any error that's just just notexist: means our search has blind spots: error out.
-				err = wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", e2)
+			foundPath = filepath.Join(basisPath, remainingSearchPath, MagicFilename_Module)
+			m, p, err = optionalModulePlotFromFile(fsys, foundPath)
+			if m != nil || err != nil {
 				return
 			}
-			// A module may also have a plot next to it; load that eagerly too.
-			p, e2 = PlotFromFile(fsys, filepath.Join(basisPath, remainingSearchPath, "plot.wf"))
-			if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing {
-				err = wfapi.ErrorSearchingFilesystem("loading plot associated with a module", e2)
-			}
-			return
 		}
 		// Peek for plot.
 		if accept&ActionableSearch_Plot > 0 {
-			foundPath = filepath.Join(basisPath, remainingSearchPath, "plot.wf")
-			p, e2 = PlotFromFile(fsys, foundPath)
-			if e2 != nil && serum.Code(e2) != wfapi.ECodeMissing { // notexist is ignored.
-				// Any error that's just just notexist: means our search has blind spots: error out.
-				err = wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", e2)
+			foundPath = filepath.Join(basisPath, remainingSearchPath, MagicFilename_Plot)
+			p, err = optionalPlotFromFile(fsys, foundPath)
+			if p != nil || err != nil {
 				return
 			}
 		}
@@ -165,35 +172,78 @@ func FindActionableFromFS(
 
 		// None of the filename peeks found a thing?
 		// Okay.  If we can search further up, let's do so.
+		foundPath = "" // clear found path
 		if !searchUp {
-			foundPath = ""
+			remainingSearchPath = filepath.Dir(remainingSearchPath)
+			return
+		}
+		if len(remainingSearchPath) == 1 && (remainingSearchPath == "/" || remainingSearchPath == "." || remainingSearchPath == "") {
 			return
 		}
 		remainingSearchPath = filepath.Dir(remainingSearchPath)
-		if remainingSearchPath == "/" || remainingSearchPath == "." {
-			return
-		}
 	}
 }
 
-// findActionableFromFile peeks at the first few bytes of a stream
+// optionalModulePlotFromFile will load a module from file and an adjacent plot from file.
+// Does not return an error for non-existent files.
+func optionalModulePlotFromFile(fsys fs.FS, path string) (*wfapi.Module, *wfapi.Plot, error) {
+	m, err := ModuleFromFile(fsys, path)
+	if err != nil {
+		if serum.Code(err) != wfapi.ECodeMissing { // notexist is ignored.
+			// Any other error means our search has blind spots: error out.
+			return nil, nil, wfapi.ErrorSearchingFilesystem("loading module", err)
+		}
+		return nil, nil, nil
+	}
+	// A module may also have a plot next to it; load that eagerly too.
+	plotPath := filepath.Join(filepath.Dir(path), MagicFilename_Plot)
+	p, err := optionalPlotFromFile(fsys, plotPath)
+	if err != nil {
+		return m, nil, err
+	}
+	return m, p, nil
+}
+
+// optionalPlotFromFile will load a plot from file.
+// Does not return an error for non-existent files.
+func optionalPlotFromFile(fsys fs.FS, path string) (*wfapi.Plot, error) {
+	p, err := PlotFromFile(fsys, path)
+	if err != nil {
+		if serum.Code(err) != wfapi.ECodeMissing { // notexist is ignored.
+			// Any error that's just just notexist: means our search has blind spots: error out.
+			return nil, wfapi.ErrorSearchingFilesystem("modules, plots, or formulas", err)
+		}
+		return nil, nil
+	}
+	return p, nil
+}
+
+const (
+	guessMagic_ModuleV1 = "module.v1"
+	guessMagic_PlotV1   = "plot.v1"
+	guessMagic_Formula  = "formula" // REVIEW: not sure why we don't use FormulaCapsule V1 value here
+)
+
+var guessMagic_All = []string{
+	guessMagic_ModuleV1,
+	guessMagic_PlotV1,
+	guessMagic_Formula,
+}
+
+// guessActionableFromFile peeks at the first few bytes of a stream
 // to guess whether it's a module, a plot, or a formula, and returns the right one.
-func findActionableFromFile(r io.Reader, accept ActionableSearch) (
+func guessActionableFromFile(r io.Reader, accept ActionableSearch) (
 	m *wfapi.Module, p *wfapi.Plot, f *wfapi.Formula, err error,
 ) {
 	peekSize := 1024
 	br := bufio.NewReaderSize(r, peekSize)
 	peek, _ := br.Peek(peekSize)
-	marker, err := GuessDocumentType(peek, []string{
-		"module.v1",
-		"plot.v1",
-		"formula",
-	})
+	marker, err := GuessDocumentType(peek, guessMagic_All)
 	if err != nil {
 		return
 	}
 	switch marker {
-	case "module.v1":
+	case guessMagic_ModuleV1:
 		if accept&ActionableSearch_Module == 0 {
 			err = serum.Error(wfapi.ECodeArgument,
 				serum.WithMessageLiteral("file contained a module document when a module is not expected"),
@@ -208,7 +258,7 @@ func findActionableFromFile(r io.Reader, accept ActionableSearch) (
 			m = capsule.Module
 		}
 		return
-	case "plot.v1":
+	case guessMagic_PlotV1:
 		if accept&ActionableSearch_Plot == 0 {
 			err = serum.Error(wfapi.ECodeArgument,
 				serum.WithMessageLiteral("file contained a plot document when a plot is not expected"),
@@ -223,7 +273,7 @@ func findActionableFromFile(r io.Reader, accept ActionableSearch) (
 			p = capsule.Plot
 		}
 		return
-	case "formula":
+	case guessMagic_Formula:
 		if accept&ActionableSearch_Formula == 0 {
 			err = serum.Error(wfapi.ECodeArgument,
 				serum.WithMessageLiteral("file contained a formula document when a formula is not expected"),
