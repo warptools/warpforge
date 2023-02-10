@@ -3,6 +3,9 @@ package watch
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net"
 	"runtime/debug"
 	"strconv"
@@ -134,7 +137,7 @@ func (s *server) handle(ctx context.Context, conn net.Conn) (err error) {
 		}
 	}()
 	ctx, cancel := context.WithCancel(ctx)
-	defer log.Info(tag, "connection closed")
+	defer log.Debug(tag, "connection closed")
 	defer cancel()
 	defer conn.Close()
 	dec := json.NewDecoder(conn)
@@ -142,12 +145,19 @@ func (s *server) handle(ctx context.Context, conn net.Conn) (err error) {
 		if err := s.setReadDeadline(conn); err != nil {
 			return err
 		}
-		log.Info(tag, "getting next RPC")
+		log.Debug(tag, "getting next RPC")
 		rpc, err := NextRPC(ctx, dec)
 		if err != nil {
-			log.Info(tag, "unable to read RPC: %s", err.Error())
-			// TODO: send error response
-			return err
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			{
+				err := sendError(ctx, conn, rpc.ID, err)
+				if err != nil {
+					log.Debug(tag, "watch: unable to send error response")
+				}
+			}
+			return fmt.Errorf("watch: unable to read RPC: %w", err)
 		}
 		if rpc.Data.RpcResponse != nil {
 			if rpc.ID == "" {
@@ -158,31 +168,62 @@ func (s *server) handle(ctx context.Context, conn net.Conn) (err error) {
 			ipld.MarshalStreaming(conn, ipldjson.Encode, rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
 			continue
 		}
-		log.Info(tag, "handle request")
+		log.Debug(tag, "handle request")
 		response, err := s.handler.handle(ctx, rpc.ID, *rpc.Data.RpcRequest)
 		if err != nil {
-			log.Info(tag, "RPC handler failed: %s", err.Error())
-			panic("TODO")
-			//TODO: send error response
+			{
+				err := sendError(ctx, conn, rpc.ID, err)
+				if err != nil {
+					log.Debug(tag, "watch: unable to send error response")
+				}
+			}
+			return fmt.Errorf("watch: RPC handler failed: %w", err)
 		}
 		if response == nil || rpc.ID == "" {
 			// ignore responses without IDs
-			log.Info(tag, "RPC handler response is nil or request has no ID: %s", rpc.ID)
+			log.Debug(tag, "RPC handler response is nil or request has no ID: %s", rpc.ID)
 			continue
 		}
 		rpc.Data.RpcRequest = nil
 		rpc.Data.RpcResponse = response
-		log.Info(tag, "response")
+		log.Debug(tag, "response")
 		data, err := ipld.Marshal(ipldjson.Encode, rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
 		if err != nil {
-			log.Info(tag, "RPC handler failed to marshal output: %s", err.Error())
-			return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err))
+			return serum.Error(wfapi.ECodeSerialization, serum.WithCause(err),
+				serum.WithMessageLiteral("RPC handler failed to serialize response"),
+			)
 		}
 		_, err = conn.Write(data)
 		if err != nil {
-			log.Info(tag, "RPC handler failed to write data: %s", err.Error())
-			return serum.Error(wfapi.ECodeIo, serum.WithCause(err))
+			return serum.Error(wfapi.ECodeIo, serum.WithCause(err),
+				serum.WithMessageLiteral("RPC handler failed to write data to connection"),
+			)
 		}
+	}
+}
+
+func recurseError(err error) *workspaceapi.Error {
+	if err == nil {
+		return nil
+	}
+	var msg *string
+	if m := serum.Message(err); m != "" {
+		msg = &m
+	}
+	var deets *workspaceapi.Details
+	for _, d := range serum.Details(err) {
+		deets.Keys = append(deets.Keys, d[0])
+		if deets.Values == nil {
+			deets.Values = make(map[string]string)
+		}
+		deets.Values[d[0]] = d[1]
+	}
+
+	return &workspaceapi.Error{
+		Code:    serum.Code(err),
+		Message: msg,
+		Details: deets,
+		Cause:   recurseError(err),
 	}
 }
 
@@ -192,13 +233,21 @@ func (s *server) handle(ctx context.Context, conn net.Conn) (err error) {
 // Errors:
 //
 //   - warpforge-error-serialization --
-func sendError(ctx context.Context, conn net.Conn, rpc workspaceapi.Rpc, response error) error {
+func sendError(ctx context.Context, conn net.Conn, id string, response error) error {
 	if response == nil {
 		panic("server cannot send nil error")
 	}
-	code := serum.Code(response)
-	if code == "" {
-		code = workspaceapi.ECodeRpcUnknown
+	output := recurseError(response)
+	if output.Code == "" {
+		output.Code = workspaceapi.ECodeRpcUnknown
+	}
+	rpc := &workspaceapi.Rpc{
+		ID: id,
+		Data: workspaceapi.RpcData{
+			RpcResponse: &workspaceapi.RpcResponse{
+				Error: output,
+			},
+		},
 	}
 	err := ipld.MarshalStreaming(conn, ipldjson.Encode, &rpc, workspaceapi.TypeSystem.TypeByName("Rpc"))
 	if err != nil {

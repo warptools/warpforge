@@ -253,6 +253,51 @@ func PlotFromFile(fsys fs.FS, filename string) (wfapi.Plot, error) {
 	return *plotCapsule.Plot, nil
 }
 
+func dirNoDot(path string) string {
+	path = filepath.Dir(path)
+	if path == "." {
+		return ""
+	}
+	return path
+}
+
+// SubPathRel takes two absolute paths and returns the relative path to targpath from basepath
+// SubPathRel is a vastly simplified version of filepath.Rel and has some restrictions.
+//  - basepath and targpath MUST be absolute paths
+//  - basepath MUST be a prefix of targpath.
+//
+// Errors:
+//
+//  - warpforge-error-invalid -- paths are not absolute or target path is not relative to base path
+func SubPathRel(basepath, targpath string) (string, error) {
+	if !filepath.IsAbs(basepath) {
+		return "", serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageTemplate("base path {{path|q}} must be absolute"),
+			serum.WithDetail("path", basepath),
+		)
+	}
+	if !filepath.IsAbs(targpath) {
+		return "", serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageTemplate("target path {{path|q}} must be absolute"),
+			serum.WithDetail("path", targpath),
+		)
+	}
+	basepath = filepath.Clean(basepath)
+	targpath = filepath.Clean(targpath)
+	if !strings.HasPrefix(targpath, basepath) {
+		return "", serum.Error(wfapi.ECodeInvalid,
+			serum.WithMessageTemplate("target path {{targpath|q}} is not relative to basepath {{basepath|q}}"),
+			serum.WithDetail("basepath", basepath),
+			serum.WithDetail("targpath", targpath),
+		)
+	}
+	result := targpath[len(basepath):]
+	if filepath.IsAbs(result) {
+		return result[1:], nil
+	}
+	return result, nil
+}
+
 // FindModule looks for a module file on the filesystem and returns the first one found,
 // searching directories upward.
 //
@@ -268,24 +313,36 @@ func PlotFromFile(fsys fs.FS, filename string) (wfapi.Plot, error) {
 // Errors:
 //
 //    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
+//    - warpforge-error-invalid -- invalid argument
 func FindModule(fsys fs.FS, basisPath, searchPath string) (path string, remainingSearchPath string, err error) {
 	// Our search loops over searchPath, popping a path segment off at the end of every round.
 	//  Keep the given searchPath in hand; we might need it for an error report.
 	basisPath = filepath.Clean(basisPath)
+	searchPath = filepath.Clean(searchPath)
+	if filepath.IsAbs(searchPath) && filepath.IsAbs(basisPath) {
+		path, err := SubPathRel(basisPath, searchPath)
+		if err != nil {
+			return "", "", err
+		}
+		searchPath = path
+	}
+	if strings.HasPrefix(basisPath, "/") {
+		basisPath = basisPath[1:]
+	}
 	searchAt := filepath.Join(basisPath, searchPath)
 	for {
 		path := filepath.Join(searchAt, MagicFilename_Module)
 		_, err := fs.Stat(fsys, path)
 		if err == nil {
-			return path, filepath.Dir(searchAt), nil
+			return path, dirNoDot(searchAt), nil
 		}
 		if errors.Is(err, fs.ErrNotExist) { // no such thing?  oh well.  pop a segment and keep looking.
 			// Went all the way up to basis path and didn't find it.
 			// return NotFound
-			if searchAt == basisPath {
-				return "", "", nil
+			if searchAt == basisPath || searchAt == "" {
+				return "", dirNoDot(searchAt), nil
 			}
-			searchAt = filepath.Dir(searchAt)
+			searchAt = dirNoDot(searchAt)
 			// ... otherwise: continue, with popped searchAt.
 			continue
 		}

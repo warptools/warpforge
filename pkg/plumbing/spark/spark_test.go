@@ -74,7 +74,7 @@ func TestFailedDial(t *testing.T) {
 	buf := &bytes.Buffer{}
 	cfg := Config{
 		WorkingDirectory: "/test/workspace",
-		ModulePath:       "",
+		SearchPath:       "",
 		Fsys: &fstest.MapFS{
 			"test/workspace/module.wf":  &fstest.MapFile{Mode: 0755},
 			"test/workspace/.warpforge": &fstest.MapFile{Mode: 0755 | fs.ModeDir},
@@ -91,6 +91,25 @@ func TestFailedDial(t *testing.T) {
 	qt.Assert(t, wfapi.IsCode(err, wfapi.ECodeConnection), qt.IsTrue, qt.Commentf("expect code %q in error chain", wfapi.ECodeConnection))
 }
 
+func TestSparkNoWorkspace(t *testing.T) {
+	buf := &bytes.Buffer{}
+	cfg := Config{
+		WorkingDirectory: "/test/workspace",
+		SearchPath:       "subdir/nonexistent/dir",
+		Fsys: &fstest.MapFS{
+			"test/workspace/subdir/module.wf": &fstest.MapFile{Mode: 0755},
+		},
+		Dialer:       nil,
+		OutputStream: buf,
+		OutputMarkup: string(DefaultMarkup),
+		OutputStyle:  string(DefaultStyle),
+	}
+	ctx := context.Background()
+	err := cfg.Run(ctx)
+	qt.Assert(t, err, qt.IsNotNil)
+	qt.Assert(t, serum.Code(err), qt.Equals, ECodeSparkNoWorkspace)
+}
+
 func TestSpark(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -102,10 +121,10 @@ func TestSpark(t *testing.T) {
 	buf := &bytes.Buffer{}
 	cfg := Config{
 		WorkingDirectory: "/test/workspace",
-		ModulePath:       "",
+		SearchPath:       "subdir/nonexistent/dir",
 		Fsys: &fstest.MapFS{
-			"test/workspace/module.wf":  &fstest.MapFile{Mode: 0755},
-			"test/workspace/.warpforge": &fstest.MapFile{Mode: 0755 | fs.ModeDir},
+			"test/workspace/subdir/module.wf": &fstest.MapFile{Mode: 0755},
+			"test/workspace/.warpforge":       &fstest.MapFile{Mode: 0755 | fs.ModeDir},
 		},
 		Dialer:       pl,
 		OutputStream: buf,
@@ -114,7 +133,7 @@ func TestSpark(t *testing.T) {
 	}
 
 	expect := workspaceapi.ModuleStatusQuery{
-		Path:          "test/workspace/module.wf",
+		Path:          "subdir/module.wf",
 		InterestLevel: workspaceapi.ModuleInterestLevel_Query,
 	}
 	resp := workspaceapi.ModuleStatusAnswer{
@@ -136,7 +155,7 @@ func TestSpark(t *testing.T) {
 	qt.Assert(t, err, qt.IsNil, qt.Commentf("Run returned an error"))
 	select {
 	case err := <-srvCh:
-		t.Logf("server err (an unexpected EOF is normal; the client closes the connection):\n%v", err)
+		// an unexpected EOF is normal when the client closes the connection
 		qt.Assert(t, errors.Is(err, io.ErrUnexpectedEOF), qt.IsTrue, qt.Commentf("Expect an error of %s", io.ErrUnexpectedEOF))
 	case <-time.After(time.Second):
 		t.Fatal("timeout")

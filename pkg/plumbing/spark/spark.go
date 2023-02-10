@@ -23,7 +23,7 @@ import (
 
 type Config struct {
 	Fsys             fs.FS     // Root filesystem. Generally os.DirFS("/").
-	ModulePath       string    // Path to module. Will attempt to find closest module within the workspace.
+	SearchPath       string    // Path to find module. Will attempt to find closest module within the workspace.
 	WorkingDirectory string    // Absolute path to working directory
 	Dialer           Dialer    // Method of dialing the server. May be nil for default.
 	OutputMarkup     string    // Output Markup type
@@ -44,13 +44,13 @@ const (
 // searchPath will canonicalize the ModulePath argument.
 // May panic if WorkingDirectory is not an absolute path.
 func (c *Config) searchPath() string {
-	if filepath.IsAbs(c.ModulePath) {
-		return filepath.Clean(c.ModulePath)
+	if filepath.IsAbs(c.SearchPath) {
+		return filepath.Clean(c.SearchPath)
 	}
 	if !filepath.IsAbs(c.WorkingDirectory) {
 		panic("working directory must be an absolute path")
 	}
-	return filepath.Join(c.WorkingDirectory, c.ModulePath)
+	return filepath.Join(c.WorkingDirectory, c.SearchPath)
 }
 
 func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, error) {
@@ -58,7 +58,7 @@ func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, erro
 	logger := logging.Ctx(ctx)
 
 	searchPath := c.searchPath()
-	logger.Debug("", "search path: %q", searchPath)
+	logger.Debug("", "Search Path: %q", searchPath)
 
 	ws, _, err := workspace.FindWorkspace(c.Fsys, "", searchPath)
 	if err != nil {
@@ -68,20 +68,47 @@ func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, erro
 		return empty, serum.Error(ECodeSparkNoWorkspace, serum.WithMessageLiteral("workspace not found"))
 	}
 	_, wsPath := ws.Path()
-	logger.Debug("", "ws path: %q", wsPath)
+	wsPath = filepath.Join("/", wsPath)
+	logger.Debug("", "Workspace Path: %q", wsPath)
 
-	logger.Debug("", "module search path: %q", searchPath)
 	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath)
 	if err != nil {
 		return empty, serum.Error(ECodeSparkNoModule, serum.WithCause(err))
 	}
+	if modulePath == "" {
+		return empty, serum.Error(ECodeSparkNoModule, serum.WithMessageLiteral("module not found"))
+	}
+
+	logger.Debug("", "Module Path rel: %q", modulePath)
+	modulePath = filepath.Join("/", modulePath)
+	logger.Debug("", "Module Path: %q", modulePath)
+	relPath, err := dab.SubPathRel(wsPath, modulePath)
+	if err != nil {
+		panic(fmt.Errorf("unreachable: %w", err))
+	}
 
 	query := workspaceapi.ModuleStatusQuery{
-		Path:          modulePath,
+		Path:          relPath,
 		InterestLevel: workspaceapi.ModuleInterestLevel_Query,
 	}
-	logger.Info("", "ModulePath: %s", query.Path)
 	return c.remoteResolve(ctx, ws, query)
+}
+
+func (c *Config) formatter() (*formatter, error) {
+	markup, err := ValidateMarkup(c.OutputMarkup)
+	if err != nil {
+		return nil, err
+	}
+	style, err := ValidateStyle(c.OutputStyle)
+	if err != nil {
+		return nil, err
+	}
+	frm := formatter{
+		Markup: markup,
+		Style:  style,
+		color:  c.OutputColor,
+	}
+	return &frm, nil
 }
 
 // Run executes spark
@@ -95,20 +122,11 @@ func (c *Config) run(ctx context.Context) (workspaceapi.ModuleStatusAnswer, erro
 //   - warpforge-spark-server  -- server responded with an error
 //   - warpforge-error-invalid -- invalid configuration
 func (c *Config) Run(ctx context.Context) error {
-	markup, err := ValidateMarkup(c.OutputMarkup)
-	if err != nil {
-		return err
-	}
-	style, err := ValidateStyle(c.OutputStyle)
+	frm, err := c.formatter()
 	if err != nil {
 		return err
 	}
 	answer, err := c.run(ctx)
-	frm := formatter{
-		Markup: markup,
-		Style:  style,
-		color:  c.OutputColor,
-	}
 	output := frm.format(ctx, answer, err)
 	fmt.Fprintln(c.OutputStream, output)
 	return err

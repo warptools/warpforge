@@ -36,12 +36,10 @@ type Config struct {
 	Fsys fs.FS
 	// Absolute path to working directory
 	WorkingDirectory string
-	// Path is the path to the directory containing the module you want to watch
+	// Path is the path to the directory containing the module you want to watch. May be relative or absolute, WorkingDirectory will be used to canonicalize the path if needed.
 	Path string
 	// Socket will enable a unix socket that emits watch result status
 	Socket bool
-	// PlotConfig customizes the plot execution
-	PlotConfig wfapi.PlotExecConfig
 }
 
 // isSocket returns true if the the fs.ModeSocket bit is set.
@@ -131,7 +129,7 @@ func canonicalizePath(pwd, path string) string {
 	return filepath.Join(pwd, path)
 }
 
-// getIngests returns all the "ingest" inputs used in a plot.
+// getIngests returns all the "git ingest" inputs used in a plot.
 func getIngests(plot wfapi.Plot) map[string]string {
 	ingests := make(map[string]string)
 	var allInputs []wfapi.PlotInput
@@ -161,11 +159,12 @@ func getIngests(plot wfapi.Plot) map[string]string {
 //    - warpforge-error-git --
 //    - warpforge-error-io -- when socket path is too long
 //    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
-//    - warpforge-error-module-invalid --
+//    - warpforge-error-module-invalid -- module not found or contains invalid data.
 //    - warpforge-error-searching-filesystem --
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
+//    - warpforge-error-workspace-missing -- workspace not found
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
@@ -175,16 +174,29 @@ func (c *Config) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if ws == nil {
+		return serum.Error(wfapi.ECodeWorkspaceMissing,
+			serum.WithMessageTemplate("no workspace found for path {{path}}"),
+			serum.WithDetail("path", searchPath),
+		)
+	}
 	_, wsPath := ws.Path()
+	wsPath = filepath.Join("/", wsPath)
 	log.Debug("", "ws path: %s", wsPath)
-	modulePath, _, err := dab.FindModule(c.Fsys, wsPath, searchPath)
-	if err != nil {
-		return err
+
+	var modulePath string
+	{
+		path, _, err := dab.FindModule(c.Fsys, wsPath, searchPath)
+		if err != nil {
+			return serum.Error(wfapi.ECodeModuleInvalid, serum.WithCause(err), serum.WithMessageLiteral("no module found"))
+		}
+		if path == "" {
+			return serum.Error(wfapi.ECodeModuleInvalid, serum.WithMessageLiteral("no module found"))
+		}
+		modulePath = filepath.Join("/", path)
 	}
-	if modulePath == "" {
-		return serum.Error(wfapi.ECodeModuleInvalid, serum.WithMessageLiteral("no module found"))
-	}
-	log.Debug("", "module path: %s", modulePath)
+	log.Debug("", "module path: %q", modulePath)
+
 	_, err = dab.ModuleFromFile(c.Fsys, modulePath)
 	if err != nil {
 		return err
@@ -211,7 +223,19 @@ func (c *Config) Run(ctx context.Context) error {
 	srv := server{
 		handler: rpcHandler{statusFetcher: hist.getStatus},
 	}
-	hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
+
+	var wsRelModulePath string
+	{
+		path, err := dab.SubPathRel(wsPath, modulePath)
+		if err != nil {
+			// both workspace path and module path should be absolute paths and module path should be a sub directory of workspace path
+			// therefore this branch should be unreachable
+			panic(serum.Error(wfapi.ECodeInternal, serum.WithCause(err), serum.WithMessageLiteral("unreachable; cannot create module path relative to workspace")))
+		}
+		wsRelModulePath = path
+	}
+	hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
+
 	if c.Socket {
 		sockPath, err := GenerateSocketPath(ws)
 		if err != nil {
@@ -280,8 +304,8 @@ func (c *Config) Run(ctx context.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				log.Info("", "path %q changed; new hash %q", path, hash)
 				ingestCache[path] = hash
-				hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_InProgress)
-				_, err := exec(innerCtx, c.PlotConfig, modulePath)
+				hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_InProgress)
+				_, err := exec(innerCtx, wfapi.PlotExecConfig{}, modulePath)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
 				}
@@ -296,11 +320,11 @@ func (c *Config) Run(ctx context.Context) error {
 					wfapi.ECodePlotInvalid,
 					wfapi.ECodeWorkspace,
 					wfapi.ECodeUnknown:
-					hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_FailedProvisioning)
+					hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_FailedProvisioning)
 				case "":
-					hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedSuccess)
+					hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedSuccess)
 				default:
-					hist.setStatus(modulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedFailed)
+					hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedFailed)
 				}
 			}
 			innerSpan.End()

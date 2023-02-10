@@ -14,8 +14,9 @@ import (
 )
 
 var watchCmdDef = cli.Command{
-	Name:  "watch",
-	Usage: "Watch a directory for git commits, executing plot on each new commit",
+	Name:      "watch",
+	Usage:     "Watch a module for changes to plot ingest inputs. Currently only git ingests are supported.",
+	UsageText: "Watch will emit execution output but will also allow communication over a unix socket via the spark command.",
 	Action: util.ChainCmdMiddleware(cmdWatch,
 		util.CmdMiddlewareLogging,
 		util.CmdMiddlewareTracingConfig,
@@ -44,12 +45,6 @@ func cmdWatch(c *cli.Context) error {
 		Fsys:             os.DirFS("/"),
 		Path:             c.Args().First(),
 		Socket:           !c.Bool("disable-socket"),
-		PlotConfig: wfapi.PlotExecConfig{
-			Recursive: c.Bool("recursive"),
-			FormulaExecConfig: wfapi.FormulaExecConfig{
-				DisableMemoization: c.Bool("force"),
-			},
-		},
 	}
 	err = cfg.Run(c.Context)
 	if errors.Is(err, context.Canceled) {

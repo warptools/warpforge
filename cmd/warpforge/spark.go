@@ -78,7 +78,7 @@ func cmdSpark(c *cli.Context) error {
 	}
 	cfg := &spark.Config{
 		Fsys:             os.DirFS("/"),
-		ModulePath:       c.Args().Get(0),
+		SearchPath:       c.Args().Get(0),
 		WorkingDirectory: wd,
 		OutputMarkup:     c.String("format-markup"),
 		OutputStyle:      c.String("format-style"),
