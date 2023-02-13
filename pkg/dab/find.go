@@ -17,9 +17,9 @@ type ActionableSearch uint8
 
 const (
 	ActionableSearch_None    ActionableSearch = 0
-	ActionableSearch_Formula ActionableSearch = 1 << (iota - 1) // Use this bitflag to indicate a formula is an acceptable search result.
-	ActionableSearch_Module                                     // Use this bitflag to indicate a module is an acceptable search result.  Modules almost always have a plot associated with them, which will also be loaded by most search functions.
-	ActionableSearch_Plot                                       // A module can always also have a plot; use this if a bare plot (no module) is acceptable.
+	ActionableSearch_Formula ActionableSearch = 1 << iota // Use this bitflag to indicate a formula is an acceptable search result.
+	ActionableSearch_Module                               // Use this bitflag to indicate a module is an acceptable search result.  Modules almost always have a plot associated with them, which will also be loaded by most search functions.
+	ActionableSearch_Plot                                 // A module can always also have a plot; use this if a bare plot (no module) is acceptable.
 
 	ActionableSearch_Any ActionableSearch = ActionableSearch_Formula | ActionableSearch_Module | ActionableSearch_Plot
 )
