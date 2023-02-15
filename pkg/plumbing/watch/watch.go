@@ -2,7 +2,6 @@ package watch
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -27,102 +26,23 @@ import (
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/pkg/workspace"
+	"github.com/warptools/warpforge/pkg/workspaceapi"
 	"github.com/warptools/warpforge/wfapi"
 )
 
 // Configuration for the watch command
 type Config struct {
-	// Path is the path to the directory containing the module you want to watch
+	// filesystem; generally os.DirFS("/")
+	Fsys fs.FS
+	// Absolute path to working directory
+	WorkingDirectory string
+	// Path is the path to the directory containing the module you want to watch. May be relative or absolute, WorkingDirectory will be used to canonicalize the path if needed.
 	Path string
 	// Socket will enable a unix socket that emits watch result status
 	Socket bool
-	// PlotConfig customizes the plot execution
-	PlotConfig wfapi.PlotExecConfig
 }
 
-// server stores the current status of the plot execution and responds to clients
-type server struct {
-	status   int
-	listener net.Listener
-}
-
-// Extremely basic status responses for the watch server
-const (
-	statusRunning = -1
-	statusOkay    = 0
-	statusFailed  = 1
-)
-
-// handle is expected to respond to client connections.
-// This function should recover from panics and log errors before returning.
-// It is expected that handle is run as a goroutine and that errors may not be handled.
-//
-// handle emits the current status of the watch command over the connection
-func (s *server) handle(ctx context.Context, conn net.Conn) error {
-	log := logging.Ctx(ctx)
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Info("", "socket handler panic: %s", r)
-			return
-		}
-	}()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	// in lieu of doing anything complicated, shoving a status int down the pipe is sufficient
-	// for the unix socket implementation we can now use netcat or similar for a status.
-	// I.E. nc -U ./sock
-	// OR socat - UNIX-CONNECT:./sock
-	defer conn.Close()
-	enc := json.NewEncoder(conn)
-	err := enc.Encode(s.status)
-	if err != nil {
-		log.Info("", "socket handler: %s", err.Error())
-		return err
-	}
-	return nil
-}
-
-// serve accepts and handles connections to the server.
-// Serve should not return under normal circumstances, however if an error occurs then it will log that error and return it.
-// Context will only be checked between accepted connections, canceling this function while it's blocking requires the server's listener to be closed.
-func (s *server) serve(ctx context.Context) error {
-	// It is expected that serve will be called as a goroutine and the returned error may not be handled.
-	// Any errors should be logged before returning.
-	log := logging.Ctx(ctx)
-	if s.listener == nil {
-		err := fmt.Errorf("did not call listen on server")
-		log.Info("", err.Error())
-		return err
-	}
-	for {
-		conn, err := s.listener.Accept() // blocks, doesn't accept a context.
-		if err != nil {
-			log.Info("", "socket error on accept: %s", err.Error())
-			return err
-		}
-		go s.handle(ctx, conn)
-		select {
-		case <-ctx.Done():
-			log.Info("", "socket no longer accepting connections")
-			return nil
-		default:
-		}
-	}
-}
-
-// listen will create a unix socket on the given path
-// listen should be called before "serve"
-func (s *server) listen(ctx context.Context, sockPath string) (err error) {
-	cfg := net.ListenConfig{}
-	l, err := cfg.Listen(ctx, "unix", sockPath)
-	if err != nil {
-		return wfapi.ErrorIo("could not create socket", sockPath, err)
-	}
-	s.listener = l
-	return nil
-}
-
+// isSocket returns true if the the fs.ModeSocket bit is set.
 func isSocket(m fs.FileMode) bool {
 	return m&fs.ModeSocket != 0
 }
@@ -135,7 +55,7 @@ func isSocket(m fs.FileMode) bool {
 //
 // NOTE: If for some reason the socket exists and the listener is alive but does not respond, the file will still be removed.
 // This will likely result in errors for whoever is expecting that socket file to exist, however the listener holds an open file descriptor and will not likely detect any problems.
-func (s *server) rmUnixSocket(path string) error {
+func rmUnixSocket(path string) error {
 	fi, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		return nil
@@ -163,7 +83,9 @@ func (s *server) rmUnixSocket(path string) error {
 // Errors:
 //
 //   - warpforge-error-io -- when socket path is too long
-func generateSocketPath(path string) (string, error) {
+//   - warpforge-error-io -- when socket path cannot be canonicalized
+func GenerateSocketPath(ws *workspace.Workspace) (string, error) {
+	_, path := ws.Path()
 	// This socket path generation is dumb. and also one of the simplest thing to do right now
 	sockPath := fmt.Sprintf("/tmp/warpforge-%s", url.PathEscape(path))
 	if len(sockPath) > 108 {
@@ -207,36 +129,8 @@ func canonicalizePath(pwd, path string) string {
 	return filepath.Join(pwd, path)
 }
 
-// Run will execute the watch command
-//
-// Errors:
-//
-//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
-//    - warpforge-error-git --
-//    - warpforge-error-io -- when socket path is too long
-//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
-//    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-unknown -- when changing directories fails
-//    - warpforge-error-unknown -- when context ends for reasons other than being canceled
-//    - warpforge-error-initialization -- unable to get working directory or executable path
-func (c *Config) Run(ctx context.Context) error {
-	log := logging.Ctx(ctx)
-
-	wd, xerr := os.Getwd()
-	if xerr != nil {
-		return serum.Error(wfapi.ECodeInitialization, serum.WithCause(xerr), serum.WithMessageLiteral("unable to get working directory"))
-	}
-
-	modulePath := filepath.Join(c.Path, dab.MagicFilename_Module)
-	modulePathAbs := canonicalizePath(wd, modulePath)
-
-	// TODO: currently we read the module/plot from the provided path.
-	// instead, we should read it from the git cache dir
-	plot, err := dab.PlotFromFile(os.DirFS(c.Path), dab.MagicFilename_Plot)
-	if err != nil {
-		return err
-	}
-
+// getIngests returns all the "git ingest" inputs used in a plot.
+func getIngests(plot wfapi.Plot) map[string]string {
 	ingests := make(map[string]string)
 	var allInputs []wfapi.PlotInput
 	for _, input := range plot.Inputs.Values {
@@ -254,29 +148,111 @@ func (c *Config) Run(ctx context.Context) error {
 			ingests[ingest.HostPath] = ingest.Ref
 		}
 	}
+	return ingests
+}
+
+// Run will execute the watch command
+//
+// Errors:
+//
+//    - warpforge-error-datatoonew -- when module or plot has an unrecognized version number
+//    - warpforge-error-git --
+//    - warpforge-error-io -- when socket path is too long
+//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
+//    - warpforge-error-module-invalid -- module not found or contains invalid data.
+//    - warpforge-error-searching-filesystem --
+//    - warpforge-error-serialization -- when the module or plot cannot be parsed
+//    - warpforge-error-unknown -- when changing directories fails
+//    - warpforge-error-unknown -- when context ends for reasons other than being canceled
+//    - warpforge-error-workspace-missing -- workspace not found
+func (c *Config) Run(ctx context.Context) error {
+	log := logging.Ctx(ctx)
+	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
+
+	log.Debug("", "search path: %s", searchPath)
+	ws, _, err := workspace.FindWorkspace(c.Fsys, "", searchPath)
+	if err != nil {
+		return err
+	}
+	if ws == nil {
+		return serum.Error(wfapi.ECodeWorkspaceMissing,
+			serum.WithMessageTemplate("no workspace found for path {{path}}"),
+			serum.WithDetail("path", searchPath),
+		)
+	}
+	_, wsPath := ws.Path()
+	wsPath = filepath.Join("/", wsPath)
+	log.Debug("", "ws path: %s", wsPath)
+
+	var modulePath string
+	{
+		path, _, err := dab.FindModule(c.Fsys, wsPath, searchPath)
+		if err != nil {
+			return serum.Error(wfapi.ECodeModuleInvalid, serum.WithCause(err), serum.WithMessageLiteral("no module found"))
+		}
+		if path == "" {
+			return serum.Error(wfapi.ECodeModuleInvalid, serum.WithMessageLiteral("no module found"))
+		}
+		modulePath = filepath.Join("/", path)
+	}
+	log.Debug("", "module path: %q", modulePath)
+
+	_, err = dab.ModuleFromFile(c.Fsys, modulePath)
+	if err != nil {
+		return err
+	}
+	moduleDir := filepath.Dir(modulePath)
+	log.Debug("", "module dir: %s", moduleDir)
+
+	// TODO: currently we read the module/plot from the provided path.
+	// instead, we should read it from the git cache dir
+	plotPath := filepath.Join(moduleDir, dab.MagicFilename_Plot)
+	log.Debug("", "plot path: %s", plotPath)
+	plot, err := dab.PlotFromFile(c.Fsys, plotPath)
+	if err != nil {
+		return err
+	}
+
+	ingests := getIngests(plot)
 
 	ingestCache := make(map[string]string)
 	for k, v := range ingests {
 		ingestCache[k] = v
 	}
+	hist := &historian{}
+	srv := server{
+		handler: rpcHandler{statusFetcher: hist.getStatus},
+	}
 
-	srv := server{status: statusRunning}
+	var wsRelModulePath string
+	{
+		path, err := dab.SubPathRel(wsPath, modulePath)
+		if err != nil {
+			// both workspace path and module path should be absolute paths and module path should be a sub directory of workspace path
+			// therefore this branch should be unreachable
+			panic(serum.Error(wfapi.ECodeInternal, serum.WithCause(err), serum.WithMessageLiteral("unreachable; cannot create module path relative to workspace")))
+		}
+		wsRelModulePath = path
+	}
+	hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_Queuing)
+
 	if c.Socket {
-		absPath := canonicalizePath(wd, c.Path)
-		sockPath, err := generateSocketPath(absPath)
+		sockPath, err := GenerateSocketPath(ws)
 		if err != nil {
 			return err
 		}
-		if err := srv.rmUnixSocket(sockPath); err != nil {
+		if err := rmUnixSocket(sockPath); err != nil {
 			log.Info("", "removing socket %q: %s", sockPath, err.Error())
 		}
 		defer runtime.Gosched() // give server a chance to close on context cancel/close
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		if err := srv.listen(ctx, sockPath); err != nil {
+		lstnr, err := listener(ctx, sockPath)
+		if err != nil {
 			return err
 		}
-		defer srv.listener.Close()
+		defer lstnr.Close()
+		srv.listener = lstnr
 		go srv.serve(ctx)
 		log.Info("", "serving to %q\n", sockPath)
 		time.Sleep(time.Second) // give user a second to realize that there's info here. FIXME: Consider literally anything other than a hardcoded sleep.
@@ -328,14 +304,27 @@ func (c *Config) Run(ctx context.Context) error {
 				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
 				log.Info("", "path %q changed; new hash %q", path, hash)
 				ingestCache[path] = hash
-				srv.status = statusRunning
-
-				_, err := exec(innerCtx, c.PlotConfig, modulePathAbs)
+				hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_InProgress)
+				_, err := exec(innerCtx, wfapi.PlotExecConfig{}, modulePath)
 				if err != nil {
 					log.Info("", "exec failed: %s", err)
-					srv.status = statusFailed
-				} else {
-					srv.status = statusOkay
+				}
+
+				switch serum.Code(err) {
+				case
+					wfapi.ECodeCatalogMissingEntry,
+					wfapi.ECodeCatalogParse,
+					wfapi.ECodeDataTooNew,
+					wfapi.ECodeGit,
+					wfapi.ECodeIo,
+					wfapi.ECodePlotInvalid,
+					wfapi.ECodeWorkspace,
+					wfapi.ECodeUnknown:
+					hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_FailedProvisioning)
+				case "":
+					hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedSuccess)
+				default:
+					hist.setStatus(wsRelModulePath, ingestCache, workspaceapi.ModuleStatus_ExecutedFailed)
 				}
 			}
 			innerSpan.End()
@@ -350,18 +339,18 @@ func (c *Config) Run(ctx context.Context) error {
 // Errors:
 //
 //    - warpforge-error-catalog-invalid --
-//    - warpforge-error-catalog-parse --
-//    - warpforge-error-git --
-//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
 //    - warpforge-error-catalog-missing-entry --
+//    - warpforge-error-catalog-parse --
+//    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
+//    - warpforge-error-git --
+//    - warpforge-error-initialization -- when working directory or binary path cannot be found
+//    - warpforge-error-io -- when the module or plot files cannot be read or cannot change directory.
+//    - warpforge-error-module-invalid -- when module name is invalid
 //    - warpforge-error-plot-execution-failed --
 //    - warpforge-error-plot-invalid -- when the plot data is invalid
 //    - warpforge-error-plot-step-failed --
+//    - warpforge-error-searching-filesystem -- when finding workspace stack fails
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
-//    - warpforge-error-module-invalid -- when module name is invalid
-//    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
-//    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
-//    - warpforge-error-initialization -- when working directory or binary path cannot be found
 //    - warpforge-error-workspace-missing -- when opening the workspace set fails
 func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
@@ -369,13 +358,13 @@ func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string
 	result := wfapi.PlotResults{}
 
 	// parse the module, even though it is not currently used
-	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs[1:]); err != nil {
+	if _, err := dab.ModuleFromFile(os.DirFS("/"), modulePathAbs); err != nil {
 		return result, err
 	}
 
 	moduleDirAbs := filepath.Dir(modulePathAbs)
 	plotPath := filepath.Join(moduleDirAbs, dab.MagicFilename_Plot)
-	plot, err := dab.PlotFromFile(os.DirFS("/"), plotPath[1:])
+	plot, err := dab.PlotFromFile(os.DirFS("/"), plotPath)
 	if err != nil {
 		return result, err
 	}

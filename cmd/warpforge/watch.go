@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
+	"os"
 
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
@@ -13,8 +14,9 @@ import (
 )
 
 var watchCmdDef = cli.Command{
-	Name:  "watch",
-	Usage: "Watch a directory for git commits, executing plot on each new commit",
+	Name:      "watch",
+	Usage:     "Watch a module for changes to plot ingest inputs. Currently only git ingests are supported.",
+	UsageText: "Watch will emit execution output but will also allow communication over a unix socket via the spark command.",
 	Action: util.ChainCmdMiddleware(cmdWatch,
 		util.CmdMiddlewareLogging,
 		util.CmdMiddlewareTracingConfig,
@@ -30,19 +32,21 @@ var watchCmdDef = cli.Command{
 
 func cmdWatch(c *cli.Context) error {
 	if c.Args().Len() != 1 {
-		return fmt.Errorf("invalid args")
+		return serum.Error(wfapi.ECodeInvalid, serum.WithMessageLiteral("invalid args"))
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return serum.Error(wfapi.ECodeIo, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to get working directory"),
+		)
 	}
 	cfg := &watch.Config{
-		Path:   c.Args().First(),
-		Socket: !c.Bool("disable-socket"),
-		PlotConfig: wfapi.PlotExecConfig{
-			Recursive: c.Bool("recursive"),
-			FormulaExecConfig: wfapi.FormulaExecConfig{
-				DisableMemoization: c.Bool("force"),
-			},
-		},
+		WorkingDirectory: wd,
+		Fsys:             os.DirFS("/"),
+		Path:             c.Args().First(),
+		Socket:           !c.Bool("disable-socket"),
 	}
-	err := cfg.Run(c.Context)
+	err = cfg.Run(c.Context)
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}
