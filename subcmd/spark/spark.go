@@ -15,9 +15,9 @@ import (
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
-	"github.com/warptools/warpforge/pkg/plumbing/watch"
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
+	"github.com/warptools/warpforge/subcmd/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 

@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
-	"github.com/warptools/warpforge/pkg/plumbing/spark"
+	"github.com/warptools/warpforge/subcmd/spark"
 	"github.com/warptools/warpforge/wfapi"
 )
 
