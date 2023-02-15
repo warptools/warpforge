@@ -130,7 +130,7 @@ func canonicalizePath(pwd, path string) string {
 }
 
 // getIngests returns all the "git ingest" inputs used in a plot.
-func getIngests(plot wfapi.Plot) map[string]string {
+func getIngests(plot *wfapi.Plot) map[string]string {
 	ingests := make(map[string]string)
 	var allInputs []wfapi.PlotInput
 	for _, input := range plot.Inputs.Values {
@@ -165,6 +165,7 @@ func getIngests(plot wfapi.Plot) map[string]string {
 //    - warpforge-error-unknown -- when changing directories fails
 //    - warpforge-error-unknown -- when context ends for reasons other than being canceled
 //    - warpforge-error-workspace-missing -- workspace not found
+//    - warpforge-error-missing -- when a required file is missing
 func (c *Config) Run(ctx context.Context) error {
 	log := logging.Ctx(ctx)
 	searchPath := canonicalizePath(c.WorkingDirectory, c.Path)
@@ -352,6 +353,11 @@ func (c *Config) Run(ctx context.Context) error {
 //    - warpforge-error-searching-filesystem -- when finding workspace stack fails
 //    - warpforge-error-serialization -- when the module or plot cannot be parsed
 //    - warpforge-error-workspace-missing -- when opening the workspace set fails
+//    - warpforge-error-module-invalid -- when module name is invalid
+//    - warpforge-error-datatoonew -- module or plot contains newer-than-recognized versions
+//    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
+//    - warpforge-error-initialization -- when working directory or binary path cannot be found
+//    - warpforge-error-missing -- when a required file is missing
 func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execModule")
 	defer span.End()
@@ -378,7 +384,7 @@ func exec(ctx context.Context, pltCfg wfapi.PlotExecConfig, modulePathAbs string
 		return result, err
 	}
 	exCfg.WorkingDirectory = moduleDirAbs
-	result, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: &plot}, pltCfg)
+	result, err = plotexec.Exec(ctx, exCfg, wss, wfapi.PlotCapsule{Plot: plot}, pltCfg)
 
 	if err != nil {
 		return result, wfapi.ErrorPlotExecutionFailed(err)

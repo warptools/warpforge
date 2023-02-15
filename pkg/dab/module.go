@@ -193,31 +193,35 @@ func validateDNS1123Subdomain(value string) error {
 // 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
 // 	- warpforge-error-datatoonew -- if encountering unknown data from a newer version of warpforge!
 //  - warpforge-error-module-invalid -- when module name is invalid
-func ModuleFromFile(fsys fs.FS, filename string) (wfapi.Module, error) {
+//  - warpforge-error-missing -- when file does not exist
+func ModuleFromFile(fsys fs.FS, filename string) (*wfapi.Module, error) {
 	const situation = "loading a module"
 	if filepath.IsAbs(filename) {
 		filename = filename[1:]
 	}
 	f, err := fs.ReadFile(fsys, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, serum.Error(wfapi.ECodeMissing, serum.WithCause(err))
+	}
 	if err != nil {
-		return wfapi.Module{}, wfapi.ErrorIo(situation, filename, err)
+		return nil, wfapi.ErrorIo(situation, filename, err)
 	}
 
 	moduleCapsule := wfapi.ModuleCapsule{}
 	_, err = ipld.Unmarshal(f, json.Decode, &moduleCapsule, wfapi.TypeSystem.TypeByName("ModuleCapsule"))
 	if err != nil {
-		return wfapi.Module{}, wfapi.ErrorSerialization(situation, err)
+		return nil, wfapi.ErrorSerialization(situation, err)
 	}
 	if moduleCapsule.Module == nil {
 		// ... this isn't really reachable.
-		return wfapi.Module{}, wfapi.ErrorDataTooNew(situation, fmt.Errorf("no v1 Module in ModuleCapsule"))
+		return nil, wfapi.ErrorDataTooNew(situation, fmt.Errorf("no v1 Module in ModuleCapsule"))
 	}
 
 	if err := ValidateModuleName(moduleCapsule.Module.Name); err != nil {
-		return wfapi.Module{}, err
+		return nil, err
 	}
 
-	return *moduleCapsule.Module, nil
+	return moduleCapsule.Module, nil
 }
 
 // PlotFromFile loads a wfapi.Plot from filesystem path.
@@ -229,28 +233,32 @@ func ModuleFromFile(fsys fs.FS, filename string) (wfapi.Module, error) {
 // 	- warpforge-error-io -- for errors reading from fsys.
 // 	- warpforge-error-serialization -- for errors from try to parse the data as a Plot.
 // 	- warpforge-error-datatoonew -- if encountering unknown data from a newer version of warpforge!
-func PlotFromFile(fsys fs.FS, filename string) (wfapi.Plot, error) {
+//  - warpforge-error-missing -- when file does not exist
+func PlotFromFile(fsys fs.FS, filename string) (*wfapi.Plot, error) {
 	const situation = "loading a plot"
 
 	if filepath.IsAbs(filename) {
 		filename = filename[1:]
 	}
 	f, err := fs.ReadFile(fsys, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, serum.Error(wfapi.ECodeMissing, serum.WithCause(err))
+	}
 	if err != nil {
-		return wfapi.Plot{}, wfapi.ErrorIo(situation, filename, err)
+		return nil, wfapi.ErrorIo(situation, filename, err)
 	}
 
 	plotCapsule := wfapi.PlotCapsule{}
 	_, err = ipld.Unmarshal(f, json.Decode, &plotCapsule, wfapi.TypeSystem.TypeByName("PlotCapsule"))
 	if err != nil {
-		return wfapi.Plot{}, wfapi.ErrorSerialization(situation, err)
+		return nil, wfapi.ErrorSerialization(situation, err)
 	}
 	if plotCapsule.Plot == nil {
 		// ... this isn't really reachable.
-		return wfapi.Plot{}, wfapi.ErrorDataTooNew(situation, fmt.Errorf("no v1 Plot in PlotCapsule"))
+		return nil, wfapi.ErrorDataTooNew(situation, fmt.Errorf("no v1 Plot in PlotCapsule"))
 	}
 
-	return *plotCapsule.Plot, nil
+	return plotCapsule.Plot, nil
 }
 
 func dirNoDot(path string) string {
