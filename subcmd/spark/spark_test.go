@@ -17,9 +17,9 @@ import (
 	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/logging"
-	"github.com/warptools/warpforge/pkg/plumbing/watch"
 	"github.com/warptools/warpforge/pkg/testutil/nettest"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
+	"github.com/warptools/warpforge/subcmd/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 
