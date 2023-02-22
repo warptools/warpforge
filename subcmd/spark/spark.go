@@ -227,9 +227,6 @@ func moduleStatusQuery(ctx context.Context, conn net.Conn, query workspaceapi.Mo
 				serum.WithMessageLiteral("failed to deserialize ModuleStatusAnswer"),
 			)))
 	}
-	if err != nil {
-		return empty, serum.Error(ECodeSparkInternal, serum.WithCause(err))
-	}
 	if response.Data.RpcResponse == nil {
 		return empty, serum.Error(ECodeSparkInternal,
 			serum.WithMessageLiteral("response missing data"),

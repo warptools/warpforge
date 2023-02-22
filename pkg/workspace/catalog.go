@@ -550,7 +550,7 @@ func (cat *Catalog) AddByWareMirror(
 	if err != nil {
 		return wfapi.ErrorSerialization("could not serialize mirror", err)
 	}
-	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
+	err = os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
 	if err != nil {
 		return wfapi.ErrorIo("failed to write mirrors file", mirrorsPath, err)
 	}
@@ -641,7 +641,7 @@ func (cat *Catalog) AddByModuleMirror(
 	if err != nil {
 		return wfapi.ErrorSerialization("could not serialize mirror", err)
 	}
-	os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
+	err = os.WriteFile(filepath.Join("/", mirrorsPath), mirrorSerial, 0644)
 	if err != nil {
 		return wfapi.ErrorIo("failed to write mirrors file", mirrorsPath, err)
 	}
@@ -763,7 +763,7 @@ func (cat *Catalog) AddReplay(ref wfapi.CatalogRef, plot wfapi.Plot, overwrite b
 	if err != nil {
 		return err
 	}
-	if release == nil {
+	if module == nil {
 		return wfapi.ErrorCatalogInvalid(moduleFilePath, "module does not exist")
 	}
 

@@ -210,7 +210,7 @@ func recurseError(err error) *workspaceapi.Error {
 	if m := serum.Message(err); m != "" {
 		msg = &m
 	}
-	var deets *workspaceapi.Details
+	deets := &workspaceapi.Details{}
 	for _, d := range serum.Details(err) {
 		deets.Keys = append(deets.Keys, d[0])
 		if deets.Values == nil {

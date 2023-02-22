@@ -321,9 +321,6 @@ func (pf plotFormatter) FormattedJson() template.HTML {
 	// apply syntax highlighting to json
 	lexer := lexers.Get("json")
 	style := styles.Get("dracula")
-	if err != nil {
-		panic(fmt.Sprintf("failed to modify style: %s", err))
-	}
 	formatter := formatters.Get("html")
 	if lexer == nil || style == nil || formatter == nil {
 		panic("failed to setup syntax highlighting")
