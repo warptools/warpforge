@@ -2,14 +2,14 @@ package tracing
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"unicode"
 
+	"github.com/serum-errors/go-serum"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/warptools/warpforge/wfapi"
 )
 
 type ctxKey struct{}
@@ -55,23 +55,25 @@ func Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) 
 	return TracerFromCtx(ctx).Start(ctx, spanName, opts...)
 }
 
-// SetSpanError is a helper function to set the span error based on a wfapi.Error
-func SetSpanError(ctx context.Context, err wfapi.Error) {
-	e := err.(*wfapi.ErrorVal)
+// SetSpanError is a helper function to set the span error based on a serum error.
+func SetSpanError(ctx context.Context, err error) {
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
-		attribute.String(AttrKeyWarpforgeErrorCode, e.Code()),
+		attribute.String(AttrKeyWarpforgeErrorCode, serum.Code(err)),
 	)
-	span.SetStatus(codes.Error, e.Error())
+	span.SetStatus(codes.Error, err.Error())
 }
 
 func EndWithStatus(span trace.Span, err error) {
+	defer span.End()
 	if err == nil {
 		span.SetStatus(codes.Ok, "")
 		return
 	}
+	span.SetAttributes(
+		attribute.String(AttrKeyWarpforgeErrorCode, serum.Code(err)),
+	)
 	span.SetStatus(codes.Error, err.Error())
-	span.End()
 }
 
 // PrintableAttribute creates an attribute.KeyValue with only printable characters from the value
@@ -87,4 +89,18 @@ func Printable(s string) string {
 		}
 		return -1
 	}, s)
+}
+
+func StartFn(ctx context.Context, defaultName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	pc, fname, line, ok := runtime.Caller(1)
+	fn := runtime.FuncForPC(pc)
+	if ok && fn != nil {
+		opts = append(opts, trace.WithAttributes(
+			attribute.String("filename", fname),
+			attribute.Int("line", line),
+		))
+		return TracerFromCtx(ctx).Start(ctx, fn.Name(), opts...)
+	}
+
+	return TracerFromCtx(ctx).Start(ctx, defaultName, opts...)
 }

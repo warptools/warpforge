@@ -10,6 +10,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/serum-errors/go-serum"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/pkg/formulaexec"
@@ -19,19 +20,35 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-const LOG_TAG_START = "┌─ plot"
-const LOG_TAG = "│  plot"
-const LOG_TAG_MID = "├─ plot"
-const LOG_TAG_END = "└─ plot"
+const (
+	LOG_TAG_START = "┌─ plot"
+	LOG_TAG       = "│  plot"
+	LOG_TAG_MID   = "├─ plot"
+	LOG_TAG_END   = "└─ plot"
+)
 
 type pipeMap map[wfapi.StepName]map[wfapi.LocalLabel]wfapi.FormulaInput
+
+type ExecConfig formulaexec.ExecConfig
+
+func (cfg *ExecConfig) debug(ctx context.Context) {
+	logger := logging.Ctx(ctx)
+	logger.Debug(LOG_TAG, "bin path: %q", cfg.BinPath)
+	logger.Debug(LOG_TAG, "run path base: %q", cfg.RunPathBase)
+	logger.Debug(LOG_TAG, "keep run dir: %t", cfg.KeepRunDir)
+	if cfg.WhPathOverride == nil {
+		logger.Debug(LOG_TAG, "warehouse override path: %v", cfg.WhPathOverride)
+	} else {
+		logger.Debug(LOG_TAG, "warehouse override path: %q", *cfg.WhPathOverride)
+	}
+}
 
 // Returns a WareID for a given StepName and LocalLabel, if it exists
 //
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the requested step does not exist
-func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, wfapi.Error) {
+func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi.FormulaInput, error) {
 	if step, ok := m[stepName]; ok {
 		if input, ok := step[label]; ok {
 			// located a valid input
@@ -57,22 +74,23 @@ func (m pipeMap) lookup(stepName wfapi.StepName, label wfapi.LocalLabel) (*wfapi
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot open
 func plotInputToFormulaInput(ctx context.Context,
-	wsSet workspace.WorkspaceSet,
+	cfg ExecConfig,
+	wss workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
-	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, wfapi.Error) {
+	plotConfig wfapi.PlotExecConfig,
+	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, error) {
 	ctx, span := tracing.Start(ctx, "plotInputToFormulaInput")
 	defer span.End()
 
-	basis, addr, err := plotInputToFormulaInputSimple(ctx, wsSet, plotInput, config, pipeCtx)
+	basis, addr, err := plotInputToFormulaInputSimple(ctx, cfg, wss, plotInput, plotConfig, pipeCtx)
 	if err != nil {
 		return wfapi.FormulaInput{}, nil, err
 	}
@@ -98,18 +116,19 @@ func plotInputToFormulaInput(ctx context.Context,
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot open
 func plotInputToFormulaInputSimple(ctx context.Context,
-	wsSet workspace.WorkspaceSet,
+	cfg ExecConfig,
+	wss workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
-	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, wfapi.Error) {
+	plotCfg wfapi.PlotExecConfig,
+	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, error) {
 	ctx, span := tracing.Start(ctx, "plotInputToFormulaInputSimple")
 	defer span.End()
 	logger := logging.Ctx(ctx)
@@ -164,12 +183,17 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		)
 
 		// find the WareID and WareAddress for this catalog item
-		wareId, wareAddr, err := wsSet.GetCatalogWare(*basis.CatalogRef)
+		wareId, wareAddr, err := wss.GetCatalogWare(*basis.CatalogRef)
 		if err != nil {
-			return wfapi.FormulaInputSimple{}, nil, err
+			return wfapi.FormulaInputSimple{}, nil, serum.Error(wfapi.ECodeCatalogMissingEntry,
+				serum.WithMessageTemplate("could not find {{ catalogRef | q}}"),
+				serum.WithDetail("catalogRef", basis.CatalogRef.String()),
+				serum.WithCause(err),
+			)
 		}
 
 		if wareId == nil {
+			logger.Debug(LOG_TAG, "failed to resolve catalog reference to ware ID: %s", basis.CatalogRef.String())
 			// failed to find a match in the catalog
 			return wfapi.FormulaInputSimple{},
 				nil,
@@ -191,26 +215,24 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		// TODO: unclear if this should happen here or elsewhere
 		if wareAddr == nil {
 			// check if the ware is already in the warehouse
-			_, wsPath := wsSet.Root().Path()
+			root := wss.Root()
 			warehousePath := filepath.Join("/",
-				wsPath,
-				".warpforge",
-				"warehouse",
+				root.WarehousePath(),
 				wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
 			if _, err := os.Stat(filepath.Join("/", warehousePath)); os.IsNotExist(err) {
 				// ware not found, run the replay to generate it
-				replay, err := wsSet.GetCatalogReplay(*basis.CatalogRef)
+				replay, err := wss.GetCatalogReplay(*basis.CatalogRef)
 				if err != nil {
 					return wfapi.FormulaInputSimple{}, nil, err
 				}
 				if replay != nil {
-					if !config.Recursive {
+					if !plotCfg.Recursive {
 						// recursion is not allowed, return error
 						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef, true)
 					}
 					logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
 						basis.CatalogRef.ModuleName, basis.CatalogRef.ReleaseName)
-					result, err := execPlot(ctx, wsSet, *replay, config)
+					result, err := execPlot(ctx, cfg, wss, *replay, plotCfg)
 					if err != nil {
 						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
 					}
@@ -242,7 +264,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 			WareID: &wfapi.WareID{},
 		}
 
-		path, errRaw := filepath.Abs(basis.Ingest.GitIngest.HostPath)
+		path, errRaw := filepath.Abs(basis.Ingest.GitIngest.HostPath) //FIXME: This will always be relative to os.Getwd
 		if errRaw != nil {
 			return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorIo("failed to convert git host path to absolute path", basis.Ingest.GitIngest.HostPath, errRaw)
 		}
@@ -255,7 +277,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		//
 		// since the cache dir will be populated before formula exec occurs, the rio unpack step will
 		// be skipped for this input.
-		homeWs, err := workspace.OpenHomeWorkspace(os.DirFS("/"))
+		homeWs, err := workspace.OpenHomeWorkspace(os.DirFS("/")) //FIXME: homeworkspace should be passed in
 		if err != nil {
 			//FIXME: You probably want to _make_ this workspace if it doesn't exist.
 			return input, nil, err
@@ -320,22 +342,22 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 //    - warpforge-error-executor-failed -- when the execution step of the formula fails
 //    - warpforge-error-ware-unpack -- when a ware unpack operation fails for a formula input
 //    - warpforge-error-ware-pack -- when a ware pack operation fails for a formula output
-//    - warpforge-error-workspace -- when an invalid workspace is provided
 //    - warpforge-error-formula-invalid -- when an invalid formula is provided
 //    - warpforge-error-git -- when an error handing a git ingest occurs
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog entry cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog entry cannot be found
 //    - warpforge-error-plot-invalid -- when the plot contains invalid data
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when a replay fails
 //    - warpforge-error-serialization -- when serialization or deserialization of a memo fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot open
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot open
 func execProtoformula(ctx context.Context,
-	wsSet workspace.WorkspaceSet,
+	cfg ExecConfig,
+	wss workspace.WorkspaceSet,
 	pf wfapi.Protoformula,
 	formulaCtx wfapi.FormulaContext,
-	config wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.RunRecord, wfapi.Error) {
+	plotCfg wfapi.PlotExecConfig,
+	pipeCtx pipeMap) (wfapi.RunRecord, error) {
 	ctx, span := tracing.Start(ctx, "execProtoformula")
 	defer span.End()
 
@@ -349,7 +371,7 @@ func execProtoformula(ctx context.Context,
 	// convert Protoformula inputs (of type PlotInput) to FormulaInputs
 	for sbPort, plotInput := range pf.Inputs.Values {
 		formula.Inputs.Keys = append(formula.Inputs.Keys, sbPort)
-		input, wareAddr, err := plotInputToFormulaInput(ctx, wsSet, plotInput, config, pipeCtx)
+		input, wareAddr, err := plotInputToFormulaInput(ctx, cfg, wss, plotInput, plotCfg, pipeCtx)
 		if err != nil {
 			return wfapi.RunRecord{}, err
 		}
@@ -369,12 +391,11 @@ func execProtoformula(ctx context.Context,
 	}
 
 	// execute the derived formula
-	rr, err := formulaexec.Exec(ctx, wsSet.Root(),
+	rr, err := formulaexec.Exec(ctx, formulaexec.ExecConfig(cfg), wss.Root(),
 		wfapi.FormulaAndContext{
 			Formula: wfapi.FormulaCapsule{Formula: &formula},
 			Context: &wfapi.FormulaContextCapsule{FormulaContext: &formulaCtx},
-		},
-		config.FormulaExecConfig)
+		}, plotCfg.FormulaExecConfig)
 	return rr, err
 }
 
@@ -384,20 +405,25 @@ func execProtoformula(ctx context.Context,
 // Errors:
 //
 //    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
 //    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot be opened
-func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot be opened
+func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, plot wfapi.Plot, pltCfg wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
 	ctx, span := tracing.Start(ctx, "execPlot")
 	defer span.End()
 	pipeCtx := make(pipeMap)
 	results := wfapi.PlotResults{}
 	logger := logging.Ctx(ctx)
 	logger.Info(LOG_TAG_START, "")
+	defer logger.Info(LOG_TAG_END, "")
+	cfg.debug(ctx)
+	for idx, ws := range wss {
+		logger.Debug(LOG_TAG, "workspace[%d]: %s", idx, ws.InternalPath())
+	}
 
 	// collect the plot inputs
 	// these have an empty string for the step name (e.g., `pipe::foo`)
@@ -406,7 +432,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 	inputContext := wfapi.FormulaContext{}
 	inputContext.Warehouses.Values = make(map[wfapi.WareID]wfapi.WarehouseAddr)
 	for name, input := range plot.Inputs.Values {
-		input, wareAddr, err := plotInputToFormulaInput(ctx, wsSet, input, config, pipeCtx)
+		input, wareAddr, err := plotInputToFormulaInput(ctx, cfg, wss, input, pltCfg, pipeCtx)
 		if err != nil {
 			return results, err
 		}
@@ -434,7 +460,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 				color.HiCyanString(string(name)),
 				color.WhiteString("evaluating protoformula"),
 			)
-			rr, err := execProtoformula(ctx, wsSet, *step.Protoformula, inputContext, config, pipeCtx)
+			rr, err := execProtoformula(ctx, cfg, wss, *step.Protoformula, inputContext, pltCfg, pipeCtx)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
@@ -461,7 +487,7 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 				color.WhiteString("evaluating subplot"),
 			)
 
-			stepResults, err := execPlot(ctx, wsSet, *step.Plot, config)
+			stepResults, err := execPlot(ctx, cfg, wss, *step.Plot, pltCfg)
 			if err != nil {
 				return results, wfapi.ErrorPlotStepFailed(name, err)
 			}
@@ -502,9 +528,10 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 		results.Values[name] = *result.Basis().WareID
 	}
 
+	// TODO: This is currently the primary output mechanism of warpforge.
+	// This makes controlling UX a lot harder than it should be.
 	logger.PrintPlotResults(LOG_TAG, results)
 
-	logger.Info(LOG_TAG_END, "")
 	return results, nil
 }
 
@@ -512,20 +539,19 @@ func execPlot(ctx context.Context, wsSet workspace.WorkspaceSet, plot wfapi.Plot
 //
 // Errors:
 //
-//    - warpforge-error-plot-invalid -- when the provided plot input is invalid
-//    - warpforge-error-missing-catalog-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
+//    - warpforge-error-catalog-missing-entry -- when a referenced catalog reference cannot be found
+//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
 //    - warpforge-error-git -- when a git related error occurs during a git ingest
 //    - warpforge-error-io -- when an IO error occurs during conversion
-//    - warpforge-error-catalog-parse -- when parsing of catalog files fails
-//    - warpforge-error-catalog-invalid -- when the catalog contains invalid data
+//    - warpforge-error-plot-invalid -- when the provided plot input is invalid
 //    - warpforge-error-plot-step-failed -- when execution of a plot step fails
-//    - warpforge-error-workspace -- when home workspace is missing or cannot be opened
-func Exec(ctx context.Context, wsSet workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, config wfapi.PlotExecConfig) (wfapi.PlotResults, error) {
-	ctx, span := tracing.Start(ctx, "Exec")
-	defer span.End()
-
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot be opened
+func Exec(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, plotCapsule wfapi.PlotCapsule, pltCfg wfapi.PlotExecConfig) (result wfapi.PlotResults, err error) {
+	ctx, span := tracing.StartFn(ctx, "Exec")
+	defer func() { tracing.EndWithStatus(span, err) }()
 	if plotCapsule.Plot == nil {
 		return wfapi.PlotResults{}, wfapi.ErrorPlotInvalid("PlotCapsule does not contain a v1 plot")
 	}
-	return execPlot(ctx, wsSet, *plotCapsule.Plot, config)
+	return execPlot(ctx, cfg, wss, *plotCapsule.Plot, pltCfg)
 }

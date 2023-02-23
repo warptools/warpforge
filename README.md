@@ -84,7 +84,7 @@ warpforge quickstart hello-world
 
 ```
 Successfully created module.wf and plot.wf for module "hello-world".
-Ensure your catalogs are up to date by running `warpforge catalog update.`.
+Ensure your catalogs are up to date by running `warpforge catalog update`.
 You can check status of this module with `warpforge status`.
 You can run this module with `warpforge run`.
 Once you've run the Hello World example, edit the 'script' section of plot.wf to customize what happens.

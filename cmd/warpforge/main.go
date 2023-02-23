@@ -10,6 +10,7 @@ import (
 	ipldjson "github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/urfave/cli/v2"
+	"github.com/warptools/warpforge/pkg/config"
 )
 
 const VERSION = "v0.4.0"
@@ -30,6 +31,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&cli.BoolFlag{
 			Name:    "verbose",
 			Aliases: []string{"v"},
+			EnvVars: []string{config.EnvWarpforgeDebug},
 		},
 		&cli.BoolFlag{
 			Name: "quiet",
@@ -79,6 +81,7 @@ func makeApp(stdin io.Reader, stdout, stderr io.Writer) *cli.App {
 		&healthCmdDef,
 		&wareCmdDef,
 		&planCmdDef,
+		&sparkCmdDef,
 	}
 	return app
 }

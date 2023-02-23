@@ -63,7 +63,7 @@ func TestFormulaParseFixtures(t *testing.T) {
 						nCapsule, _ := n.LookupByString("formula")
 						nFormula, _ := nCapsule.LookupByString("Formula")
 						lsys := cidlink.DefaultLinkSystem()
-						lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{cid.Prefix{
+						lnk, err := lsys.ComputeLink(cidlink.LinkPrototype{Prefix: cid.Prefix{
 							Version:  1,    // Usually '1'.
 							Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
 							MhType:   0x20, // 0x20 means "sha2-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/

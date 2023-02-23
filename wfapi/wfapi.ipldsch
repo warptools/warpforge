@@ -417,10 +417,10 @@ type CatalogMirrorsCapsule union {
 	| CatalogMirrors "catalogmirrors.v1"
 } representation keyed
 
-type CatalogMirrors union {
-	| CatalogMirrorsByWare "byWare"
-	| CatalogMirrorsByModule "byModule"
-} representation keyed
+type CatalogMirrors struct {
+	byWare optional CatalogMirrorsByWare
+	byModule optional CatalogMirrorsByModule
+}
 
 type WarehouseAddrList [WarehouseAddr]
 
@@ -431,3 +431,51 @@ type CatalogMirrorsByPacktype {Packtype:WarehouseAddrList}
 type ReplayCapsule union {
 	| Plot "plot.v1"
 } representation keyed
+
+# MirroringConfig defines the mirroring configuration for an entire workspace.
+# This maps the addresses which we want to publish to (of type WarehouseAddr) 
+# to specific configs, which may be backed by various types of storage.
+#
+# For instance, if a catalog has an entry which refers to 
+# "ca+https://warpsys-wares.s3.fr-par.scw.cloud" as a mirror, this configuration
+# will be checked for that entry when attempting to do mirroring operations.
+# If it exists, that configuration will be used.
+#
+# Here is a full example mirroring configuration for an S3 endpoint:
+# 	{
+# 		"mirroring.v1": {
+# 			"ca+https://warpsys-wares.s3.fr-par.scw.cloud": {
+# 				"pushConfig": {
+# 					"s3": {
+# 						"endpoint": "https://s3.fr-par.scw.cloud",
+# 						"region": "fr-par",
+# 						"bucket": "warpsys-wares"
+# 					}
+# 				}
+# 			}
+# 		}
+# 	}
+
+type MirroringConfigCapsule union {
+	| MirroringConfig "mirroring.v1"
+} representation keyed
+
+type MirroringConfig {WarehouseAddr:WarehouseMirroringConfig}
+
+type WarehouseMirroringConfig struct {
+	pushConfig WarehousePushConfig 
+}
+
+type WarehousePushConfig union {
+	| S3PushConfig "s3"
+	| MockPushConfig "mock"
+} representation keyed
+
+type S3PushConfig struct {
+	endpoint String
+	region String
+	bucket String
+	path optional String
+}
+
+type MockPushConfig struct {}

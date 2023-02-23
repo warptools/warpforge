@@ -5,10 +5,11 @@ import (
 
 	"embed"
 
-	"github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/json" // side-effecting import; registers a codec.
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/schema"
+	schemadmt "github.com/ipld/go-ipld-prime/schema/dmt"
+	schemadsl "github.com/ipld/go-ipld-prime/schema/dsl"
 )
 
 // This file is for IPLD-related helpers and constants.
@@ -23,14 +24,24 @@ var LinkSystem = cidlink.DefaultLinkSystem()
 //go:embed wfapi.ipldsch
 var schFs embed.FS
 
-var TypeSystem = func() *schema.TypeSystem {
-	schReader, err := schFs.Open("wfapi.ipldsch")
+// Export both the parsed DMT of the schema,
+// and the compiled TypeSystem.
+//
+// (The DMT form is used by other packages that "extend" this schema,
+// so that they don't have to do the whole DSL parse again.)
+var SchemaDMT, TypeSystem = func() (*schemadmt.Schema, *schema.TypeSystem) {
+	r, err := schFs.Open("wfapi.ipldsch")
 	if err != nil {
 		panic(fmt.Sprintf("failed to open embedded wfapi.ipldsch: %s", err))
 	}
-	ts, err := ipld.LoadSchema("warpforge", schReader)
+	schemaDmt, err := schemadsl.Parse("wfapi.ipldsch", r)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse api schema: %s", err))
 	}
-	return ts
+	ts := new(schema.TypeSystem)
+	ts.Init()
+	if err := schemadmt.Compile(ts, schemaDmt); err != nil {
+		panic(fmt.Sprintf("failed to compile api schema: %s", err))
+	}
+	return schemaDmt, ts
 }()

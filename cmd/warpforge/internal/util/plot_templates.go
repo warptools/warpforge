@@ -41,7 +41,7 @@ const DefaultPlotJson = `
 const FerkPlotTemplate = `
 {
     "inputs": {
-        "rootfs": "catalog:min.warpforge.io/debian/rootfs:bullseye-1646092800:amd64"
+        "rootfs": "catalog:warpsys.org/bootstrap/debian:bullseye-1646092800:amd64"
     },
     "steps": {
         "ferk": {

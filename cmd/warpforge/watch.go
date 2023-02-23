@@ -1,113 +1,54 @@
 package main
 
 import (
-	"fmt"
-	"path/filepath"
-	"time"
+	"context"
+	"errors"
+	"os"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
-	"github.com/warptools/warpforge/pkg/tracing"
+	"github.com/warptools/warpforge/subcmd/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 
 var watchCmdDef = cli.Command{
-	Name:  "watch",
-	Usage: "Watch a directory for git commits, executing plot on each new commit",
+	Name:      "watch",
+	Usage:     "Watch a module for changes to plot ingest inputs. Currently only git ingests are supported.",
+	UsageText: "Watch will emit execution output but will also allow communication over a unix socket via the spark command.",
 	Action: util.ChainCmdMiddleware(cmdWatch,
 		util.CmdMiddlewareLogging,
 		util.CmdMiddlewareTracingConfig,
+		util.CmdMiddlewareCancelOnInterrupt,
 	),
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "disable-socket",
+			Usage: "Disable unix socket server. Use this if you are having problems due to socket creation.",
+		},
+	},
 }
 
 func cmdWatch(c *cli.Context) error {
 	if c.Args().Len() != 1 {
-		return fmt.Errorf("invalid args")
+		return serum.Error(wfapi.ECodeInvalid, serum.WithMessageLiteral("invalid args"))
 	}
-	ctx := c.Context
-
-	path := c.Args().First()
-
-	// TODO: currently we read the module/plot from the provided path.
-	// instead, we should read it from the git cache dir
-	plot, err := util.PlotFromFile(filepath.Join(path, util.PlotFilename))
+	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return serum.Error(wfapi.ECodeIo, serum.WithCause(err),
+			serum.WithMessageLiteral("unable to get working directory"),
+		)
 	}
-
-	ingests := make(map[string]string)
-	var allInputs []wfapi.PlotInput
-	for _, input := range plot.Inputs.Values {
-		allInputs = append(allInputs, input)
+	cfg := &watch.Config{
+		WorkingDirectory: wd,
+		Fsys:             os.DirFS("/"),
+		Path:             c.Args().First(),
+		Socket:           !c.Bool("disable-socket"),
 	}
-	for _, step := range plot.Steps.Values {
-		for _, input := range step.Protoformula.Inputs.Values {
-			allInputs = append(allInputs, input)
-		}
+	err = cfg.Run(c.Context)
+	if errors.Is(err, context.Canceled) {
+		return nil
 	}
-
-	for _, input := range allInputs {
-		if input.Basis().Ingest != nil && input.Basis().Ingest.GitIngest != nil {
-			ingest := input.Basis().Ingest.GitIngest
-			ingests[ingest.HostPath] = ingest.Ref
-		}
-	}
-
-	ingestCache := make(map[string]string)
-	for k, v := range ingests {
-		ingestCache[k] = v
-	}
-
-	config := wfapi.PlotExecConfig{
-		Recursive: c.Bool("recursive"),
-		FormulaExecConfig: wfapi.FormulaExecConfig{
-			DisableMemoization: c.Bool("force"),
-		},
-	}
-
-	for {
-		outerCtx, outerSpan := tracing.Start(ctx, "watch-loop")
-		for path, rev := range ingests {
-			innerCtx, innerSpan := tracing.Start(outerCtx, "watch-loop-ingest",
-				trace.WithAttributes(
-					attribute.String(tracing.AttrKeyWarpforgeIngestPath, path),
-					attribute.String(tracing.AttrKeyWarpforgeIngestRev, rev),
-				),
-			)
-			gitCtx, gitSpan := tracing.Start(innerCtx, "copy local repo", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
-			defer gitSpan.End()
-			r, err := git.CloneContext(gitCtx, memory.NewStorage(), nil, &git.CloneOptions{
-				URL: "file://" + path,
-			})
-			tracing.EndWithStatus(gitSpan, err)
-			if err != nil {
-				return fmt.Errorf("failed to checkout git repository at %q to memory: %s", path, err)
-			}
-
-			hashBytes, err := r.ResolveRevision(plumbing.Revision(rev))
-			if err != nil {
-				return fmt.Errorf("failed to resolve git hash: %s", err)
-			}
-			hash := hashBytes.String()
-
-			if ingestCache[path] != hash {
-				innerSpan.AddEvent("ingest updated", trace.WithAttributes(attribute.String(tracing.AttrKeyWarpforgeIngestHash, hash)))
-				fmt.Println("path", path, "changed, new hash", hash)
-				ingestCache[path] = hash
-				_, err := util.ExecModule(innerCtx, config, filepath.Join(c.Args().First(), util.ModuleFilename))
-				if err != nil {
-					fmt.Printf("exec failed: %s\n", err)
-				}
-			}
-			innerSpan.End()
-		}
-		outerSpan.End()
-		time.Sleep(time.Millisecond * 100)
-	}
+	return err
 }

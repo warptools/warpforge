@@ -4,7 +4,9 @@ MODULE := $(shell go list -m)
 
 install:
 	@echo "Installing plugins..."
-	cp ./plugins/* $(GOBIN)
+	mkdir -p $(GOBIN)
+# ignore errors when copying plugins (cp does not like copying over symbolic links)
+	-cp ./plugins/* $(GOBIN)
 	@echo "Building and installing warpforge..."
 	go install ./...
 	@echo "Install complete!"
@@ -15,7 +17,7 @@ ifndef SERUM
 	@echo "go-serum-analyzer can be installed from https://github.com/serum-errors/go-serum-analyzer"
 	@echo
 else
-	$(SERUM) -strict ./...
+	-$(SERUM) -strict ./...
 endif
 	go test ./...
 	@stty sane

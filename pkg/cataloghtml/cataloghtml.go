@@ -19,6 +19,7 @@ import (
 	"github.com/alecthomas/chroma/styles"
 	"github.com/ipld/go-ipld-prime"
 	ipldJson "github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/wfapi"
@@ -181,7 +182,7 @@ func (cfg SiteConfig) doTemplate(outputPath string, tmpl string, data interface{
 
 	t := template.Must(template.New("main").Funcs(cfg.tfuncs()).Parse(tmpl))
 	if err := t.Execute(f, data); err != nil {
-		return wfapi.ErrorInternal("templating failed", err)
+		return serum.Errorf(wfapi.ECodeInternal, "templating failed: %w", err)
 	}
 	return nil
 }
@@ -320,9 +321,6 @@ func (pf plotFormatter) FormattedJson() template.HTML {
 	// apply syntax highlighting to json
 	lexer := lexers.Get("json")
 	style := styles.Get("dracula")
-	if err != nil {
-		panic(fmt.Sprintf("failed to modify style: %s", err))
-	}
 	formatter := formatters.Get("html")
 	if lexer == nil || style == nil || formatter == nil {
 		panic("failed to setup syntax highlighting")

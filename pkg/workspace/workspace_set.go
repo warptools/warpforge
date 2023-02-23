@@ -2,7 +2,11 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
+
+	"github.com/serum-errors/go-serum"
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/wfapi"
@@ -33,11 +37,18 @@ func (wsSet WorkspaceSet) Root() *Workspace {
 //     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
 //     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
+func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	// traverse workspace stack
 	for _, ws := range wsSet {
 		wareId, wareAddr, err := ws.GetCatalogWare(ref)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		if err != nil {
+			if serum.Code(err) == wfapi.ECodeCatalogMissingEntry {
+				continue
+			}
+			// Error Codes -= warpforge-error-catalog-missing-entry
 			return nil, nil, err
 		}
 		if wareId != nil {
@@ -59,7 +70,7 @@ func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *
 //     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
 //     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (wsSet WorkspaceSet) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
+func (wsSet WorkspaceSet) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error) {
 	// traverse workspace stack
 	for _, ws := range wsSet {
 		replay, err := ws.GetCatalogReplay(ref)
@@ -81,11 +92,11 @@ func (wsSet WorkspaceSet) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, w
 //
 //    - warpforge-error-catalog-invalid -- a catalog in this workspace set is invalid
 //    - warpforge-error-catalog-parse -- a catalog in this workspace set can't be parsed
-//    - warpforge-error-missing-catalog-entry -- a dependency can't be found
+//    - warpforge-error-catalog-missing-entry -- a dependency can't be found
 //    - warpforge-error-catalog-name -- honestly, shouldn't happen
 //    - warpforge-error-workspace -- workspace stack missing a non-root workspace
 //    - warpforge-error-io -- reading/writing catalog fails
-func (wsSet WorkspaceSet) Tidy(ctx context.Context, plot wfapi.Plot, force bool) wfapi.Error {
+func (wsSet WorkspaceSet) Tidy(ctx context.Context, plot wfapi.Plot, force bool) error {
 	local := wsSet.Local()
 	if local.IsRootWorkspace() {
 		_, path := local.Path()

@@ -1,12 +1,18 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/serum-errors/go-serum"
+
+	"github.com/warptools/warpforge/pkg/dab"
 	_ "github.com/warptools/warpforge/pkg/testutil"
 	"github.com/warptools/warpforge/wfapi"
 )
@@ -29,11 +35,11 @@ type Workspace struct {
 //
 // Errors:
 //
-//    - warpforge-error-workspace -- when the workspace directory fails to open
-func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
-	_, err := statDir(fsys, filepath.Join(rootPath, magicWorkspaceDirname))
+//    - warpforge-error-workspace-missing -- when the workspace directory does not exist
+func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, error) {
+	_, err := statWorkspace(fsys, filepath.Join(rootPath, magicWorkspaceDirname))
 	if err != nil {
-		return nil, wfapi.ErrorWorkspace(rootPath, err)
+		return nil, err
 	}
 	return openWorkspace(fsys, rootPath), nil
 }
@@ -47,14 +53,20 @@ func OpenWorkspace(fsys fs.FS, rootPath string) (*Workspace, wfapi.Error) {
 // from an outside perspective.
 func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 	rootPath = filepath.Clean(rootPath)
-	isHomeWorkspace := rootPath == homedir
 	return &Workspace{
 		fsys:            fsys,
 		rootPath:        rootPath,
-		isHomeWorkspace: isHomeWorkspace,
-		isRootWorkspace: checkIsRootWorkspace(fsys, rootPath) || isHomeWorkspace,
+		isRootWorkspace: checkIsRootWorkspace(fsys, rootPath),
 		// that's it; everything else is loaded later.
 	}
+}
+
+// openHomeWorkspace is the same as the public method but with no error checking at all;
+func openHomeWorkspace(fsys fs.FS) *Workspace {
+	workspace := openWorkspace(fsys, homedir)
+	workspace.isHomeWorkspace = true
+	workspace.isRootWorkspace = true
+	return workspace
 }
 
 // OpenHomeWorkspace calls OpenWorkspace on the user's homedir.
@@ -64,13 +76,28 @@ func openWorkspace(fsys fs.FS, rootPath string) *Workspace {
 //
 // Errors:
 //
-//    - warpforge-error-workspace -- when the workspace directory fails to open
-func OpenHomeWorkspace(fsys fs.FS) (*Workspace, wfapi.Error) {
-	return OpenWorkspace(fsys, homedir)
+//    - warpforge-error-workspace-missing -- when the workspace directory does not exist
+func OpenHomeWorkspace(fsys fs.FS) (*Workspace, error) {
+	_, err := statWorkspace(fsys, filepath.Join(homedir, magicHomeWorkspaceDirname))
+	if err != nil {
+		return nil, err
+	}
+	workspace := openHomeWorkspace(fsys)
+	workspace.isHomeWorkspace = true
+	workspace.isRootWorkspace = true
+	return workspace, err
+}
+
+// InternalPath returns the workspace's path including the .warp* segment.
+func (ws *Workspace) InternalPath() string {
+	if ws.isHomeWorkspace {
+		return filepath.Join(ws.rootPath, magicHomeWorkspaceDirname)
+	}
+	return filepath.Join(ws.rootPath, magicWorkspaceDirname)
 }
 
 // Path returns the workspace's fs and path -- the directory that is its root.
-// (This does *not* include the ".warpforge" segment on the end of the path.)
+// (This does *not* include the ".warp*" segment on the end of the path.)
 func (ws *Workspace) Path() (fs.FS, string) {
 	return ws.fsys, ws.rootPath
 }
@@ -87,20 +114,33 @@ func (ws *Workspace) IsHomeWorkspace() bool {
 // Errors:
 //
 //    - warpforge-error-wareid-invalid -- when a malformed WareID is provided
-func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, wfapi.Error) {
+func (ws *Workspace) CachePath(wareId wfapi.WareID) (string, error) {
 	if len(wareId.Hash) < 7 {
 		return "", wfapi.ErrorWareIdInvalid(wareId)
 	}
 	return filepath.Join(
 		"/",
-		ws.rootPath,
-		".warpforge",
+		ws.InternalPath(),
 		"cache",
 		string(wareId.Packtype),
 		"fileset",
-		wareId.Hash[0:3],
-		wareId.Hash[3:6],
-		wareId.Hash), nil
+		wareId.Subpath(),
+	), nil
+}
+
+// Returns the path to a ware within the workspace's warehouse directory
+// Errors:
+//
+//    - warpforge-error-wareid-invalid -- when a malformed WareID is provided
+func (ws *Workspace) WarePath(wareId wfapi.WareID) (string, error) {
+	if len(wareId.Hash) < 7 {
+		return "", wfapi.ErrorWareIdInvalid(wareId)
+	}
+	return filepath.Join(
+		"/",
+		ws.WarehousePath(),
+		wareId.Subpath(),
+	), nil
 }
 
 // IsRootWorkspace returns true if the workspace is a root workspace
@@ -108,12 +148,11 @@ func (ws *Workspace) IsRootWorkspace() bool {
 	return ws.isRootWorkspace
 }
 
-// Returns the base path which contains memos (i.e., `.../.warpforge/memos`)
+// Returns the base path which contains memos (e.g., `.../.warpforge/memos`)
 func (ws *Workspace) MemoBasePath() string {
 	return filepath.Join(
 		"/",
-		ws.rootPath,
-		".warpforge",
+		ws.InternalPath(),
 		"memos",
 	)
 }
@@ -126,18 +165,22 @@ func (ws *Workspace) MemoPath(fid string) string {
 	)
 }
 
-// Returns the base path which contains named catalogs (i.e., `.../.warpforge/catalogs`)
+// Returns the base path which contains named catalogs (e.g., `.../.warpforge/catalogs`)
 func (ws *Workspace) CatalogBasePath() string {
 	return filepath.Join(
-		ws.rootPath,
-		".warpforge",
+		ws.InternalPath(),
 		"catalogs",
 	)
 }
 
 // nonRootCatalogPath returns the path to the catalog in a non-root workspace.
 func (ws *Workspace) nonRootCatalogPath() string {
-	return filepath.Join(ws.rootPath, ".warpforge", "catalog")
+	return filepath.Join(ws.InternalPath(), "catalog")
+}
+
+// WarehousePath returns the path to the catalog in a non-root workspace.
+func (ws *Workspace) WarehousePath() string {
+	return filepath.Join(ws.InternalPath(), "warehouse")
 }
 
 // CatalogPath returns the catalog path for catalog with a given name within a workspace.
@@ -148,7 +191,7 @@ func (ws *Workspace) nonRootCatalogPath() string {
 // Errors:
 //
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
+func (ws *Workspace) CatalogPath(name string) (string, error) {
 	if !ws.isRootWorkspace {
 		if name == "" {
 			return ws.nonRootCatalogPath(), nil
@@ -174,7 +217,7 @@ func (ws *Workspace) CatalogPath(name string) (string, wfapi.Error) {
 //    - warpforge-error-catalog-invalid -- when opened catalog has invalid data
 //    - warpforge-error-io -- when IO error occurs during opening of catalog
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) OpenCatalog(name string) (Catalog, wfapi.Error) {
+func (ws *Workspace) OpenCatalog(name string) (Catalog, error) {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return Catalog{}, err
@@ -189,11 +232,14 @@ func (ws *Workspace) OpenCatalog(name string) (Catalog, wfapi.Error) {
 // Errors:
 //
 //    - warpforge-error-io -- when listing directory fails
-func (ws *Workspace) ListCatalogs() ([]string, wfapi.Error) {
+func (ws *Workspace) ListCatalogs() ([]string, error) {
 	if !ws.isRootWorkspace {
 		return []string{""}, nil
 	}
 	catalogsPath := ws.CatalogBasePath()
+	if filepath.IsAbs(catalogsPath) {
+		catalogsPath = catalogsPath[1:]
+	}
 
 	_, err := fs.Stat(ws.fsys, catalogsPath)
 	if os.IsNotExist(err) {
@@ -229,7 +275,8 @@ func (ws *Workspace) ListCatalogs() ([]string, wfapi.Error) {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, wfapi.Error) {
+//     - warpforge-error-catalog-missing-entry -- when catalog item is missing
+func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
 	if err != nil {
@@ -239,7 +286,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 	for _, c := range cats {
 		cat, err := ws.OpenCatalog(c)
 		if err != nil {
-			switch err.(*wfapi.ErrorVal).Code() {
+			switch serum.Code(err) {
 			case "warpforge-error-catalog-name":
 				panic(err)
 			default:
@@ -268,7 +315,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 //
 //     - warpforge-error-io -- when reading or writing the catalog directory fails
 //     - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
+func (ws *Workspace) HasCatalog(name string) (bool, error) {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return false, err
@@ -291,7 +338,7 @@ func (ws *Workspace) HasCatalog(name string) (bool, wfapi.Error) {
 //    - warpforge-error-io -- when reading or writing the catalog directory fails
 //    - warpforge-error-already-exists -- when the catalog already exists
 //    - warpforge-error-catalog-name -- when the catalog name is invalid
-func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
+func (ws *Workspace) CreateCatalog(name string) error {
 	path, err := ws.CatalogPath(name)
 	if err != nil {
 		return err
@@ -322,10 +369,10 @@ func (ws *Workspace) CreateCatalog(name string) wfapi.Error {
 //  - warpforge-error-io -- when reading or writing the catalog directory fails
 //  - warpforge-error-catalog-name -- when the catalog name is invalid
 //  - warpforge-error-catalog-invalid -- when opened catalog has invalid data
-func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, wfapi.Error) {
+func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, error) {
 	err := ws.CreateCatalog(name)
 	if err != nil {
-		switch err.(*wfapi.ErrorVal).Code() {
+		switch serum.Code(err) {
 		case "warpforge-error-already-exists":
 			return ws.OpenCatalog(name)
 		default:
@@ -345,7 +392,7 @@ func (ws *Workspace) CreateOrOpenCatalog(name string) (Catalog, wfapi.Error) {
 //     - warpforge-error-io -- when reading of lineage or mirror files fails
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.Error) {
+func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
 	if err != nil {
@@ -355,7 +402,7 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.
 	for _, c := range cats {
 		cat, err := ws.OpenCatalog(c)
 		if err != nil {
-			switch err.(*wfapi.ErrorVal).Code() {
+			switch serum.Code(err) {
 			case "warpforge-error-catalog-name":
 				// This shouldn't happen
 				panic(err)
@@ -383,6 +430,89 @@ func (ws *Workspace) GetCatalogReplay(ref wfapi.CatalogRef) (*wfapi.Plot, wfapi.
 // GetWarehouseAddress will return a URL-style path to the workspace warehouse.
 // will use the rootpath prefixed with "/"
 func (ws *Workspace) GetWarehouseAddress() wfapi.WarehouseAddr {
-	path := filepath.Join("/", ws.rootPath, ".warpforge", "warehouse")
+	path := filepath.Join("/", ws.InternalPath(), "warehouse")
 	return wfapi.WarehouseAddr("ca+file://" + path)
+}
+
+// GetMirroringConfig will return the MirroringConfig map for this workspace
+// which is read from the .warpforge/mirroring.json config file.
+//
+// Errors:
+//
+// 	- warpforge-error-io -- for errors reading from fsys.
+// 	- warpforge-error-serialization -- for errors from try to parse the data as a Module.
+func (ws *Workspace) GetMirroringConfig() (wfapi.MirroringConfig, error) {
+	return dab.MirroringConfigFromFile(ws.fsys, filepath.Join(ws.InternalPath(), dab.MagicFilename_MirroringConfig))
+}
+
+// StoreMemo will save a run record to the workspace
+//
+// Errors:
+//
+//   - warpforge-error-io -- when unable to read memo file
+//   - warpforge-error-serialization -- when unable to parse memo file
+func (ws *Workspace) StoreMemo(rr wfapi.RunRecord) error {
+	// create the memo path, if it does not exist
+	memoBasePath := ws.MemoBasePath()
+	err := os.MkdirAll(ws.MemoBasePath(), 0755)
+	if err != nil {
+		return wfapi.ErrorIo("failed to create memo dir", memoBasePath, err)
+	}
+
+	// serialize the memo
+	memoSerial, err := ipld.Marshal(json.Encode, &rr, wfapi.TypeSystem.TypeByName("RunRecord"))
+	if err != nil {
+		return wfapi.ErrorSerialization("failed to serialize memo", err)
+	}
+
+	// write the memo
+	memoPath := ws.MemoPath(rr.FormulaID)
+	err = os.WriteFile(memoPath, memoSerial, 0644)
+	if err != nil {
+		return wfapi.ErrorIo("failed to write memo file", memoPath, err)
+	}
+
+	return nil
+}
+
+// LoadMemo will attempt to find and return a run record from the workspace
+//
+// Errors:
+//
+//   - warpforge-error-io -- when unable to read memo file
+//   - warpforge-error-serialization -- when unable to parse memo file
+func (ws *Workspace) LoadMemo(fid string) (*wfapi.RunRecord, error) {
+	// if no workspace is provided, there can be no memos
+	if ws == nil {
+		return nil, nil
+	}
+
+	memoPath := ws.MemoPath(fid)
+	if len(memoPath) > 0 && memoPath[0] == '/' {
+		memoPath = memoPath[1:]
+	}
+
+	_, err := fs.Stat(ws.fsys, memoPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		// couldn't find a memo file, return nil to indicate there is no memo
+		return nil, nil
+	}
+	if err != nil {
+		// found memo file, but error reading, return error
+		return nil, wfapi.ErrorIo("failed to stat memo file", memoPath, err)
+	}
+
+	// read the file
+	f, err := fs.ReadFile(ws.fsys, memoPath)
+	if err != nil {
+		return nil, wfapi.ErrorIo("failed to read memo file", memoPath, err)
+	}
+
+	memo := wfapi.RunRecord{}
+	_, err = ipld.Unmarshal(f, json.Decode, &memo, wfapi.TypeSystem.TypeByName("RunRecord"))
+	if err != nil {
+		return nil, wfapi.ErrorSerialization(fmt.Sprintf("failed to deserialize memo file %q", memoPath), err)
+	}
+
+	return &memo, nil
 }

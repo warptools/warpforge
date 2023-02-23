@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,24 +11,12 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/serum-errors/go-serum"
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
 
 	"github.com/warptools/warpforge/pkg/testutil"
-	"github.com/warptools/warpforge/pkg/workspace"
 )
-
-// constructs a custom workspace stack containing only this project's .warpforge dir (contains catalog)
-func getTestWorkspaceStack(t *testing.T) []*workspace.Workspace {
-	pwd, err := os.Getwd()
-	qt.Assert(t, err, qt.IsNil)
-	projWs, err := workspace.OpenWorkspace(os.DirFS("/"), filepath.Join(pwd[1:], "../../"))
-	qt.Assert(t, err, qt.IsNil)
-	wss := []*workspace.Workspace{
-		projWs,
-	}
-	return wss
-}
 
 type tagset map[string]struct{}
 
@@ -59,10 +49,6 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 	pwd, err := os.Getwd()
 	qt.Assert(t, err, qt.IsNil)
 
-	// build an exec function with a pointer to this project's git root
-	execFn := buildExecFn(filepath.Join(pwd, "../../"))
-	qt.Assert(t, err, qt.IsNil)
-
 	if workDir != nil {
 		err = os.Chdir(*workDir)
 		qt.Assert(t, err, qt.IsNil)
@@ -93,6 +79,10 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 			if tags.has("net") && *testutil.FlagOffline {
 				t.Skip("skipping test", t.Name(), "due to offline flag")
 			}
+			// build an exec function with a pointer to this project's git root
+			execFn := buildExecFn(t, filepath.Join(pwd, "../../"))
+			qt.Assert(t, err, qt.IsNil)
+
 			test := testexec.Tester{
 				ExecFn:   execFn,
 				Patches:  &patches,
@@ -130,7 +120,7 @@ func TestHelpFixtures(t *testing.T) {
 }
 
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
-func cleanRunRecord(str string) string {
+func cleanOutput(str string) string {
 	// replace guid
 	matcher := regexp.MustCompile(`"guid": "[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}"`)
 	str = matcher.ReplaceAllString(str, `"guid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"`)
@@ -139,14 +129,29 @@ func cleanRunRecord(str string) string {
 	matcher = regexp.MustCompile(`"time": [0-9]+`)
 	str = matcher.ReplaceAllString(str, `"time": "22222222222"`)
 
+	// replace tmp path
+	matcher = regexp.MustCompile(`/tmp/go-build.*/warpforge.test`)
+	str = matcher.ReplaceAllString(str, `warpforge`)
+
 	// return value with whitespace trimmed
 	return strings.TrimSpace(str)
 }
 
-func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
+func buildExecFn(t *testing.T, projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+		bufout, buferr := &bytes.Buffer{}, &bytes.Buffer{}
+		var testout io.Writer = bufout
+		if stdout != nil {
+			testout = io.MultiWriter(stdout, bufout)
+		}
+		var testerr io.Writer = bufout
+		if stderr != nil {
+			testerr = io.MultiWriter(stderr, buferr)
+		}
+
 		// override the path to required binaries
-		err := os.Setenv("WARPFORGE_PATH", filepath.Join(projPath, "plugins"))
+		pluginPath := filepath.Join(projPath, "plugins")
+		err := os.Setenv("WARPFORGE_PATH", pluginPath)
 		if err != nil {
 			panic("failed to set WARPFORGE_PATH")
 		}
@@ -161,16 +166,45 @@ func buildExecFn(projPath string) func(args []string, stdin io.Reader, stdout io
 			}
 			return 0, nil
 		}
-		err = makeApp(stdin, stdout, stderr).Run(args)
+
+		wd, err := os.Getwd()
 		if err != nil {
-			return 1, nil
+			panic("failed to find working directory")
 		}
-		return 0, nil
+		t.Log("╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱")
+		t.Logf("Working Directory: %q", wd)
+		// filepath.Walk(wd, func(path string, d os.FileInfo, err error) error {
+		// 	t.Logf("path: %s", path)
+		// 	return nil
+		// })
+		err = makeApp(stdin, testout, testerr).Run(args)
+		exitCode := 0
+		if err != nil {
+			exitCode = 1
+		}
+		t.Logf("Args: %v", args)
+		for err != nil {
+			t.Logf("Code: %s", serum.Code(err))
+			t.Logf("Message: %s", serum.Message(err))
+			t.Logf("Details: %v", serum.Details(err))
+			err = errors.Unwrap(err)
+			if err != nil {
+				t.Logf("caused by:")
+			}
+		}
+		t.Logf("==============")
+		t.Logf("⌄⌄⌄ stdout ⌄⌄⌄\n%s", string(bufout.Bytes()))
+		t.Logf("⌃⌃⌃ stdout ⌃⌃⌃")
+		t.Logf("==============")
+		t.Logf("⌄⌄⌄ stderr ⌄⌄⌄\n%s", string(buferr.Bytes()))
+		t.Logf("⌃⌃⌃ stderr ⌃⌃⌃")
+		t.Logf("==============")
+		return exitCode, nil
 	}
 }
 
 func assertFn(t *testing.T, actual, expect string) {
-	actual = cleanRunRecord(actual)
-	expect = cleanRunRecord(expect)
+	actual = cleanOutput(actual)
+	expect = cleanOutput(expect)
 	qt.Assert(t, actual, qt.Equals, expect)
 }

@@ -151,9 +151,11 @@ We'll run this in a filesystem that contains a `plot.wf` (albeit a pretty silly 
 [testmark]:# (checkplot/fs/plot.wf)
 ```
 {
+	"plot.v1":{
     "inputs": {},
     "steps": {},
     "outputs": {}
+	}
 }
 ```
 
@@ -305,7 +307,7 @@ Here's the `plot.wf` file -- this one's a bit bigger and more involved:
 									}
 								}
 							}
-						},
+						}
 					},
 					"outputs": {
 						"test": "pipe:one-inner:test"
@@ -362,6 +364,63 @@ there's only one record in this map.
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
+## Relative Paths
+
+Plots can have relative paths for mounts. These paths are relative to the
+plot file itself. This example executes a module from a different directory
+to demonstrate how relative paths work.
+
+[testmark]:# (base-workspace/then-test-mounts/sequence)
+```
+warpforge --json --quiet run module
+```
+
+[testmark]:# (base-workspace/then-test-mounts/fs/module/module.wf)
+```
+{
+	"module.v1": {
+		"name": "test"
+	}
+}
+```
+
+[testmark]:# (base-workspace/then-test-mounts/fs/module/test.txt)
+```
+hello from a mounted file!
+```
+
+[testmark]:# (base-workspace/then-test-mounts/fs/module/plot.wf)
+```
+{
+	"plot.v1": {
+		"inputs": {
+			"rootfs": "catalog:warpsys.org/busybox:v1.35.0:amd64-static"
+		},
+		"steps": {
+			"one": {
+				"protoformula": {
+					"inputs": {
+						"/": "pipe::rootfs"
+						"/mnt": "mount:overlay:."
+					},
+					"action": {
+						"exec": {
+							"command": [
+								"/bin/sh",
+								"-c",
+								"cat /mnt/test.txt"
+							]
+						}
+					},
+					"outputs": {}
+				}
+			}
+		},
+		"outputs": {}
+	}
+}
+```
+
 ## Catalog Operations
 
 [testmark]:# (catalog/tags=net/fs/.warpforge/root)
@@ -388,6 +447,31 @@ warpforge catalog ls
 [testmark]:# (base-workspace/then-generatehtml/sequence)
 ```
 warpforge catalog --name=test generate-html
+```
+
+### Mirror a Catalog
+
+The base workspace does not have mirror information to avoid using the network by default. We will override
+the `_mirrors.json` file to test mirroring to a mock remote warehouse.
+
+[testmark]:# (base-workspace/then-mirror/fs/.warpforge/catalogs/test/warpsys.org/busybox/_mirrors.json)
+```json
+{
+	"catalogmirrors.v1": {
+		"byModule": {
+			"warpsys.org/busybox": {
+				"tar": ["ca+mock://example.warp.tools"]
+			}
+		}
+	}
+}
+```
+
+Now we can test mirroring:
+
+[testmark]:# (base-workspace/then-mirror/sequence)
+```
+warpforge catalog --name=test mirror
 ```
 
 ### Add an Item to a Catalog
@@ -596,11 +680,16 @@ the default catalog, which was installed and updated in the previous section.
 
 [testmark]:# (base-workspace/then-quickstart/sequence)
 ```
-warpforge --quiet quickstart warpforge.org/my-quickstart-module
+warpforge quickstart warpforge.org/my-quickstart-module
 ```
 
-[testmark]:# (base-workspace/then-quickstart/output)
+[testmark]:# (base-workspace/then-quickstart/stdout)
 ```
+Successfully created module.wf and plot.wf for module "warpforge.org/my-quickstart-module".
+Ensure your catalogs are up to date by running `warpforge catalog update`.
+You can check status of this module with `warpforge status`.
+You can run this module with `warpforge run`.
+Once you've run the Hello World example, edit the 'script' section of plot.wf to customize what happens.
 ```
 
 This "hello world" example can the be run normally.
@@ -646,7 +735,7 @@ These tests require a workspace with a catalog entry,  which is setup here:
 {
 	"catalogmirrors.v1": {
 		"byWare": {
-		}
+		},
 	}
 }
 ```
@@ -667,7 +756,18 @@ These tests require a workspace with a catalog entry,  which is setup here:
 this file marks the workspace as a root workspace
 ```
 
-
+[testmark]:# (base-workspace/fs/.warpforge/config/mirroring.json)
+```
+{
+	"mirroring.v1": {
+		"ca+mock://mock.warp.tools": {
+			"pushConfig": {
+				"mock": {}
+			}
+		}
+	}
+}
+```
 
 [testmark]:# (base-workspace/script)
 ```
@@ -767,17 +867,20 @@ warpforge plan generate plot.star
 (note, we setup the fs for all the generate tests here to avoid repetition)
 
 [testmark]:# (plan-generate/fs/plot.star)
-``
+```
+#+warplark version 0
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 
 [testmark]:# (plan-generate/fs/a/plot.star)
 ```
+#+warplark version 0
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 
 [testmark]:# (plan-generate/fs/b/plot.star)
 ```
+#+warplark version 0
 result = {"inputs": {}, "steps": {}, "outputs": {}}
 ```
 

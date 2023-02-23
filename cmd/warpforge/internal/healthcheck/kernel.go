@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"syscall"
 	"unicode"
 	"unsafe"
 
@@ -22,12 +21,11 @@ type KernelInfo struct{}
 //    - warpforge-error-healthcheck-run-fail -- syscall or serialization failure
 //    - warpforge-error-healthcheck-run-ambiguous -- returns kernel info
 func (k *KernelInfo) Run(ctx context.Context) error {
-	var utsname syscall.Utsname
-	err := syscall.Uname(&utsname)
+	u, err := uname()
 	if err != nil {
-		return serum.Errorf(CodeRunFailure, "uname syscall failed: %w", err)
+		return err
 	}
-	s := kernelInfoString(utsname)
+	s := kernelInfoString(u)
 	return serum.Errorf(CodeRunAmbiguous, "%s", s)
 }
 
@@ -35,7 +33,7 @@ func (k *KernelInfo) String() string {
 	return "Kernel info"
 }
 
-func kernelInfoString(u syscall.Utsname) string {
+func kernelInfoString(u *utsname) string {
 	f := strings.Repeat("\t%10s: %s\n", 6)
 	f = strings.TrimRightFunc(f, unicode.IsSpace)
 	return fmt.Sprintf("\n"+f,

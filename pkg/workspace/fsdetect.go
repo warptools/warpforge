@@ -1,16 +1,19 @@
 package workspace
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 
+	"github.com/serum-errors/go-serum"
+
+	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/wfapi"
 )
 
 const (
-	magicWorkspaceDirname = ".warpforge"
+	magicWorkspaceDirname     = dab.MagicFilename_Workspace
+	magicHomeWorkspaceDirname = dab.MagicFilename_HomeWorkspace
 )
 
 var homedir string
@@ -23,7 +26,8 @@ func init() {
 	homedir, err = os.UserHomeDir()
 	homedir = filepath.Clean(homedir)
 	if err != nil {
-		wfapi.TerminalError(wfapi.ErrorSearchingFilesystem("homedir", err), 9)
+		serr := wfapi.ErrorSearchingFilesystem("homedir", err).(serum.ErrorInterface)
+		wfapi.TerminalError(serr, 9)
 	}
 	if homedir == "" {
 		homedir = "home" // dummy, just to avoid the irritant of empty strings.
@@ -42,37 +46,39 @@ func init() {
 //
 // If no workspace is found, it will return nil for both the workspace pointer and error value.
 // If errors are returned, they're due to filesystem IO.
-// FindWorkspace will refuse to return your home workspace and abort the search if it encounters it,
-// returning nils in the same way as if no workspace was found.
+// FindWorkspace will ignore your home workspace and carry on searching upwards.
 //
 // An fsys handle is required, but is typically `os.DirFS("/")` outside of tests.
 //
 // Errors:
 //
 //    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
-func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, remainingSearchPath string, err wfapi.Error) {
+func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, remainingSearchPath string, err error) {
 	// Our search loops over searchPath, popping a path segment off at the end of every round.
 	//  Keep the given searchPath in hand; we might need it for an error report.
-	searchAt := searchPath
+	basisPath = filepath.Clean(basisPath)
+	searchAt := filepath.Join(basisPath, searchPath)
 	for {
 		// Assume the search path exists and is a dir (we'll get a reasonable error anyway if it's not);
 		//  join that path with our search target and try to open it.
-		_, err := statDir(fsys, filepath.Join(basisPath, searchAt, magicWorkspaceDirname))
+		magicPath := filepath.Join(searchAt, magicWorkspaceDirname)
+		_, err := statWorkspace(fsys, magicPath)
 		if err == nil {
-			ws := openWorkspace(fsys, filepath.Join(basisPath, searchAt))
-			if ws.isHomeWorkspace {
-				ws = nil
+			ws := openWorkspace(fsys, searchAt)
+			rel, _ := filepath.Rel(basisPath, searchAt)
+			rel = filepath.Dir(rel)
+			if rel == "." {
+				rel = ""
 			}
-			return ws, filepath.Dir(searchAt), nil
+			return ws, rel, nil
 		}
-		if errors.Is(err, fs.ErrNotExist) { // no such thing?  oh well.  pop a segment and keep looking.
-			searchAt = filepath.Dir(searchAt)
-			// If popping a searchAt segment got us down to nothing,
-			//  and we didn't find anything here either,
-			//   that's it: return NotFound.
-			if searchAt == "/" || searchAt == "." {
+		if serum.Code(err) == wfapi.ECodeWorkspaceMissing { // no such thing?  oh well.  pop a segment and keep looking.
+			// Went all the way up to basis path and didn't find it.
+			// return NotFound
+			if searchAt == basisPath || searchAt == "." {
 				return nil, "", nil
 			}
+			searchAt = filepath.Dir(searchAt)
 			// ... otherwise: continue, with popped searchAt.
 			continue
 		}
@@ -82,16 +88,29 @@ func FindWorkspace(fsys fs.FS, basisPath, searchPath string) (ws *Workspace, rem
 	}
 }
 
-// statDir is fs.Stat but returns fs.ErrNotExist if the path is not a dir
-func statDir(fsys fs.FS, path string) (fs.FileInfo, error) {
+// statWorkspace is fs.Stat but returns an error if the path is not a dir
+//
+// Errors:
+//
+//    - warpforge-error-workspace-missing -- workspace does not exist
+func statWorkspace(fsys fs.FS, path string) (fs.FileInfo, error) {
+	if filepath.IsAbs(path) {
+		path = path[1:]
+	}
 	fi, err := fs.Stat(fsys, path)
 	if err != nil {
-		return fi, err
+		return fi, serum.Error(wfapi.ECodeWorkspaceMissing, serum.WithCause(err),
+			serum.WithMessageTemplate("file {{path|q}} does not exist"),
+			serum.WithDetail("path", path),
+		)
 	}
 	if !fi.IsDir() {
-		return fi, fs.ErrNotExist
+		return fi, serum.Error(wfapi.ECodeWorkspaceMissing, serum.WithCause(fs.ErrNotExist),
+			serum.WithMessageTemplate("file {{path|q}} is not a directory"),
+			serum.WithDetail("path", path),
+		)
 	}
-	return fi, err
+	return fi, nil
 }
 
 // FindWorkspaceStack works similarly to FindWorkspace, but finds all workspaces, not just the nearest one.
@@ -108,7 +127,7 @@ func statDir(fsys fs.FS, path string) (fs.FileInfo, error) {
 // Errors:
 //
 //    - warpforge-error-searching-filesystem -- when an unexpected error occurs traversing the search path
-func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss WorkspaceSet, err wfapi.Error) {
+func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss WorkspaceSet, err error) {
 	// Repeatedly apply FindWorkspace and stack stuff up.
 	for {
 		var ws *Workspace
@@ -119,15 +138,17 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss Workspace
 		if ws == nil {
 			break
 		}
+		if len(wss) > 0 && wss[len(wss)-1].rootPath == ws.rootPath {
+			break
+		}
 		wss = append(wss, ws)
 		if ws.IsRootWorkspace() {
 			break
 		}
 	}
 	// If no root workspace was found, include the home workspace at the end of the stack.
-	// Unless it's already there, of course.
-	if len(wss) == 0 || (!wss[len(wss)-1].isHomeWorkspace && !wss[len(wss)-1].IsRootWorkspace()) {
-		wss = append(wss, openWorkspace(fsys, homedir))
+	if len(wss) == 0 || !wss[len(wss)-1].IsRootWorkspace() {
+		wss = append(wss, openHomeWorkspace(fsys))
 	}
 	return wss, nil
 }
@@ -144,7 +165,7 @@ func FindWorkspaceStack(fsys fs.FS, basisPath, searchPath string) (wss Workspace
 // Errors:
 //
 //    - warpforge-error-searching-filesystem -- when an error occurs while searching for the workspace
-func FindRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, wfapi.Error) {
+func FindRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Workspace, error) {
 	stack, err := FindWorkspaceStack(fsys, basisPath, searchPath)
 	if err != nil {
 		return nil, err
@@ -162,14 +183,17 @@ func FindRootWorkspace(fsys fs.FS, basisPath string, searchPath string) (*Worksp
 // checkIsRootWorkspace returns true if the workspace contains the magic "root" file.
 func checkIsRootWorkspace(fsys fs.FS, rootPath string) bool {
 	// check if the root marker file exists
+	if filepath.IsAbs(rootPath) {
+		rootPath = rootPath[1:]
+	}
 	_, err := fs.Stat(fsys, filepath.Join(rootPath, magicWorkspaceDirname, "root"))
 	return err == nil
 }
 
-type PlaceWorkspaceOpt func(rootPath string) wfapi.Error
+type PlaceWorkspaceOpt func(rootPath string) error
 
 func SetRootWorkspaceOpt() PlaceWorkspaceOpt {
-	return func(rootPath string) wfapi.Error {
+	return func(rootPath string) error {
 		rootMagicFile := filepath.Join(rootPath, magicWorkspaceDirname, "root")
 		f, err := os.Create(rootMagicFile)
 		f.Close()
@@ -185,7 +209,9 @@ func SetRootWorkspaceOpt() PlaceWorkspaceOpt {
 // Errors:
 //
 //    - warpforge-error-io -- when creating workspace fails
-func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) wfapi.Error {
+func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) error {
+	workspaceDirname := magicWorkspaceDirname
+
 	fi, err := os.Stat(rootPath)
 	if err != nil {
 		return wfapi.ErrorIo("invalid rootpath for workspace", rootPath, err)
@@ -194,9 +220,9 @@ func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) wfapi.Error {
 		return wfapi.ErrorIo("workspace rootpath is not a directory", rootPath, err)
 	}
 
-	magicWorkspaceDirname := filepath.Join(rootPath, magicWorkspaceDirname)
-	if err := os.MkdirAll(magicWorkspaceDirname, 0755|os.ModeDir); err != nil {
-		return wfapi.ErrorIo("could not create workspace internals directory", magicWorkspaceDirname, err)
+	workspaceDirname = filepath.Join(rootPath, workspaceDirname)
+	if err := os.MkdirAll(workspaceDirname, 0755|os.ModeDir); err != nil {
+		return wfapi.ErrorIo("could not create workspace internals directory", workspaceDirname, err)
 	}
 
 	for _, o := range opts {
@@ -205,4 +231,23 @@ func PlaceWorkspace(rootPath string, opts ...PlaceWorkspaceOpt) wfapi.Error {
 		}
 	}
 	return nil
+}
+
+// CreateOrOpenHomeWorkspace will attempt to create the home workspace if it does not exist
+//
+// Errors:
+//
+//    - warpforge-error-io -- when creating the workspace fails
+//    - warpforge-error-workspace-missing -- when home workspace is missing or cannot be opened
+func CreateOrOpenHomeWorkspace() (*Workspace, error) {
+	hws, err := OpenHomeWorkspace(os.DirFS("/"))
+	if err == nil {
+		return hws, nil
+	}
+
+	path := filepath.Join("/", homedir, magicWorkspaceDirname)
+	if err := PlaceWorkspace(path, SetRootWorkspaceOpt()); err != nil {
+		return nil, err
+	}
+	return OpenHomeWorkspace(os.DirFS("/"))
 }
