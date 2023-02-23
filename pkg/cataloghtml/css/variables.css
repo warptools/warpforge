@@ -4,8 +4,8 @@
 	/* Light-mode colors */
 	--light-primary-color: #FFE66D;
 	--light-font-color: #141633;
-	--light-bg-color: #F7FFF7;
-	--light-code-bg-color: #6CA6C1;
+	--light-bg-color: #6CA6C1;
+	--light-code-bg-color: #F7FFF7;
 	--light-heading-color: #000000;
 	--light-sub-heading-color: #00364F90;
 	--light-black: #333333ff;
@@ -15,8 +15,8 @@
 	--dark-primary-color: #FFE66D;
 	--dark-tertiary-color: #a5e1ad;
 	--dark-font-color: #F7FFF7;
-	--dark-bg-color: #2F3061;
-	--dark-code-bg-color: #272932;
+	--dark-bg-color: #272932;
+	--dark-code-bg-color: #2F3061;
 	--dark-heading-color: #818cab;
 	--dark-sub-heading-color: #ccc;
 
