@@ -1,29 +1,27 @@
 /* Variables */
+/* Color profile: https://coolors.co/f7fff7-343434-2f3061-ffe66d-6ca6c1 */
 :root {
 	/* Light-mode colors */
-	--light-primary-color: #302ae6;
-	--light-secondary-color: #536390;
-	--light-font-color: #424242;
-	--light-bg-color: #fff;
-	--light-code-bg-color: #ddddddff;
-	--light-heading-color: #292922;
-	--light-sub-heading-color: #777777;
+	--light-primary-color: #FFE66D;
+	--light-font-color: #141633;
+	--light-bg-color: #6CA6C1;
+	--light-code-bg-color: #F7FFF7;
+	--light-heading-color: #000000;
+	--light-sub-heading-color: #00364F90;
 	--light-black: #333333ff;
 
 	/* Dark-mode colors */
 	--dark-black: #000000ff;
-	--dark-primary-color: #511281;
-	--dark-secondary-color: #4ca1a3;
+	--dark-primary-color: #FFE66D;
 	--dark-tertiary-color: #a5e1ad;
-	--dark-font-color: #ffffffff;
-	--dark-bg-color: #333333ff;
-	--dark-code-bg-color: #666666ff;
+	--dark-font-color: #F7FFF7;
+	--dark-bg-color: #272932;
+	--dark-code-bg-color: #2F3061;
 	--dark-heading-color: #818cab;
 	--dark-sub-heading-color: #ccc;
 
 	/* Color variables */
 	--primary-color: var(--light-primary-color);
-	--secondary-color: var(--light-secondary-color);
 	--font-color: var(--light-font-color);
 	--bg-color: var(--light-bg-color);
 	--code-bg-color: var(--light-code-bg-color);
@@ -43,7 +41,6 @@
 @media (prefers-color-scheme: dark) {
 	:root {
 		--primary-color: var(--dark-primary-color);
-		--secondary-color: var(--dark-secondary-color);
 		--font-color: var(--dark-font-color);
 		--bg-color: var(--dark-bg-color);
 		--code-bg-color: var(--dark-code-bg-color);

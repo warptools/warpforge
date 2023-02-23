@@ -31,6 +31,11 @@ h5 {
 		sans-serif;
 }
 
+h1 {
+	text-decoration: underline;
+	text-decoration-color: var(--primary-color);
+}
+
 h4, h5 {
 	color: var(--sub-heading-color);
 	margin: 0;

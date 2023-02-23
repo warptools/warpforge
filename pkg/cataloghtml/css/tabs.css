@@ -98,7 +98,7 @@
 }
 
 /* 
-	If there's more than 2 tabs we can just add another count here.
+	If there's more than 3 tabs we can just add another count here.
 	Unfortunately it doesn't seem like we can just iterate using
 	a simple function here since .tab-radiobutton:nth-of-type(x) 
 	needs to match .tab-content:nth-of-type(y). (x = y)

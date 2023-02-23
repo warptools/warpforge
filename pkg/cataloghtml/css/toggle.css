@@ -5,7 +5,6 @@
 #dark-mode-checkbox ~ .container {
 	/* Set light mode variables */
 	--primary-color: var(--light-primary-color);
-	--secondary-color: var(--light-secondary-color);
 	--font-color: var(--light-font-color);
 	--bg-color: var(--light-bg-color);
 	--code-bg-color: var(--light-code-bg-color);
@@ -17,7 +16,6 @@
 #dark-mode-checkbox:checked ~ .container {
 	/* Set dark mode variables */
 	--primary-color: var(--dark-primary-color);
-	--secondary-color: var(--dark-secondary-color);
 	--font-color: var(--dark-font-color);
 	--bg-color: var(--dark-bg-color);
 	--code-bg-color: var(--dark-code-bg-color);
@@ -82,7 +80,7 @@
 }
 
 .theme-switch__slider:before {
-	background-color: #fff;
+	background-color: var(--bg-color);
 	bottom: 2px;
 	content: '';
 	height: 18px;
