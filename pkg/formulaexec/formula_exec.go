@@ -559,9 +559,9 @@ func (rc *runcConfig) makeWareMount(ctx context.Context,
 		}
 		out := RioOutput{}
 		for _, line := range strings.Split(outStr, "\n") {
-			errRaw := json.Unmarshal([]byte(line), &out)
+			err := json.Unmarshal([]byte(line), &out)
 			if err != nil {
-				return specs.Mount{}, wfapi.ErrorWareUnpack(wareId, wfapi.ErrorSerialization("deserializing rio output", errRaw))
+				return specs.Mount{}, wfapi.ErrorWareUnpack(wareId, wfapi.ErrorSerialization("deserializing rio output", err))
 			}
 			if out.Result.WareId != "" {
 				// found wareId
