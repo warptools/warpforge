@@ -1,4 +1,4 @@
-package main
+package quickstartcli
 
 import (
 	"fmt"
@@ -8,12 +8,17 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var quickstartCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, quickstartCmdDef)
+}
+
+var quickstartCmdDef = &cli.Command{
 	Name:  "quickstart",
 	Usage: "Generate a basic module and plot",
 	Action: util.ChainCmdMiddleware(cmdQuickstart,
@@ -75,9 +80,9 @@ func cmdQuickstart(c *cli.Context) error {
 
 	if !c.Bool("quiet") {
 		fmt.Fprintf(c.App.Writer, "Successfully created %s and %s for module %q.\n", dab.MagicFilename_Module, dab.MagicFilename_Plot, moduleName)
-		fmt.Fprintf(c.App.Writer, "Ensure your catalogs are up to date by running `%s catalog update`.\n", os.Args[0])
-		fmt.Fprintf(c.App.Writer, "You can check status of this module with `%s status`.\n", os.Args[0])
-		fmt.Fprintf(c.App.Writer, "You can run this module with `%s run`.\n", os.Args[0])
+		fmt.Fprintf(c.App.Writer, "Ensure your catalogs are up to date by running `%s catalog update`.\n", c.App.Name)
+		fmt.Fprintf(c.App.Writer, "You can check status of this module with `%s status`.\n", c.App.Name)
+		fmt.Fprintf(c.App.Writer, "You can run this module with `%s run`.\n", c.App.Name)
 		fmt.Fprintf(c.App.Writer, "Once you've run the Hello World example, edit the 'script' section of %s to customize what happens.\n", dab.MagicFilename_Plot)
 	}
 

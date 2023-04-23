@@ -1,4 +1,4 @@
-package main
+package sparkcli
 
 import (
 	"context"
@@ -10,12 +10,17 @@ import (
 	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/subcmd/spark"
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var sparkCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, sparkCmdDef)
+}
+
+var sparkCmdDef = &cli.Command{
 	Name:  "spark",
 	Usage: "Experimental RPC for getting module build status from the watch server",
 	UsageText: strings.Join([]string{

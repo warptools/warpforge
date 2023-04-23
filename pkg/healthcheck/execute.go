@@ -11,8 +11,7 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/serum-errors/go-serum"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/catalog"
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/pkg/workspace"
@@ -98,10 +97,6 @@ func (e *ExecutionInfo) Run(ctx context.Context) error {
 		return serum.Errorf(CodeRunFailure, "Execution failed: plot capsule missing plot")
 	}
 
-	catalogPath := filepath.Join("/", wss.Root().CatalogBasePath())
-	if err := catalog.InstallDefaultRemoteCatalog(ctx, catalogPath); err != nil {
-		return serum.Error(CodeRunFailure, serum.WithCause(err))
-	}
 	if err := wss.Tidy(ctx, *plotCapsule.Plot, true); err != nil {
 		return serum.Error(CodeRunFailure, serum.WithCause(err),
 			serum.WithMessageLiteral("Execution failed"),

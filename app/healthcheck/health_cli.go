@@ -1,15 +1,20 @@
-package main
+package healthcheckcli
 
 import (
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/healthcheck"
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
+	"github.com/warptools/warpforge/pkg/healthcheck"
 	"github.com/warptools/warpforge/pkg/logging"
 )
 
-var healthCmdDef = cli.Command{
-	Name:  "health",
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, healthcheckCmdDef)
+}
+
+var healthcheckCmdDef = &cli.Command{
+	Name:  "healthcheck",
 	Usage: "Check for potential errors in system configuration",
 	Action: util.ChainCmdMiddleware(cmdHealth,
 		util.CmdMiddlewareLogging,

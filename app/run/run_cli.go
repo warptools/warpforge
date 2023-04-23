@@ -1,4 +1,4 @@
-package main
+package runcli
 
 import (
 	"fmt"
@@ -10,7 +10,8 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/formulaexec"
@@ -19,7 +20,11 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var runCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, runCmdDef)
+}
+
+var runCmdDef = &cli.Command{
 	Name:  "run",
 	Usage: "Run a module or formula",
 	Action: util.ChainCmdMiddleware(cmdRun,

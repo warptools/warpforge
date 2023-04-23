@@ -1,4 +1,4 @@
-package main
+package watchcli
 
 import (
 	"context"
@@ -8,12 +8,17 @@ import (
 	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/subcmd/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var watchCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, watchCmdDef)
+}
+
+var watchCmdDef = &cli.Command{
 	Name:      "watch",
 	Usage:     "Watch a module for changes to plot ingest inputs. Currently only git ingests are supported.",
 	UsageText: "Watch will emit execution output but will also allow communication over a unix socket via the spark command.",

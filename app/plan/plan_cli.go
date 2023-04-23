@@ -1,4 +1,4 @@
-package main
+package plancli
 
 import (
 	"context"
@@ -8,11 +8,16 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/logging"
 )
 
-var planCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, planCmdDef)
+}
+
+var planCmdDef = &cli.Command{
 	Name:  "plan",
 	Usage: "Runs planning commands to generate inputs",
 	Subcommands: []*cli.Command{
@@ -52,7 +57,7 @@ func cmdPlanGenerate(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		results, err := util.GenerateDir(cwd)
+		results, err := GenerateDir(cwd)
 		if err != nil {
 			return err
 		}
@@ -62,7 +67,7 @@ func cmdPlanGenerate(c *cli.Context) error {
 
 	if filepath.Base(input) == "..." {
 		// recursively generate plots
-		results, err := util.GenerateDirRecusive(filepath.Dir(input))
+		results, err := GenerateDirRecusive(filepath.Dir(input))
 		if err != nil {
 			return err
 		}
@@ -75,7 +80,7 @@ func cmdPlanGenerate(c *cli.Context) error {
 		return err
 	}
 	if info.IsDir() {
-		results, err := util.GenerateDir(input)
+		results, err := GenerateDir(input)
 		if err != nil {
 			return err
 		}
@@ -83,7 +88,7 @@ func cmdPlanGenerate(c *cli.Context) error {
 	}
 
 	// this is a file, so put one item into our results map
-	data, err := util.GenerateFile(input)
+	data, err := GenerateFile(input)
 	if err != nil {
 		return err
 	}
