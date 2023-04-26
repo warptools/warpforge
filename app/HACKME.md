@@ -83,6 +83,10 @@ Not all existing code is a good example of the goalposts.
 TODOs
 -----
 
-### Export every 'action' function.
+### Add serum annotations on every 'action' function.
 
-Serum should nag us if _any_ of these have undocumented errors.
+Serum analysis in the code that's the very nearest to the user's eyeballs is the most important place!
+Every one of the "action" functions that are wired into the CLI should be annotated for analysis.
+
+A more aggressive variation of this might also be to create an interface type and use it to declare _all_ error codes valid to see returned from the CLI,
+and then make all the "action" functions conform to that interface, so the analyzer makes sure each "action" is returning a subset of the total.

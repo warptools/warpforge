@@ -90,12 +90,14 @@ func init() {
 
 type closedReader struct{}
 
+// Read is a dummy method that always returns EOF.
 func (c closedReader) Read(p []byte) (int, error) {
 	return 0, io.EOF
 }
 
 type panicWriter struct{}
 
+// Write is a dummy method that always panics.  You're supposed to replace panicWriter values before use.
 func (p panicWriter) Write(data []byte) (int, error) {
 	panic("replace the Writer and ErrWriter on the App value in packages that use it!")
 }
