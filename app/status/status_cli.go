@@ -1,4 +1,4 @@
-package main
+package statuscli
 
 import (
 	"bytes"
@@ -11,14 +11,19 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/tracing"
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var statusCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, statusCmdDef)
+}
+
+var statusCmdDef = &cli.Command{
 	Name:  "status",
 	Usage: "Get status of workspaces and installation",
 	Action: util.ChainCmdMiddleware(cmdStatus,
@@ -37,7 +42,7 @@ func cmdStatus(c *cli.Context) error {
 
 	// display version
 	if verbose {
-		fmt.Fprintf(c.App.Writer, "Warpforge Version: %s\n\n", VERSION)
+		fmt.Fprintf(c.App.Writer, "Warpforge Version: %s\n\n", appbase.VERSION)
 	}
 
 	// check plugins

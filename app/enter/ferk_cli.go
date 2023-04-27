@@ -1,4 +1,4 @@
-package main
+package entercli
 
 import (
 	"fmt"
@@ -12,7 +12,8 @@ import (
 	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
@@ -21,7 +22,11 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var ferkCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, ferkCmdDef)
+}
+
+var ferkCmdDef = &cli.Command{
 	Name:  "ferk",
 	Usage: "Starts a containerized environment for interactive use",
 	Action: util.ChainCmdMiddleware(cmdFerk,

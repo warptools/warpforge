@@ -15,9 +15,9 @@ import (
 
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/logging"
+	"github.com/warptools/warpforge/pkg/watch"
 	"github.com/warptools/warpforge/pkg/workspace"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
-	"github.com/warptools/warpforge/subcmd/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -136,7 +136,7 @@ func (c *Config) Run(ctx context.Context) error {
 //
 // Errors:
 //
-//  - warpforge-spark-no-socket -- socket path cannot be created
+//   - warpforge-spark-no-socket -- socket path cannot be created
 func (c *Config) getDialer(ws *workspace.Workspace) (Dialer, error) {
 	if c.Dialer != nil {
 		return c.Dialer, nil
@@ -156,10 +156,10 @@ func (c *Config) getDialer(ws *workspace.Workspace) (Dialer, error) {
 // remoteResolve attempts to resolve a module status query over a socket
 // Errors:
 //
-//    - warpforge-spark-no-socket -- socket path cannot be created
-//    - warpforge-spark-no-socket -- socket dial fails
-//    - warpforge-spark-internal -- unable to send|receive request
-//    - warpforge-spark-server -- server sent an error response
+//   - warpforge-spark-no-socket -- socket path cannot be created
+//   - warpforge-spark-no-socket -- socket dial fails
+//   - warpforge-spark-internal -- unable to send|receive request
+//   - warpforge-spark-server -- server sent an error response
 func (c *Config) remoteResolve(ctx context.Context, ws *workspace.Workspace, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
 	var empty workspaceapi.ModuleStatusAnswer
 	dialer, err := c.getDialer(ws)
@@ -187,8 +187,8 @@ func (c *Config) remoteResolve(ctx context.Context, ws *workspace.Workspace, que
 //
 // Errors:
 //
-//    - warpforge-spark-internal -- unable to send|receive request
-//    - warpforge-spark-server -- server sent an error response
+//   - warpforge-spark-internal -- unable to send|receive request
+//   - warpforge-spark-server -- server sent an error response
 func moduleStatusQuery(ctx context.Context, conn net.Conn, query workspaceapi.ModuleStatusQuery) (workspaceapi.ModuleStatusAnswer, error) {
 	var empty workspaceapi.ModuleStatusAnswer
 	rpc := workspaceapi.Rpc{

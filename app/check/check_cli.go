@@ -1,4 +1,4 @@
-package main
+package checkcli
 
 import (
 	"context"
@@ -13,13 +13,18 @@ import (
 	"github.com/serum-errors/go-serum"
 	"github.com/urfave/cli/v2"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/dab"
 	"github.com/warptools/warpforge/pkg/plotexec"
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var checkCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, checkCmdDef)
+}
+
+var checkCmdDef = &cli.Command{
 	Name:  "check",
 	Usage: "Check file(s) for syntax and sanity",
 	Action: util.ChainCmdMiddleware(cmdCheck,
@@ -142,7 +147,11 @@ func cmdCheck(c *cli.Context) error {
 			continue
 		}
 		if c.Bool("verbose") && n != nil {
-			c.App.Metadata["result"] = *n
+			serial, err := ipld.Encode(*n, json.Encode)
+			if err != nil {
+				panic("failed to serialize output")
+			}
+			fmt.Fprintf(c.App.Writer, "%s\n", serial)
 		}
 	}
 

@@ -1,4 +1,4 @@
-package main
+package catalogcli
 
 import (
 	"bytes"
@@ -17,8 +17,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/catalog"
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/cataloghtml"
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/dab"
@@ -29,7 +29,11 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var catalogCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, catalogCmdDef)
+}
+
+var catalogCmdDef = &cli.Command{
 	Name:  "catalog",
 	Usage: "Subcommands that operate on catalogs",
 	Flags: []cli.Flag{
@@ -405,7 +409,7 @@ func cmdCatalogUpdate(c *cli.Context) error {
 		}
 	}
 
-	if err = catalog.InstallDefaultRemoteCatalog(c.Context, catalogPath); err != nil {
+	if err = InstallDefaultRemoteCatalog(c.Context, catalogPath); err != nil {
 		return fmt.Errorf("failed to install default catalog: %s", err)
 	}
 
@@ -451,6 +455,46 @@ func cmdCatalogUpdate(c *cli.Context) error {
 		}
 	}
 
+	return nil
+}
+
+const defaultCatalogUrl = "https://github.com/warptools/warpsys-catalog.git"
+
+// InstallDefaultRemoteCatalog creates the default catalog by cloning a remote catalog over network.
+// This function will do nothing if the default catalog already exists.
+//
+// Errors:
+//
+//    - warpforge-error-git -- Cloning catalog fails
+//    - warpforge-error-io -- catalog path exists but is in a strange state
+func InstallDefaultRemoteCatalog(ctx context.Context, path string) error {
+	log := logging.Ctx(ctx)
+	// install our default remote catalog as "default-remote" by cloning from git
+	// this will noop if the catalog already exists
+	defaultCatalogPath := filepath.Join(path, "warpsys")
+	_, err := os.Stat(defaultCatalogPath)
+	if !os.IsNotExist(err) {
+		if err == nil {
+			// a dir exists for this catalog, do nothing
+			return nil
+		}
+		return wfapi.ErrorIo("unknown error with catalog path", defaultCatalogPath, err)
+	}
+
+	log.Info("", "installing default catalog to %s...", defaultCatalogPath)
+
+	gitCtx, gitSpan := tracing.Start(ctx, "clone catalog", trace.WithAttributes(tracing.AttrFullExecNameGit, tracing.AttrFullExecOperationGitClone))
+	defer gitSpan.End()
+	_, err = git.PlainCloneContext(gitCtx, defaultCatalogPath, false, &git.CloneOptions{
+		URL: defaultCatalogUrl,
+	})
+	tracing.EndWithStatus(gitSpan, err)
+
+	log.Info("", "installing default catalog complete")
+
+	if err != nil {
+		return wfapi.ErrorGit("Unable to git clone catalog", err)
+	}
 	return nil
 }
 

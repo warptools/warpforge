@@ -18,8 +18,8 @@ import (
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/testutil/nettest"
+	"github.com/warptools/warpforge/pkg/watch"
 	"github.com/warptools/warpforge/pkg/workspaceapi"
-	"github.com/warptools/warpforge/subcmd/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 

@@ -1,4 +1,4 @@
-package main
+package testutil
 
 import (
 	"bytes"
@@ -15,6 +15,7 @@ import (
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
 
+	wfapp "github.com/warptools/warpforge/app"
 	"github.com/warptools/warpforge/pkg/testutil"
 )
 
@@ -40,7 +41,8 @@ func (t tagset) has(tag string) bool {
 	return ok
 }
 
-func testFile(t *testing.T, fileName string, workDir *string) {
+func TestFileContainingTestmarkexec(t *testing.T, fileName string, workDir *string) {
+	t.Logf("loading test file: %q", fileName)
 	doc, err := testmark.ReadFile(fileName)
 	if err != nil {
 		t.Fatalf("spec file parse failed?!: %s", err)
@@ -80,7 +82,7 @@ func testFile(t *testing.T, fileName string, workDir *string) {
 				t.Skip("skipping test", t.Name(), "due to offline flag")
 			}
 			// build an exec function with a pointer to this project's git root
-			execFn := buildExecFn(t, filepath.Join(pwd, "../../"))
+			execFn := buildExecFn(t, filepath.Join(pwd, "../")) // FIXME this depends on which package is being tested
 			qt.Assert(t, err, qt.IsNil)
 
 			test := testexec.Tester{
@@ -107,18 +109,6 @@ func getTags(dir *testmark.DirEnt) tagset {
 	return nil
 }
 
-func TestExecFixtures(t *testing.T) {
-	file := "../../examples/500-cli/cli.md"
-	t.Logf("loading test file: %q", file)
-	testFile(t, file, nil)
-}
-
-func TestHelpFixtures(t *testing.T) {
-	file := "../../examples/500-cli/help.md"
-	t.Logf("loading test file: %q", file)
-	testFile(t, file, nil)
-}
-
 // Replace non-deterministic values of JSON runrecord to allow for deterministic comparison
 func cleanOutput(str string) string {
 	// replace guid
@@ -137,7 +127,10 @@ func cleanOutput(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func buildExecFn(t *testing.T, projPath string) func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (int, error) {
+// Warning!  Impure function!  Cannot safely be used in parallel!
+// This mutates the CLI app object to wires the IO streams.
+// Also, it uses `os.Chdir` on this process (because we're "emulating a shell" rather than making subprocesses, whee).
+func buildExecFn(t *testing.T, projPath string) func([]string, io.Reader, io.Writer, io.Writer) (int, error) {
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
 		bufout, buferr := &bytes.Buffer{}, &bytes.Buffer{}
 		var testout io.Writer = bufout
@@ -177,11 +170,17 @@ func buildExecFn(t *testing.T, projPath string) func(args []string, stdin io.Rea
 		// 	t.Logf("path: %s", path)
 		// 	return nil
 		// })
-		err = makeApp(stdin, testout, testerr).Run(args)
+
+		wfapp.App.Reader = stdin
+		wfapp.App.Writer = testout
+		wfapp.App.ErrWriter = testerr
+		err = wfapp.App.Run(args)
+
 		exitCode := 0
 		if err != nil {
-			exitCode = 1
+			exitCode = 1 // TODO more rich exit code selection -- this should happen in app package or somewhere more shared
 		}
+
 		t.Logf("Args: %v", args)
 		for err != nil {
 			t.Logf("Code: %s", serum.Code(err))

@@ -1,4 +1,4 @@
-package main
+package warecli
 
 import (
 	"bytes"
@@ -13,7 +13,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/warptools/warpforge/cmd/warpforge/internal/util"
+	appbase "github.com/warptools/warpforge/app/base"
+	"github.com/warptools/warpforge/app/base/util"
 	"github.com/warptools/warpforge/pkg/config"
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/tracing"
@@ -21,7 +22,11 @@ import (
 	"github.com/warptools/warpforge/wfapi"
 )
 
-var wareCmdDef = cli.Command{
+func init() {
+	appbase.App.Commands = append(appbase.App.Commands, wareCmdDef)
+}
+
+var wareCmdDef = &cli.Command{
 	Name:  "ware",
 	Usage: "Subcommands that operate on wares",
 	Subcommands: []*cli.Command{
