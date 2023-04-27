@@ -6,6 +6,8 @@ import (
 	"io"
 
 	"github.com/urfave/cli/v2"
+
+	_ "github.com/warptools/warpforge/app/base/helpgen"
 )
 
 const VERSION = "v0.4.0"

@@ -3,6 +3,7 @@ module github.com/warptools/warpforge
 go 1.18
 
 require (
+	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/alecthomas/chroma v0.10.0
 	github.com/aws/aws-sdk-go-v2 v1.18.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.22
