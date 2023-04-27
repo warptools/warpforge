@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
 	"github.com/warptools/warpforge/pkg/logging"
 	"github.com/warptools/warpforge/pkg/tracing"
@@ -122,7 +122,7 @@ type fileSpanExporter struct {
 //
 // Errors:
 //
-//     - warpforge-error-internal -- when an error occurs during tracing shutdown
+//   - warpforge-error-internal -- when an error occurs during tracing shutdown
 func (e *fileSpanExporter) Shutdown(ctx context.Context) error {
 	if e == nil {
 		return nil

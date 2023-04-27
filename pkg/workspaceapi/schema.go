@@ -16,6 +16,7 @@ import (
 )
 
 // embed the wfapi ipld schema from file
+//
 //go:embed wfwsapi.ipldsch
 var schFs embed.FS
 
@@ -42,11 +43,11 @@ var SchemaDMT, TypeSystem = func() (*schemadmt.Schema, *schema.TypeSystem) {
 //
 // This function could probably be hoisted upstream.
 func concat(a, b *schemadmt.Schema) *schemadmt.Schema {
-	nb := schemadmt.Type.Schema.NewBuilder()
-	if err := datamodel.Copy(bindnode.Wrap(a, schemadmt.Type.Schema.Type()), nb); err != nil {
+	nb := schemadmt.Prototypes.Schema.NewBuilder()
+	if err := datamodel.Copy(bindnode.Wrap(a, schemadmt.Prototypes.Schema.Type()), nb); err != nil {
 		panic(err)
 	}
-	if err := datamodel.Copy(bindnode.Wrap(b, schemadmt.Type.Schema.Type()), nb); err != nil {
+	if err := datamodel.Copy(bindnode.Wrap(b, schemadmt.Prototypes.Schema.Type()), nb); err != nil {
 		panic(err)
 	}
 	return bindnode.Unwrap(nb.Build()).(*schemadmt.Schema)

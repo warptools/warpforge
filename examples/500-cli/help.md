@@ -24,6 +24,6 @@ DESCRIPTION:
 OPTIONS:
    --path value  Location to place the ware contents. Defaults to current directory.
    --force       Allow overwriting the given path. Any contents of an existing directory may be lost. (default: false)
-   --help, -h    show help (default: false)
+   --help, -h    show help
    
 ```
