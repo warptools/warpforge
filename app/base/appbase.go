@@ -86,7 +86,9 @@ var App = &cli.App{
 // Aaaand the other modifications to `urfave/cli` that are unfortunately only possible by manipulating globals:
 func init() {
 	cli.VersionFlag = &cli.BoolFlag{
-		Name: "version", // And no short aliases.  "-v" is for "verbose"!
+		Name:               "version", // And no short aliases.  "-v" is for "verbose"!
+		Usage:              "print the version",
+		DisableDefaultText: true,
 	}
 }
 
