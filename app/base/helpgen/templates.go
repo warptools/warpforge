@@ -32,6 +32,12 @@ var helpNameTemplate = docnl(`
 `)
 
 // Appears second in each help page.  Should contain short examples.
+//
+// FUTURE: will be removed, or else needs a drastic rewrite.  The current state of it is almost totally useless.
+// A good system should list every flag; this doesn't even try.
+// Also, this will get overridden with manual synopsis so often it's unclear if the effort on autogen will be worth it.
+//
+// FUTURE:CONSIDER: maybe having a new convention like "if ArgsUsage is set, split by lines and prefix each with the command name" would be useful?
 var usageTemplate = docnl(`
 	{{if .UsageText}}{{wrap .UsageText 4}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
 `)
@@ -47,18 +53,18 @@ var authorsTemplate = docnl(`
 `)
 
 var visibleCommandTemplate = docnl(`
-	{{ $cv := offsetCommands .VisibleCommands 8}}{{range .VisibleCommands}}
+	{{- $cv := offsetCommands .VisibleCommands 8}}{{range .VisibleCommands}}
 	    {{$s := join .Names ", "}}{{$s}}{{ $sp := subtract $cv (offset $s 4) }}{{ indent $sp ""}}{{wrap .Usage $cv}}{{end}}
 `)
 
 var visibleCommandCategoryTemplate = docnl(`
-	{{range .VisibleCategories}}{{if .Name}}
+	{{- range .VisibleCategories}}{{if .Name}}
 	    {{.Name}}:{{range .VisibleCommands}}
 	        {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{else}}{{template "visibleCommandTemplate" .}}{{end}}{{end}}
 `)
 
 var visibleFlagCategoryTemplate = docnl(`
-	{{range .VisibleFlagCategories}}
+	{{- range .VisibleFlagCategories}}
 	    {{if .Name}}{{.Name}}
 
 	    {{end}}{{$flglen := len .Flags}}{{range $i, $e := .Flags}}{{if eq (subtract $flglen $i) 1}}{{$e}}
@@ -67,16 +73,9 @@ var visibleFlagCategoryTemplate = docnl(`
 `)
 
 var visibleFlagTemplate = docnl(`
-	{{range $i, $e := .VisibleFlags}}
+	{{- range $i, $e := .VisibleFlags}}
 	    {{wrap $e.String 8}}{{end}}
 `) // ALERT: USE OF STRINGER.  This might need more invasive adjustments.  Either more template code or funcmaps should suffice, though.
-
-var versionTemplate = docnl(`
-	{{if .Version}}{{if not .HideVersion}}
-
-	VERSION:
-	    {{.Version}}{{end}}{{end}}
-`)
 
 func init() {
 	cli.AppHelpTemplate = appHelpTemplate
@@ -86,26 +85,48 @@ func init() {
 
 // commandHelpTemplate is used for just the root command.
 var appHelpTemplate = heredoc.Doc(`
-	NAME:
+	## NAME
 	    {{template "helpNameTemplate" .}}
 
-	USAGE:
-	    {{if .UsageText}}{{wrap .UsageText 4}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Version}}{{if not .HideVersion}}
+	{{- if .UsageText}}
 
-	VERSION:
-	    {{.Version}}{{end}}{{end}}{{if .Description}}
+	## USAGE
+	    {{- wrap .UsageText 4}}
+	{{- end}}
 
-	DESCRIPTION:
-	    {{template "descriptionTemplate" .}}{{end}}
+	{{- if .Version}}{{if not .HideVersion}}
+
+	## VERSION
+	    {{.Version}}
+	{{- end}}{{end}}
+
+	{{- if .Description}}
+
+	## DESCRIPTION:
+	    {{- template "descriptionTemplate" .}}
+	{{- end}}
+
 	{{- if len .Authors}}
 
-	AUTHOR{{template "authorsTemplate" .}}{{end}}{{if .VisibleCommands}}
+	## AUTHORS
+	    {{- template "authorsTemplate" .}}
+	{{- end}}
 
-	COMMANDS:{{template "visibleCommandCategoryTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
+	{{- if .VisibleCommands}}
 
-	GLOBAL OPTIONS:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
+	## COMMANDS
+	    {{- template "visibleCommandCategoryTemplate" .}}
+	{{- end}}
 
-	GLOBAL OPTIONS:{{template "visibleFlagTemplate" .}}{{end}}
+	{{- if .VisibleFlagCategories}}
+
+	## GLOBAL OPTIONS
+	    {{- template "visibleFlagCategoryTemplate" .}}
+	{{- else if .VisibleFlags}}
+
+	## GLOBAL OPTIONS
+	    {{- template "visibleFlagTemplate" .}}
+	{{- end}}
 `)
 
 // commandHelpTemplate is used for a command that has no subcommands.
