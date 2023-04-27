@@ -10,7 +10,7 @@ import (
 
 	appbase "github.com/warptools/warpforge/app/base"
 	"github.com/warptools/warpforge/app/base/util"
-	"github.com/warptools/warpforge/subcmd/watch"
+	"github.com/warptools/warpforge/pkg/watch"
 	"github.com/warptools/warpforge/wfapi"
 )
 

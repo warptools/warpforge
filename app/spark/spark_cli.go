@@ -12,7 +12,7 @@ import (
 
 	appbase "github.com/warptools/warpforge/app/base"
 	"github.com/warptools/warpforge/app/base/util"
-	"github.com/warptools/warpforge/subcmd/spark"
+	"github.com/warptools/warpforge/pkg/spark"
 	"github.com/warptools/warpforge/wfapi"
 )
 
@@ -55,7 +55,7 @@ var sparkCmdDef = &cli.Command{
 
 // Errors:
 //
-//  - warpforge-error-io --
+//   - warpforge-error-io --
 func getwd() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
