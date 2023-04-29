@@ -42,10 +42,6 @@ var usageTemplate = docnl(`
 	{{if .UsageText}}{{wrap .UsageText 4}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
 `)
 
-var descriptionTemplate = docnl(`
-	{{wrap .Description 4}}
-`)
-
 var authorsTemplate = docnl(`
 	{{with $length := len .Authors}}{{if ne 1 $length}}S{{end}}{{end}}:
 	    {{range $index, $author := .Authors}}{{if $index}}
@@ -53,9 +49,21 @@ var authorsTemplate = docnl(`
 `)
 
 var visibleCommandTemplate = docnl(`
-	{{- $cv := offsetCommands .VisibleCommands 8}}{{range .VisibleCommands}}
-	    {{$s := join .Names ", "}}{{$s}}{{ $sp := subtract $cv (offset $s 4) }}{{ indent $sp ""}}{{wrap .Usage $cv}}{{end}}
+
+	{{- range .VisibleCommands}}
+	#### {{join .Names ", "}}
+	{{.Usage}}
+	{{end}}
+
 `)
+
+// var visibleCommandTemplate = docnl(`
+// 	| Subcomand  | Role |
+// 	| ---------- | ---- |
+// 	{{- range .VisibleCommands}}
+// 	| {{join .Names ", "}} | {{.Usage}} |
+// 	{{- end}}
+// `)
 
 var visibleCommandCategoryTemplate = docnl(`
 	{{- range .VisibleCategories}}{{if .Name}}
@@ -86,46 +94,39 @@ func init() {
 // commandHelpTemplate is used for just the root command.
 var appHelpTemplate = heredoc.Doc(`
 	## NAME
-	    {{template "helpNameTemplate" .}}
+	{{template "helpNameTemplate" .}}
 
 	{{- if .UsageText}}
-
 	## USAGE
-	    {{- wrap .UsageText 4}}
+	{{- wrap .UsageText 4}}
 	{{- end}}
 
 	{{- if .Version}}{{if not .HideVersion}}
-
 	## VERSION
-	    {{.Version}}
+	{{.Version}}
 	{{- end}}{{end}}
 
 	{{- if .Description}}
-
-	## DESCRIPTION:
-	    {{- template "descriptionTemplate" .}}
+	## DESCRIPTION
+	{{.Description}}
 	{{- end}}
 
 	{{- if len .Authors}}
-
 	## AUTHORS
-	    {{- template "authorsTemplate" .}}
+	{{- template "authorsTemplate" .}}
 	{{- end}}
 
 	{{- if .VisibleCommands}}
-
 	## COMMANDS
-	    {{- template "visibleCommandCategoryTemplate" .}}
+	{{- template "visibleCommandCategoryTemplate" .}}
 	{{- end}}
 
 	{{- if .VisibleFlagCategories}}
-
 	## GLOBAL OPTIONS
-	    {{- template "visibleFlagCategoryTemplate" .}}
+	{{- template "visibleFlagCategoryTemplate" .}}
 	{{- else if .VisibleFlags}}
-
 	## GLOBAL OPTIONS
-	    {{- template "visibleFlagTemplate" .}}
+	{{- template "visibleFlagTemplate" .}}
 	{{- end}}
 `)
 

@@ -49,7 +49,6 @@ func printHelpCustom(out io.Writer, tmpl string, data interface{}, customFuncs m
 	t := template.Must(template.New("help").Funcs(funcMap).Parse(tmpl))
 	template.Must(t.New("helpNameTemplate").Parse(helpNameTemplate))
 	template.Must(t.New("usageTemplate").Parse(usageTemplate))
-	template.Must(t.New("descriptionTemplate").Parse(descriptionTemplate))
 	template.Must(t.New("visibleCommandTemplate").Parse(visibleCommandTemplate))
 	template.Must(t.New("visibleFlagCategoryTemplate").Parse(visibleFlagCategoryTemplate))
 	template.Must(t.New("visibleFlagTemplate").Parse(visibleFlagTemplate))
