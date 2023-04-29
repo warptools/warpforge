@@ -90,11 +90,15 @@ type gmRenderer struct {
 
 // RegisterFuncs is to meet `goldmark/renderer.NodeRenderer`, and goldmark calls it to get further configuration done.
 func (r *gmRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindDocument, r.renderDocument)
 	reg.Register(ast.KindHeading, r.renderHeading)
+	reg.Register(ast.KindParagraph, r.renderParagraph)
 }
 
-// RegisterFuncs is to meet `goldmark/renderer.NodeRenderer`.  We don't really use it.
-func (r *gmRenderer) AddOptions(...renderer.Option) {}
+func (r *gmRenderer) renderDocument(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	//node.Dump(source, 0)
+	return ast.WalkContinue, nil
+}
 
 func (r *gmRenderer) renderHeading(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Heading)
@@ -109,3 +113,30 @@ func (r *gmRenderer) renderHeading(w util.BufWriter, source []byte, node ast.Nod
 	}
 	return ast.WalkContinue, nil
 }
+
+func (r *gmRenderer) renderParagraph(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+
+	if entering {
+		_, _ = w.WriteString("<p nearestHeading=")
+		_ = w.WriteByte("0123456"[findHeading(node)])
+		_, _ = w.WriteString(">")
+	} else {
+		_, _ = w.WriteString("</p>\n")
+	}
+	return ast.WalkContinue, nil
+}
+
+func findHeading(node ast.Node) int {
+	for sib := node.PreviousSibling(); sib != nil; sib = node.PreviousSibling() {
+		switch sib.Kind() {
+		case ast.KindHeading:
+			return sib.(*ast.Heading).Level
+		case ast.KindThematicBreak:
+			return 0
+		}
+	}
+	return 0
+}
+
+// One could also imagine a findHeadingTree function, which returns pointers to the nearest h3, h2, etc, thus giving you access to any attributes on each.
+// That could be the basis for stylesheets that I wouldn't quite call cascading, but would be sufficiently powerful for pretty much everything I can currently imagine wanting to do.
