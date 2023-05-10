@@ -1,6 +1,9 @@
 package helpgen
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/urfave/cli/v2"
 )
@@ -51,7 +54,7 @@ var authorsTemplate = docnl(`
 var visibleCommandTemplate = docnl(`
 
 	{{- range .VisibleCommands}}
-	#### {{join .Names ", "}}
+	### {{join .Names ", "}}
 	{{.Usage}}
 	{{end}}
 
@@ -82,8 +85,9 @@ var visibleFlagCategoryTemplate = docnl(`
 
 var visibleFlagTemplate = docnl(`
 	{{- range $i, $e := .VisibleFlags}}
-	    {{wrap $e.String 8}}{{end}}
-`) // ALERT: USE OF STRINGER.  This might need more invasive adjustments.  Either more template code or funcmaps should suffice, though.
+	{{$e.String}}
+	{{end}}
+`) // ALERT: USE OF STRINGER.  This might need more invasive adjustments.  Either more template code or funcmaps should suffice, though.  // ... this actually gets handled by another package var.  See bottom of file.
 
 func init() {
 	cli.AppHelpTemplate = appHelpTemplate
@@ -118,51 +122,152 @@ var appHelpTemplate = heredoc.Doc(`
 
 	{{- if .VisibleCommands}}
 	## COMMANDS
+	{{ printf "" }}
 	{{- template "visibleCommandCategoryTemplate" .}}
 	{{- end}}
 
 	{{- if .VisibleFlagCategories}}
 	## GLOBAL OPTIONS
+	{{ printf "" }}
 	{{- template "visibleFlagCategoryTemplate" .}}
 	{{- else if .VisibleFlags}}
 	## GLOBAL OPTIONS
+	{{ printf "" }}
 	{{- template "visibleFlagTemplate" .}}
 	{{- end}}
 `)
 
 // commandHelpTemplate is used for a command that has no subcommands.
 var commandHelpTemplate = heredoc.Doc(`
-	NAME:
-	    {{template "helpNameTemplate" .}}
+	## NAME
+	{{template "helpNameTemplate" .}}
 
-	USAGE:
-	    {{template "usageTemplate" .}}{{if .Category}}
+	## USAGE
+	{{template "usageTemplate" .}}{{if .Category}}
 
-	CATEGORY:
-	    {{.Category}}{{end}}{{if .Description}}
+	## CATEGORY
+	{{.Category}}{{end}}{{if .Description}}
 
-	DESCRIPTION:
-	    {{template "descriptionTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
+	## DESCRIPTION
+	{{template "descriptionTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
 
-	OPTIONS:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
+	## OPTIONS
+	{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
 
-	OPTIONS:{{template "visibleFlagTemplate" .}}{{end}}
+	## OPTIONS
+	{{template "visibleFlagTemplate" .}}{{end}}
 `)
 
 // subcommandHelpTemplate is used for a command with more than zero subcommands.
 var subcommandHelpTemplate = heredoc.Doc(`
-	NAME:
-	    {{template "helpNameTemplate" .}}
+	## NAME
+	{{template "helpNameTemplate" .}}
 
-	USAGE:
-	    {{if .UsageText}}{{wrap .UsageText 4}}{{else}}{{.HelpName}} {{if .VisibleFlags}}command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Description}}
+	## USAGE
+	{{if .UsageText}}{{wrap .UsageText 4}}{{else}}{{.HelpName}} {{if .VisibleFlags}}command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Description}}
 
-	DESCRIPTION:
-	    {{template "descriptionTemplate" .}}{{end}}{{if .VisibleCommands}}
+	## DESCRIPTION
+	{{template "descriptionTemplate" .}}{{end}}{{if .VisibleCommands}}
 
-	COMMANDS:{{template "visibleCommandTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
+	## COMMANDS
+	{{template "visibleCommandTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
 
-	OPTIONS:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
+	## OPTIONS
+	{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
 
-	OPTIONS:{{template "visibleFlagTemplate" .}}{{end}}
+	## OPTIONS
+	{{template "visibleFlagTemplate" .}}{{end}}
 `)
+
+//
+// And now functions for helping with flags.  There are many of them.
+//
+
+func init() {
+	cli.FlagStringer = flagStringer
+}
+
+func flagStringer(f cli.Flag) string {
+	// enforce DocGeneration interface on flags to avoid reflection
+	df := f.(cli.DocGenerationFlag)
+
+	placeholder, usage := unquoteUsage(df.GetUsage())
+	needsPlaceholder := df.TakesValue()
+	if needsPlaceholder && placeholder == "" {
+		placeholder = "VALUE"
+	}
+
+	// Set default text for all flags except bool flags.
+	// For bool flags, display default text, as long as DisableDefaultText is not set.
+	defaultValueString := ""
+	if bf, ok := f.(*cli.BoolFlag); !ok || !bf.DisableDefaultText {
+		if s := df.GetDefaultText(); s != "" {
+			defaultValueString = fmt.Sprintf("\n\n(default: %s)", s)
+		}
+	}
+
+	usageWithDefault := strings.TrimSpace(usage + defaultValueString)
+
+	pn := prefixedNames(df.Names(), placeholder)
+	sliceFlag, ok := f.(cli.DocGenerationSliceFlag)
+	if ok && sliceFlag.IsSliceFlag() {
+		pn = pn + " [ " + pn + " ]"
+	}
+
+	return withEnvHint(df.GetEnvVars(), fmt.Sprintf("#### %s\n\n%s\n", pn, usageWithDefault))
+}
+
+// Returns the placeholder, if any, and the unquoted usage string.
+func unquoteUsage(usage string) (string, string) {
+	for i := 0; i < len(usage); i++ {
+		if usage[i] == '`' {
+			for j := i + 1; j < len(usage); j++ {
+				if usage[j] == '`' {
+					name := usage[i+1 : j]
+					usage = usage[:i] + name + usage[j+1:]
+					return name, usage
+				}
+			}
+			break
+		}
+	}
+	return "", usage
+}
+
+func prefixedNames(names []string, placeholder string) string {
+	var prefixed string
+	for i, name := range names {
+		if name == "" {
+			continue
+		}
+
+		prefixed += prefixFor(name) + name
+		if placeholder != "" {
+			prefixed += "=<" + placeholder + ">"
+		}
+		if i < len(names)-1 {
+			prefixed += ", "
+		}
+	}
+	return prefixed
+}
+
+func prefixFor(name string) (prefix string) {
+	if len(name) == 1 {
+		prefix = "-"
+	} else {
+		prefix = "--"
+	}
+	return
+}
+
+func withEnvHint(envVars []string, str string) string {
+	return str + envFormat(envVars, "$", ", $", "")
+}
+
+func envFormat(envVars []string, prefix, sep, suffix string) string {
+	if len(envVars) > 0 {
+		return fmt.Sprintf("\n(env var: [%s%s%s])", prefix, strings.Join(envVars, sep), suffix)
+	}
+	return ""
+}

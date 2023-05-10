@@ -23,6 +23,26 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+/*
+	A guide to how to use the various docs strings in a cli.Command in our system:
+
+	- Usage -- this should be a one-liner, used to describe this command in the parent command's overview of its children.
+	- UsageText -- this should contain a synopsys, with examples of how to use the command and its flags.  May be multi-line.
+	- Description -- freetext prose; may be multi-line.  Shows up in the `-h` for that command.
+	- ArgsUsage -- UNUSED.  (TODO:CONSIDER: maybe use this for synopsys, and repurpose UsageText for bighelp?  Or otherwise shuffle the deck chairs.)
+
+	And outside of this:
+
+	- longer helptext for the `{appname} help {subcommandname}` feature -- that isn't actually a feature we've implemented yet.
+	    If it comes, it might be based on munging the Description field.  (e.g., peeking for "---" or similar, on the assumption that isn't actually needed in real content.)
+
+	For documenting cli.Flag:
+
+	- there's really only the Usage fields, per type.
+	- Short and long isn't disambiguated here either.
+	    (As with commands, if we introduce this, it might be possibly to do it by munging format cues in-band.)
+*/
+
 // printHelpCustom is the entrypoint for `urfave/cli`'s customization.
 //
 // See the function of the same name upstream for reference.

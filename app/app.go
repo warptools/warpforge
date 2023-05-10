@@ -16,3 +16,7 @@ import (
 )
 
 var App = appbase.App
+
+func init() {
+	App.Setup()
+}

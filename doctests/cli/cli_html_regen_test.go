@@ -19,7 +19,8 @@ import (
 )
 
 func TestRegenerate(t *testing.T) {
-	wfapp.App.Description = "A longer, multi-line and multi-paragraph description may go here."
+
+	//wfapp.App.Description = "A longer, multi-line and multi-paragraph description may go here."
 	//"> This is a blockquote\n> with multiple lines\n>> >> > > now indented\n> back again\n> ```\n> codeblocks??\n> ```\n"
 
 	wfapp.App.Writer = os.Stdout
@@ -115,7 +116,6 @@ func (r *gmRenderer) renderHeading(w util.BufWriter, source []byte, node ast.Nod
 }
 
 func (r *gmRenderer) renderParagraph(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-
 	if entering {
 		_, _ = w.WriteString("<p nearestHeading=")
 		_ = w.WriteByte("0123456"[findHeading(node)])
@@ -126,13 +126,25 @@ func (r *gmRenderer) renderParagraph(w util.BufWriter, source []byte, node ast.N
 	return ast.WalkContinue, nil
 }
 
-func findHeading(node ast.Node) int {
+func findHeading(node ast.Node /*srcForDebug []byte*/) int {
+	limit := 1000     // I've found that goldmark sometimes contains cycles in its sibling links.  This isn't clever, but it is a defense against infinite loops.
+	var prev ast.Node // I've also only noticed them as pointer-to-self loops, so let's nip that in the bud when seen.
 	for sib := node.PreviousSibling(); sib != nil; sib = node.PreviousSibling() {
+		if prev == sib {
+			// node.Dump(srcForDebug, 4)
+			return 0
+		}
+		prev = sib
+
 		switch sib.Kind() {
 		case ast.KindHeading:
 			return sib.(*ast.Heading).Level
 		case ast.KindThematicBreak:
 			return 0
+		}
+		limit--
+		if limit < 0 {
+			break
 		}
 	}
 	return 0
