@@ -23,7 +23,7 @@ import (
 // Render in plain markdown mode can be used as a sort of fmt'er.
 // (This may be handy if your markdown source was produced by golang templates,
 // which are notoriously unhelpful when it comes to letting you control whitespace.)
-func Render(markdown []byte, wr io.Writer, m Mode) {
+func Render(markdown []byte, wr io.Writer, m Mode) error {
 	physicalWidth := -1
 	if fd, ok := wr.(interface{ Fd() uintptr }); ok {
 		physicalWidth, _, _ = term.GetSize(int(fd.Fd()))
@@ -47,9 +47,8 @@ func Render(markdown []byte, wr io.Writer, m Mode) {
 		// goldmark.WithParserOptions(parser.WithAutoHeadingID()), // Not relevant to our ANSI output.
 		goldmark.WithRenderer(gmr),
 	)
-	if err := md.Convert(markdown, wr); err != nil {
-		panic(err)
-	}
+	err := md.Convert(markdown, wr)
+	return err
 }
 
 type Mode uint8
@@ -220,7 +219,10 @@ func (r *nodeRenderer) renderText(w util.BufWriter, source []byte, node ast.Node
 func (r *nodeRenderer) renderRawHTML(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.RawHTML)
 	if entering {
-		writeAnsi(w, ansiUnderline)
+		switch r.mode {
+		case Mode_ANSI, Mode_ANSIdown:
+			writeAnsi(w, ansiUnderline)
+		}
 		// Re-collect the raw text from the segments.
 		// In practice I've only ever seen a single segment here, but this is what Dump does, so I presume this must be the right way to do it.
 		for i := 0; i < n.Segments.Len(); i++ {
@@ -228,7 +230,10 @@ func (r *nodeRenderer) renderRawHTML(w util.BufWriter, source []byte, node ast.N
 			w.WriteString(string(segment.Value(source)))
 		}
 	} else {
-		writeAnsi(w, 24)
+		switch r.mode {
+		case Mode_ANSI, Mode_ANSIdown:
+			writeAnsi(w, 24)
+		}
 	}
 	return ast.WalkSkipChildren, nil
 }

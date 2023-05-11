@@ -15,6 +15,8 @@ import (
 	"github.com/warpfork/go-testmark/suite"
 
 	wfapp "github.com/warptools/warpforge/app"
+	"github.com/warptools/warpforge/app/base/helpgen"
+	"github.com/warptools/warpforge/app/base/render"
 )
 
 // TODO: form this relationship in a more rigorous way!
@@ -53,6 +55,7 @@ func (tp testingPattern) Run(
 	var buf bytes.Buffer
 	wfapp.App.Writer = &buf
 	wfapp.App.ErrWriter = &buf
+	helpgen.Mode = render.Mode_Markdown
 	wfapp.App.Run(append(command, "-h"))
 	if patchAccum != nil {
 		newHunk := *subject.Hunk

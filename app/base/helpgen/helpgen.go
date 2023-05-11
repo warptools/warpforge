@@ -15,12 +15,14 @@ that the `urfave/cli` package currently makes available.)
 package helpgen
 
 import (
+	"bytes"
 	"io"
 	"strings"
 	"text/tabwriter"
 	"text/template"
 
 	"github.com/urfave/cli/v2"
+	"github.com/warptools/warpforge/app/base/render"
 )
 
 /*
@@ -65,7 +67,8 @@ func printHelpCustom(out io.Writer, tmpl string, data interface{}, customFuncs m
 		funcMap[key] = value
 	}
 
-	w := tabwriter.NewWriter(out, 1, 8, 4, ' ', 0)
+	var buf bytes.Buffer
+	w := tabwriter.NewWriter(&buf, 1, 8, 4, ' ', 0)
 	t := template.Must(template.New("help").Funcs(funcMap).Parse(tmpl))
 	template.Must(t.New("helpNameTemplate").Parse(helpNameTemplate))
 	template.Must(t.New("usageTemplate").Parse(usageTemplate))
@@ -81,7 +84,13 @@ func printHelpCustom(out io.Writer, tmpl string, data interface{}, customFuncs m
 		panic(err)
 	}
 	_ = w.Flush()
+
+	if err := render.Render(buf.Bytes(), out, Mode); err != nil {
+		panic(err)
+	}
 }
+
+var Mode = render.Mode_ANSIdown
 
 func init() {
 	cli.HelpPrinterCustom = printHelpCustom
