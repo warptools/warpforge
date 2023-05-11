@@ -202,7 +202,7 @@ func flagStringer(f cli.Flag) string {
 	defaultValueString := ""
 	if bf, ok := f.(*cli.BoolFlag); !ok || !bf.DisableDefaultText {
 		if s := df.GetDefaultText(); s != "" {
-			defaultValueString = fmt.Sprintf("\n\n(default: %s)", s)
+			defaultValueString = fmt.Sprintf("\n\n(default: **%s**)", s)
 		}
 	}
 
@@ -267,7 +267,7 @@ func withEnvHint(envVars []string, str string) string {
 
 func envFormat(envVars []string, prefix, sep, suffix string) string {
 	if len(envVars) > 0 {
-		return fmt.Sprintf("\n(env var: [%s%s%s])", prefix, strings.Join(envVars, sep), suffix)
+		return fmt.Sprintf("\n(env var: %s**%s**%s)", prefix, strings.Join(envVars, sep), suffix)
 	}
 	return ""
 }
