@@ -166,12 +166,10 @@ func (r *nodeRenderer) renderHeading(w util.BufWriter, source []byte, node ast.N
 
 func (r *nodeRenderer) renderParagraph(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Paragraph)
-	nearestHeading := findHeading(node)
 	if entering {
 		switch r.mode {
 		case Mode_Markdown:
-			w.WriteString(string(node.Text(source)))
-			w.WriteByte('\n')
+			return ast.WalkContinue, nil
 		case Mode_ANSI:
 			fallthrough
 		case Mode_ANSIdown:
@@ -189,6 +187,7 @@ func (r *nodeRenderer) renderParagraph(w util.BufWriter, source []byte, node ast
 			// Now that we've got all the child elements rendered into a buffer:
 			// wordwrap it, indent that, and emit.
 			body := buf.Bytes()
+			nearestHeading := findHeading(node)
 			left := 4 * nearestHeading
 			// body = append(append([]byte("«"), body...), []byte("»")...) // Uncomment if debugging where paragraph edges are.
 			if r.width > 0 {
@@ -196,15 +195,16 @@ func (r *nodeRenderer) renderParagraph(w util.BufWriter, source []byte, node ast
 			}
 			body = indent.Bytes(body, uint(left))
 			w.Write(body)
-			w.WriteByte('\n')
-
+			return ast.WalkSkipChildren, nil
 		default:
 			panicUnsupportedMode(r.mode)
 		}
+		panic("golang... this is definitely statically unreachable.  C'mon.")
 	} else {
 		w.WriteByte('\n')
+		w.WriteByte('\n')
+		return ast.WalkContinue, nil
 	}
-	return ast.WalkSkipChildren, nil
 }
 
 func (r *nodeRenderer) renderText(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
