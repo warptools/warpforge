@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
+	"github.com/muesli/reflow/indent"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
@@ -23,36 +23,20 @@ import (
 // (This may be handy if your markdown source was produced by golang templates,
 // which are notoriously unhelpful when it comes to letting you control whitespace.)
 func Render(markdown []byte, wr io.Writer, m Mode) {
-	tr := lipgloss.NewRenderer(wr)
-	if tr.Output().Profile == termenv.Ascii { // no it isn't, it's just somebody piping to `head` or whatever.
-		tr.Output().Profile = termenv.ANSI
-	}
 	physicalWidth := -1
 	if fd, ok := wr.(interface{ Fd() uintptr }); ok {
 		physicalWidth, _, _ = term.GetSize(int(fd.Fd()))
+		if physicalWidth > 0 && physicalWidth < 60 {
+			physicalWidth = 60
+		}
 	}
 	// fmt.Printf(":: term width = %d\n", physicalWidth)
-	style := style{
-		SectionHeading: tr.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("123")).
-			Background(lipgloss.Color("#FF44FF")),
-		EntryHeadingCommand: tr.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("128")),
-		EntryHeadingFlag: tr.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("140")),
-		Paragraph: tr.NewStyle().
-			Width(physicalWidth). // Must be provided to get wordwrap.
-			Margin(1, 0),
-	}
 	md := goldmark.New(
 		// goldmark.WithExtensions(extension.GFM), // No GFM features are currently used in this part of our project.
 		// goldmark.WithParserOptions(parser.WithAutoHeadingID()), // Not relevant to our ANSI output.
 		goldmark.WithRenderer(renderer.NewRenderer(
 			renderer.WithNodeRenderers(
-				util.PrioritizedValue{Value: &gmRenderer{m, tr, style}, Priority: 1},
+				util.PrioritizedValue{Value: &gmRenderer{m, physicalWidth}, Priority: 1},
 			),
 		)),
 	)
@@ -73,8 +57,7 @@ const (
 
 type gmRenderer struct {
 	mode  Mode
-	tr    *lipgloss.Renderer
-	style style
+	width int
 }
 
 // RegisterFuncs is to meet `goldmark/renderer.NodeRenderer`, and goldmark calls it to get further configuration done.
@@ -100,9 +83,9 @@ func (r *gmRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	// reg.Register(ast.KindEmphasis, r.renderUnknown)
 	// reg.Register(ast.KindImage, r.renderUnknown)
 	// reg.Register(ast.KindLink, r.renderUnknown)
-	reg.Register(ast.KindRawHTML, r.renderUnknown) // not actually what this is :(
-	// reg.Register(ast.KindText, r.renderUnknown)
-	// reg.Register(ast.KindString, r.renderUnknown)
+	reg.Register(ast.KindRawHTML, r.renderRawHTML) // not actually what this is :(
+	reg.Register(ast.KindText, r.renderText)       // Most leaf nodes are ultimately this.  The simplest paragraph contains one element of text.
+	// reg.Register(ast.KindString, r.renderUnknown) // I've yet to figure out what this is for.
 }
 
 func (r *gmRenderer) dumpDocument(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -140,19 +123,21 @@ func (r *gmRenderer) renderHeading(w util.BufWriter, source []byte, node ast.Nod
 		case Mode_ANSIdown:
 			switch n.Level {
 			case 2:
-				w.WriteString(r.style.SectionHeading.Render(mdPrefix))
+				writeAnsi(w, ansiBold, ansiFgHiMagenta)
 			case 3:
-				w.WriteString(r.style.EntryHeadingCommand.Render(mdPrefix))
+				w.WriteString(strings.Repeat(" ", 4))
+				writeAnsi(w, ansiBold, ansiFgHiCyan)
 			case 4:
-				w.WriteString(r.style.EntryHeadingFlag.Render(mdPrefix))
+				w.WriteString(strings.Repeat(" ", 8))
+				writeAnsi(w, ansiBold, ansiFgHiBlue)
 			}
+			w.WriteString(mdPrefix)
 		default:
 			panicUnsupportedMode(r.mode)
 		}
 	} else {
+		writeAnsi(w, ansiReset)
 		w.WriteByte('\n')
-		// TODO I don't know how to "clear" with lipgloss, nor if I need to.
-		//   ... yeah, termenv puts CSI+ResetSeq on the end of every single thing.  That's... actually not at all helpful.
 	}
 	return ast.WalkContinue, nil
 }
@@ -163,15 +148,21 @@ func (r *gmRenderer) renderParagraph(w util.BufWriter, source []byte, node ast.N
 	if entering {
 		switch r.mode {
 		case Mode_Markdown:
-			w.WriteByte('\n')
 			w.WriteString(string(node.Text(source)))
+			w.WriteByte('\n')
 		case Mode_ANSI:
 			fallthrough
 		case Mode_ANSIdown:
-			w.WriteString(r.style.Paragraph.MarginLeft(4 * nearestHeading).Render("«" + string(n.Text(source)) + "»"))
-			// Multiple problems above:
-			//   - Margins in lipgloss don't actually do what I want :(  They wrap before adding margins.
-			//   - Margins in lipgloss also cause it to padd things out to an even size on the right, which... doesn't really make things better, in this scenario.
+			left := 4 * nearestHeading
+			body := n.Text(source)
+			// body = append(append([]byte("«"), body...), []byte("»")...) // Uncomment if debugging where paragraph edges are.
+			if r.width > 0 {
+				body = wordwrap.Bytes(body, r.width-2-left)
+			}
+			body = indent.Bytes(body, uint(left))
+			w.Write(body)
+			w.WriteByte('\n')
+			// Still need to fix how this handles nested elements:
 			//   - The .Text() getter produces fairly plain text encompassing all the children.  It's not the right thing.
 			//     - We need to handle nested styling elements like emphasis.
 			//       - ... which would be fine, except: That would require buffering all the children so I can wrap them.
@@ -181,6 +172,27 @@ func (r *gmRenderer) renderParagraph(w util.BufWriter, source []byte, node ast.N
 		}
 	} else {
 		w.WriteByte('\n')
+	}
+	return ast.WalkSkipChildren, nil
+}
+
+func (r *gmRenderer) renderText(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	if entering {
+		w.WriteString(string(node.Text(source)))
+	}
+	return ast.WalkContinue, nil
+}
+
+// In our domain, this isn't generally actually raw HTML.  It's just bracket characters.  We're gonna passthrough the plain text.
+func (r *gmRenderer) renderRawHTML(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	if entering {
+		n := node.(*ast.RawHTML)
+		// Re-collect the raw text from the segments.
+		// In practice I've only ever seen a single segment here, but this is what Dump does, so I presume this must be the right way to do it.
+		for i := 0; i < n.Segments.Len(); i++ {
+			segment := n.Segments.At(i)
+			w.WriteString(string(segment.Value(source)))
+		}
 	}
 	return ast.WalkContinue, nil
 }
