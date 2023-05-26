@@ -26,6 +26,8 @@ import (
 // People make this WAY too complicated.
 // Those are pretty simple goals to achieve.
 
+// FUTURE: these really probably ought to be full structs, so we could cleverly support terminals of various color depths.  Right now, it's just the basics.
+
 type ansiColor int
 
 var (
@@ -50,7 +52,7 @@ func writeAnsi(wr io.Writer, codes ...ansiColor) (n int, err error) {
 				return
 			}
 		}
-		n2, err = wr.Write([]byte(strconv.Itoa(int(code)))) // TODO some cycles would be saved if we byteify these in advance.
+		n2, err = wr.Write([]byte(strconv.Itoa(int(code)))) // TODO some cycles would be saved if we byteify these in advance, or best yet, had one big byte slice we can grab ranges out of.
 		n += n2
 		if err != nil {
 			return

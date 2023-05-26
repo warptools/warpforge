@@ -13,9 +13,10 @@ import (
 const VERSION = "v0.4.0"
 
 var App = &cli.App{
-	Name:    "warpforge",
-	Version: VERSION,
-	Usage:   "the everything-builder and any-environment manager",
+	Name:      "warpforge",
+	Version:   VERSION,
+	Usage:     "the everything-builder and any-environment manager",
+	UsageText: "See subcommands for details.",
 
 	Reader:    closedReader{}, // Replace with os.Stdin in real application; or other wiring, in tests.
 	Writer:    panicWriter{},  // Replace with os.Stdout in real application; or other wiring, in tests.

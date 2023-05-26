@@ -191,6 +191,9 @@ func (r *nodeRenderer) renderParagraph(w util.BufWriter, source []byte, node ast
 			left := 4 * nearestHeading
 			// body = append(append([]byte("«"), body...), []byte("»")...) // Uncomment if debugging where paragraph edges are.
 			if r.width > 0 {
+				// FUTURE: it would be nice if we had a wordwrap that could work in one pass, together with the indenting.
+				// I haven't found any libraries that do that, off the shelf, surprisingly.
+				// If we choose to write one at some point: consider basing the wrap logic on https://pkg.go.dev/github.com/jedib0t/go-pretty/text#WrapSoft ; it's much simpler than the library we called here.
 				body = wordwrap.Bytes(body, r.width-2-left)
 			}
 			body = indent.Bytes(body, uint(left))

@@ -87,7 +87,7 @@ var visibleFlagTemplate = docnl(`
 	{{- range $i, $e := .VisibleFlags}}
 	{{$e.String}}
 	{{end}}
-`) // ALERT: USE OF STRINGER.  This might need more invasive adjustments.  Either more template code or funcmaps should suffice, though.  // ... this actually gets handled by another package var.  See bottom of file.
+`) // Note the use of `.String` which contains a lot of further complexity.  This stringing is handled via yet another package var -- see references to `FlagStringer`, later in this file.
 
 func init() {
 	cli.AppHelpTemplate = appHelpTemplate
@@ -102,7 +102,7 @@ var appHelpTemplate = heredoc.Doc(`
 
 	{{- if .UsageText}}
 	## USAGE
-	{{- wrap .UsageText 4}}
+	{{.UsageText}}
 	{{- end}}
 
 	{{- if .Version}}{{if not .HideVersion}}
