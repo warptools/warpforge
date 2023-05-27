@@ -19,7 +19,8 @@ require (
 	github.com/polydawn/refmt v0.89.0
 	github.com/serum-errors/go-serum v0.8.1-0.20230120233340-7c9bffa81fc6
 	github.com/urfave/cli/v2 v2.25.1
-	github.com/warpfork/go-testmark v0.11.1-0.20221127032233-5cd7a73883c2
+	github.com/warpfork/go-fsx v0.4.0
+	github.com/warpfork/go-testmark v0.12.1
 	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.14.0
