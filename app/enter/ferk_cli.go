@@ -103,7 +103,7 @@ func cmdFerk(c *cli.Context) error {
 
 	// set command to execute
 	if c.String("cmd") != "" {
-		plot.Steps.Values["ferk"].Protoformula.Action = wfapi.Action{
+		plot.Steps.Values[wfapi.StepName(stepName)].Protoformula.Action = wfapi.Action{
 			Exec: &wfapi.Action_Exec{
 				Command: strings.Split(c.String("cmd"), " "),
 			},
@@ -116,8 +116,8 @@ func cmdFerk(c *cli.Context) error {
 		port := wfapi.SandboxPort{
 			SandboxPath: &sandboxPath,
 		}
-		plot.Steps.Values["ferk"].Protoformula.Inputs.Keys = append(plot.Steps.Values["ferk"].Protoformula.Inputs.Keys, port)
-		plot.Steps.Values["ferk"].Protoformula.Inputs.Values[port] = wfapi.PlotInput{
+		plot.Steps.Values[wfapi.StepName(stepName)].Protoformula.Inputs.Keys = append(plot.Steps.Values[wfapi.StepName(stepName)].Protoformula.Inputs.Keys, port)
+		plot.Steps.Values[wfapi.StepName(stepName)].Protoformula.Inputs.Values[port] = wfapi.PlotInput{
 			PlotInputSimple: &wfapi.PlotInputSimple{
 				Mount: &wfapi.Mount{
 					Mode:     "rw",
