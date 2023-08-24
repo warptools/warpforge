@@ -1,4 +1,4 @@
-package doctests_cli
+package wfapp_test
 
 import (
 	"bytes"
@@ -19,8 +19,7 @@ import (
 	"github.com/warptools/warpforge/app/base/render"
 )
 
-// TODO: form this relationship in a more rigorous way!
-const fixtureDir = "../../../warpforge-site/src/warpforge/cli/"
+const fixtureDir = "_docs"
 
 // TestCommandDocs tests all the commands and their docs to match.
 // This requires the warpforge-site repo to be available.
