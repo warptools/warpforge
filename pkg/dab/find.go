@@ -46,11 +46,11 @@ func open(fsys fs.FS, path string) (fs.File, error) {
 	return f, nil
 }
 
-// FindActionableFromFS loads either module (and plot) from the fileystem,
+// SearchFSAndLoadActionable loads either module (and plot) from the fileystem,
 // or instead a Formula,
 // while also accepting directories as input and applying reasonable heuristics.
 //
-// FindActionableFromFS is suitable for finding *one* module/plot/formula;
+// SearchFSAndLoadActionable is suitable for finding *one* module/plot/formula;
 // finding groupings of modules (i.e., handling args of "./..." forms) is a different feature.
 //
 // The 'fsys' parameter is typically `os.DirFS("/")` except in test environments.
@@ -91,7 +91,7 @@ func open(fsys fs.FS, path string) (fs.File, error) {
 //  - warpforge-error-module-invalid -- when a read module contains invalid data
 //  - warpforge-error-searching-filesystem -- when the search of the filesystem produces an invalid result
 //  - warpforge-error-serialization -- when IPLD deserialization fails
-func FindActionableFromFS(
+func SearchFSAndLoadActionable(
 	fsys fs.FS,
 	basisPath string, searchPath string, searchUp bool,
 	accept ActionableSearch,

@@ -192,7 +192,7 @@ func cmdFerk_selectPlot(c *cli.Context) (*wfapi.Plot, *string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	m, p, f, _, _, err := dab.FindActionableFromFS(os.DirFS("/"), pth, "", false, dab.ActionableSearch_Any)
+	m, p, f, _, _, err := dab.SearchFSAndLoadActionable(os.DirFS("/"), pth, "", false, dab.ActionableSearch_Any)
 	_, _ = m, f // TODO support these
 	if err != nil {
 		return nil, nil, err
