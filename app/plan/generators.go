@@ -19,6 +19,7 @@ var generators = map[string]func(string) ([]byte, error){
 //    - warpforge-error-generator-failed -- when the external generator fails
 func starlarkGenerator(file string) ([]byte, error) {
 	cmd := exec.Command("warplark", file)
+	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
