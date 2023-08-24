@@ -146,16 +146,20 @@ var commandHelpTemplate = heredoc.Doc(`
 	{{template "usageTemplate" .}}{{if .Category}}
 
 	## CATEGORY
-	{{.Category}}{{end}}{{if .Description}}
+	{{.Category}}{{end}}
 
+	{{- if .Description}}
 	## DESCRIPTION
-	{{template "descriptionTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
+	{{.Description}}
+	{{- end}}
 
+	{{- if .VisibleFlagCategories}}
 	## OPTIONS
-	{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
-
+	{{- template "visibleFlagCategoryTemplate" .}}
+	{{- else if .VisibleFlags}}
 	## OPTIONS
-	{{template "visibleFlagTemplate" .}}{{end}}
+	{{- template "visibleFlagTemplate" .}}
+	{{- end}}
 `)
 
 // subcommandHelpTemplate is used for a command with more than zero subcommands.
