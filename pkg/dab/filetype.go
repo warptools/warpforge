@@ -35,6 +35,9 @@ var types = map[FileType]struct{}{
 // Errors:
 //
 //   - warpforge-error-invalid -- if the file name is not recognized
+//
+// DEPRECATED: there's almost no situation where `dab.GuessDocumentType`
+// and looking at the actual content wouldn't be preferable.
 func GetFileType(name string) (FileType, error) {
 	base := filepath.Base(name)
 	if ft, ok := magicFileTypes[base]; ok {

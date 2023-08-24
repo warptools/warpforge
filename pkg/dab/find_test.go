@@ -74,11 +74,11 @@ func (tt *testcaseFindActionableFromFS) run(t *testing.T) {
 	}
 	if len(tt.outputs.panicPattern) > 0 {
 		qt.Assert(t, func() {
-			FindActionableFromFS(fsys, in.basis, in.search, in.searchUp, in.mode)
+			SearchFSAndLoadActionable(fsys, in.basis, in.search, in.searchUp, in.mode)
 		}, qt.PanicMatches, tt.outputs.panicPattern)
 		t.Skipf("expected panic caught")
 	}
-	m, p, f, path, rem, err := FindActionableFromFS(fsys, in.basis, in.search, in.searchUp, in.mode)
+	m, p, f, path, rem, err := SearchFSAndLoadActionable(fsys, in.basis, in.search, in.searchUp, in.mode)
 	isNotNil := func(b bool) qt.Checker {
 		if b {
 			return qt.IsNotNil
