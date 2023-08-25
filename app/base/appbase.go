@@ -6,14 +6,17 @@ import (
 	"io"
 
 	"github.com/urfave/cli/v2"
+
+	_ "github.com/warptools/warpforge/app/base/helpgen"
 )
 
 const VERSION = "v0.4.0"
 
 var App = &cli.App{
-	Name:    "warpforge",
-	Version: VERSION,
-	Usage:   "the everything-builder and any-environment manager",
+	Name:      "warpforge",
+	Version:   VERSION,
+	Usage:     "the everything-builder and any-environment manager",
+	UsageText: "See subcommands for details.",
 
 	Reader:    closedReader{}, // Replace with os.Stdin in real application; or other wiring, in tests.
 	Writer:    panicWriter{},  // Replace with os.Stdout in real application; or other wiring, in tests.
@@ -84,7 +87,9 @@ var App = &cli.App{
 // Aaaand the other modifications to `urfave/cli` that are unfortunately only possible by manipulating globals:
 func init() {
 	cli.VersionFlag = &cli.BoolFlag{
-		Name: "version", // And no short aliases.  "-v" is for "verbose"!
+		Name:               "version", // And no short aliases.  "-v" is for "verbose"!
+		Usage:              "print the version",
+		DisableDefaultText: true,
 	}
 }
 
