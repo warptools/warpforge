@@ -29,7 +29,7 @@ Add an item to the given catalog in the root workspace. Will create a catalog if
 Add a module to the root workspace catalog as a new release
 
 ### ls
-List available catalogs in the root workspace
+List available catalogs in the root workspace and their contents
 
 ### show
 Show the contents of a module in the root workspace catalog
