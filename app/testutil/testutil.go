@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,9 +12,11 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/icholy/replace"
 	"github.com/serum-errors/go-serum"
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
+	"golang.org/x/text/transform"
 
 	wfapp "github.com/warptools/warpforge/app"
 	"github.com/warptools/warpforge/pkg/testutil"
@@ -132,16 +135,6 @@ func cleanOutput(str string) string {
 // Also, it uses `os.Chdir` on this process (because we're "emulating a shell" rather than making subprocesses, whee).
 func buildExecFn(t *testing.T, projPath string) func([]string, io.Reader, io.Writer, io.Writer) (int, error) {
 	return func(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
-		bufout, buferr := &bytes.Buffer{}, &bytes.Buffer{}
-		var testout io.Writer = bufout
-		if stdout != nil {
-			testout = io.MultiWriter(stdout, bufout)
-		}
-		var testerr io.Writer = bufout
-		if stderr != nil {
-			testerr = io.MultiWriter(stderr, buferr)
-		}
-
 		// override the path to required binaries
 		pluginPath := filepath.Join(projPath, "plugins")
 		err := os.Setenv("WARPFORGE_PATH", pluginPath)
@@ -171,10 +164,38 @@ func buildExecFn(t *testing.T, projPath string) func([]string, io.Reader, io.Wri
 		// 	return nil
 		// })
 
+		bufout, buferr := &bytes.Buffer{}, &bytes.Buffer{}
+		var testout io.Writer = bufout
+
+		if stdout != nil {
+			testout = io.MultiWriter(stdout, bufout)
+		}
+		// transform.NewWriter must call Close() to flush all output
+		testout = transform.NewWriter(testout,
+			transform.Chain(
+				NewGuidMapper(rand.NewSource(65)).Transformer(),
+				replace.RegexpString(regexp.MustCompile(`"time": [0-9]+`), `"time": 169455678`),
+			),
+		)
+
+		var testerr io.Writer = bufout
+		if stderr != nil {
+			testerr = io.MultiWriter(stderr, buferr)
+		}
+		// transform.NewWriter must call Close() to flush all output
+		testerr = transform.NewWriter(testerr,
+			transform.Chain(
+				NewGuidMapper(rand.NewSource(66)).Transformer(),
+				replace.RegexpString(regexp.MustCompile(`"time": [0-9]+`), `"time": 169455699`),
+			),
+		)
+
 		wfapp.App.Reader = stdin
 		wfapp.App.Writer = testout
 		wfapp.App.ErrWriter = testerr
 		err = wfapp.App.Run(args)
+		testout.(io.Closer).Close()
+		testerr.(io.Closer).Close()
 
 		exitCode := 0
 		if err != nil {

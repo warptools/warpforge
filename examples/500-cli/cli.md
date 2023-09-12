@@ -215,7 +215,7 @@ The result of this will be a `RunRecord` object printed to stdout:
 
 [testmark]:# (runformula/tags=net/stdout)
 ```
-{ "runrecord": { "guid": "857b9774-e251-4bbc-9268-1883919fab23", "time": 1674646900, "formulaID": "zM5K3Zz8R3ioVVWZ6o6GocxPKvubAJfv4iQmDH3GCq9UjtDjHtRWrry4DRoEBPvfUEYFx1D", "exitcode": 0, "results": {} } } 
+{ "runrecord": { "guid": "4a1d0896-f161-5fe8-87e5-d8fbb6d87368", "time": 169455678, "formulaID": "zM5K3Zz8R3ioVVWZ6o6GocxPKvubAJfv4iQmDH3GCq9UjtDjHtRWrry4DRoEBPvfUEYFx1D", "exitcode": 0, "results": {} } } 
 ```
 
 (Note that we've normalized some of the values in this object for testing purposes.
@@ -358,10 +358,10 @@ there's only one record in this map.
 
 [testmark]:# (base-workspace/then-runmodule/stdout)
 ```
-{ "runrecord": { "guid": "c7fedecf-79b7-434b-9521-bf79a210cb2d", "time": 1692910078, "formulaID": "zM5K3RvfmKy9zLfHk1T6kPafmvzAGt9Ls1QYFS4BvWTaCBgxYoJLDkkqP7SD7QWuoRTYw3j", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
-{ "runrecord": { "guid": "25f4a58b-2d45-4c01-b3ca-3d15165535a4", "time": 1692910079, "formulaID": "zM5K3Rqj146W38bBjgU8yeJ4i37YtydoZGvpsqaHbNE2akLWfDYp8vi2KAh7vvU3XdUoy12", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
+{ "runrecord": { "guid": "4a1d0896-f161-5fe8-87e5-d8fbb6d87368", "time": 169455678, "formulaID": "zM5K3RvfmKy9zLfHk1T6kPafmvzAGt9Ls1QYFS4BvWTaCBgxYoJLDkkqP7SD7QWuoRTYw3j", "exitcode": 0, "results": { "test": "ware:tar:2En3zD1ho1qNeLpPryZVM1UTGnqPvnt48WY36TzCGJwSCudxPXkDtN3UuS4J3AYWAM" } } } 
+{ "runrecord": { "guid": "423d9dfb-ea0b-51eb-8cbd-7bf6f198e25b", "time": 169455678, "formulaID": "zM5K3Rqj146W38bBjgU8yeJ4i37YtydoZGvpsqaHbNE2akLWfDYp8vi2KAh7vvU3XdUoy12", "exitcode": 0, "results": { "test": "ware:tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
-{ "runrecord": { "guid": "df7923fd-1ff6-4600-8984-f896d79610fd", "time": 1692910079, "formulaID": "zM5K3T8946y1A7Z4ZEuoCizPdDuneUQMqXqyfxXSh93CtK3n6gzgJgz9PMTUzJiexPErUqM", "exitcode": 0, "results": {} } } 
+{ "runrecord": { "guid": "24658cf3-ee69-588f-a86a-40d1ef2b9a34", "time": 169455678, "formulaID": "zM5K3T8946y1A7Z4ZEuoCizPdDuneUQMqXqyfxXSh93CtK3n6gzgJgz9PMTUzJiexPErUqM", "exitcode": 0, "results": {} } } 
 { "plotresults": { "test": "tar:4tvpCNb1XJ3gkH25MREMPBHRWa7gLUiYt7pF6AHNbqgwBrs3btvvmijebyZrYsi6Y9" } } 
 ```
 
@@ -627,7 +627,7 @@ Check that `ferk` ran successfully, no outputs are expected.
 
 [testmark]:# (base-workspace/then-ferk/stdout)
 ```
-{ "runrecord": { "guid": "61940b67-024a-476e-996e-740ff80356c7", "time": 1692910079, "formulaID": "zM5K3V1fXVjExjfVd8d7ByUQ7HP16QAcZcoRd1bh3X4uvms1Xbpb87c1a7WNaw8Hw2B3uF6", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
+{ "runrecord": { "guid": "4a1d0896-f161-5fe8-87e5-d8fbb6d87368", "time": 169455678, "formulaID": "zM5K3V1fXVjExjfVd8d7ByUQ7HP16QAcZcoRd1bh3X4uvms1Xbpb87c1a7WNaw8Hw2B3uF6", "exitcode": 0, "results": { "out": "ware:tar:-" } } } 
 { "plotresults": { "out": "tar:-" } } 
 ```
 
@@ -671,7 +671,7 @@ warpforge --json --quiet ferk --plot ./plot.wf --cmd /bin/echo --no-interactive
 
 [testmark]:# (base-workspace/then-ferk-with-plot/stdout)
 ```
-{ "runrecord": { "guid": "b964aa2f-bb7a-44c4-b4fa-bfc9d15d0ace", "time": 1692910079, "formulaID": "zM5K3YWRYqSgvxgMkAA9KbzPpqtRPbufF2z397SNJ1mKTkp9SpmxA8jD3YmTPu3EWvijMSv", "exitcode": 0, "results": {} } } 
+{ "runrecord": { "guid": "4a1d0896-f161-5fe8-87e5-d8fbb6d87368", "time": 169455678, "formulaID": "zM5K3YWRYqSgvxgMkAA9KbzPpqtRPbufF2z397SNJ1mKTkp9SpmxA8jD3YmTPu3EWvijMSv", "exitcode": 0, "results": {} } } 
 { "plotresults": {} } 
 ```
 
@@ -710,7 +710,7 @@ warpforge --json run
 { "log": { "Msg": "ware mount: wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
 { "log": { "Msg": "packed \"out\": path = /output wareId=tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
-{ "runrecord": { "guid": "6785b641-6e41-4ecb-9207-4ecd60b85bd6", "time": 1692910079, "formulaID": "zM5K3ZMzLiBwQB93yZ4nFUsVSSgVtNPjpY72hKHxDjc9FRk9KnJSoCvkHFEPWfxARdjaguZ", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
+{ "runrecord": { "guid": "4a1d0896-f161-5fe8-87e5-d8fbb6d87368", "time": 169455678, "formulaID": "zM5K3ZMzLiBwQB93yZ4nFUsVSSgVtNPjpY72hKHxDjc9FRk9KnJSoCvkHFEPWfxARdjaguZ", "exitcode": 0, "results": { "out": "ware:tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } } 
 { "log": { "Msg": "(hello-world) collected output hello-world:out" } } 
 { "log": { "Msg": "(hello-world) complete" } } 
 { "plotresults": { "output": "tar:6U2WhgnXRCLsNjZLyvLzG6Eer5MH4MpguDeimPrEafHytjmXjbvxjm1STCuqHV5AQA" } } 
