@@ -78,8 +78,9 @@ var catalogCmdDef = &cli.Command{
 			),
 		},
 		{
-			Name:  "ls",
-			Usage: "List available catalogs in the root workspace",
+			Name:      "ls",
+			Usage:     "List available catalogs in the root workspace and their contents",
+			ArgsUsage: "[catalog] [module] [release] [item]",
 			Action: util.ChainCmdMiddleware(cmdCatalogLs,
 				util.CmdMiddlewareLogging,
 				util.CmdMiddlewareTracingConfig,
@@ -89,7 +90,6 @@ var catalogCmdDef = &cli.Command{
 		{
 			Name:  "show",
 			Usage: "Show the contents of a module in the root workspace catalog",
-
 			Action: util.ChainCmdMiddleware(cmdCatalogShow,
 				util.CmdMiddlewareLogging,
 				util.CmdMiddlewareTracingConfig,
@@ -355,19 +355,78 @@ func cmdCatalogLs(c *cli.Context) error {
 		return err
 	}
 
-	// get the list of catalogs in this workspace
-	catalogs, err := wsSet.Root().ListCatalogs()
-	if err != nil {
-		return fmt.Errorf("failed to list catalogs: %s", err)
+	if c.NArg() == 0 {
+		// get the list of catalogs in this workspace
+		catalogs, err := wsSet.Root().ListCatalogs()
+		if err != nil {
+			return fmt.Errorf("failed to list catalogs: %s", err)
+		}
+
+		// print the list
+		for _, catalog := range catalogs {
+			if catalog != "" {
+				fmt.Fprintf(c.App.Writer, "%s\n", catalog)
+			}
+		}
+		return nil
 	}
 
-	// print the list
-	for _, catalog := range catalogs {
-		if catalog != "" {
-			fmt.Fprintf(c.App.Writer, "%s\n", catalog)
+	currentArg := 0
+	nextPosArg := func() (string, bool) {
+		if currentArg > c.NArg() {
+			return "", false
 		}
+		arg := c.Args().Get(currentArg)
+		currentArg++
+		return arg, currentArg < c.NArg()
 	}
-	return nil
+
+	catalogName, moreArgs := nextPosArg()
+	catalog, err := wsSet.Root().OpenCatalog(catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to find catalog: %s", err)
+	}
+	if !moreArgs {
+		// get list of modules in this catalog
+		for _, module := range catalog.Modules() {
+			fmt.Fprintf(c.App.Writer, "%s\n", module)
+		}
+		return nil
+	}
+
+	moduleName, moreArgs := nextPosArg()
+	ref := wfapi.CatalogRef{
+		ModuleName: wfapi.ModuleName(moduleName),
+	}
+	module, err := catalog.GetModule(ref)
+	if err != nil {
+		return fmt.Errorf("failed to find module: %s", err)
+	}
+	if !moreArgs {
+		// get list of releases in a module
+		for _, release := range module.Releases.Keys {
+			fmt.Fprintf(c.App.Writer, "%s\n", release)
+		}
+		return nil
+	}
+
+	releaseName, moreArgs := nextPosArg()
+	ref.ReleaseName = wfapi.ReleaseName(releaseName)
+	release, err := catalog.GetRelease(ref)
+	if err != nil {
+		return fmt.Errorf("failed to find release: %s", err)
+	}
+	if !moreArgs {
+		// list ware IDs for items
+		for _, label := range release.Items.Keys {
+			item := release.Items.Values[label]
+			fmt.Fprintf(c.App.Writer, "%s\t%s\n", item, label)
+		}
+		return nil
+	}
+	// after this idk, we could list mirrors or replays or... nothing.
+	// this seems like a good ending point due to ambiguity of meaning
+	return fmt.Errorf("too many args")
 }
 
 func cmdCatalogBundle(c *cli.Context) error {
