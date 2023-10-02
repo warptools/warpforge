@@ -194,3 +194,27 @@ func TestRootWorkspaceCatalogPath(t *testing.T) {
 		})
 	}
 }
+
+func TestListCatalogs(t *testing.T) {
+	rootPath := "test-workspace"
+	fsys := fstest.MapFS{
+		"test-workspace/.warpforge":                             &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/.warpforge/root":                        &fstest.MapFile{Mode: 0644},
+		"test-workspace/.warpforge/catalogs":                    &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/.warpforge/catalogs/somedir":            &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/.warpforge/catalogs/symlink":            &fstest.MapFile{Mode: 0644 | fs.ModeSymlink},
+		"test-workspace/.warpforge/catalogs/just-a-file-counts": &fstest.MapFile{Mode: 0644},
+		"test-workspace/.warpforge/catalogs/_not_a_catalog":     &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+		"test-workspace/.warpforge/catalogs/1-still-a.catalog":  &fstest.MapFile{Mode: 0644 | fs.ModeDir},
+	}
+	ws, err := workspace.OpenWorkspace(fsys, rootPath)
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, ws.IsRootWorkspace(), qt.IsTrue)
+	qt.Assert(t, ws.IsHomeWorkspace(), qt.IsFalse)
+	result, err := ws.ListCatalogs()
+	qt.Check(t, err, qt.IsNil)
+	expected := []string{
+		"somedir", "symlink", "just-a-file-counts", "1-still-a.catalog",
+	}
+	qt.Check(t, result, qt.ContentEquals, expected)
+}

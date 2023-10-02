@@ -258,10 +258,11 @@ func (ws *Workspace) ListCatalogs() ([]string, error) {
 	// build a list of subdirectories, each is a catalog
 	var list []string
 	for _, c := range catalogs {
-		if c.IsDir() && reCatalogName.MatchString(c.Name()) {
-			name := c.Name()
-			list = append(list, name)
+		if !reCatalogName.MatchString(c.Name()) {
+			continue
 		}
+		name := c.Name()
+		list = append(list, name)
 	}
 	return list, nil
 }
