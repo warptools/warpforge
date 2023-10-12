@@ -110,7 +110,7 @@ func TestCatalogLookup(t *testing.T) {
 			qt.Assert(t, wareId, qt.IsNotNil)
 			qt.Assert(t, wareId.Hash, qt.Equals, "abcd")
 			qt.Assert(t, wareId.Packtype, qt.Equals, wfapi.Packtype("tar"))
-			qt.Assert(t, *wareAddr, qt.Equals, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
+			qt.Assert(t, wareAddr, qt.Contains, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
 
 		})
 		t.Run("multi-catalog-lookup", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestCatalogLookup(t *testing.T) {
 					qt.Assert(t, wareAddr, qt.IsNotNil)
 					qt.Assert(t, wareId.Hash, qt.Equals, "abcd")
 					qt.Assert(t, wareId.Packtype, qt.Equals, wfapi.Packtype("tar"))
-					qt.Assert(t, *wareAddr, qt.Equals, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
+					qt.Assert(t, wareAddr, qt.Contains, wfapi.WarehouseAddr("https://example.com/module/module-v1.0-x86_64.tgz"))
 				}
 			}
 			t.Run("without abs path", check("home/user/"))

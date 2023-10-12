@@ -33,6 +33,18 @@ func pusherFromConfig(ctx context.Context, cfg wfapi.WarehouseMirroringConfig) (
 	panic("no supported push configuration provided")
 }
 
+func warehouseContains(addrs []wfapi.WarehouseAddr, target wfapi.WarehouseAddr) bool {
+	if addrs == nil {
+		return false
+	}
+	for _, a := range addrs {
+		if a == target {
+			return true
+		}
+	}
+	return false
+}
+
 // PushToWarehouseAddr puts files into a mirror
 //
 // It requires a workspace and catalog to operate on, and the address and configuration
@@ -68,12 +80,12 @@ func PushToWarehouseAddr(ctx context.Context, ws workspace.Workspace, cat worksp
 			}
 			for _, i := range rel.Items.Keys {
 				ref.ItemName = i
-				wareId, warehouseAddr, err := cat.GetWare(ref)
+				wareId, warehouseAddrs, err := cat.GetWare(ref)
 				if err != nil {
 					return err
 				}
-				if warehouseAddr == nil || *warehouseAddr != pushAddr {
-					// this ware's WarehouseAddr does not match the one we're pushing to,
+				if !warehouseContains(warehouseAddrs, pushAddr) {
+					// this ware does not have a WarehouseAddr matching the one we're pushing to,
 					// ignore this ware
 					continue
 				}

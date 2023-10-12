@@ -37,10 +37,10 @@ func (wsSet WorkspaceSet) Root() *Workspace {
 //     - warpforge-error-io -- when an IO error occurs while reading the catalog entry
 //     - warpforge-error-catalog-parse -- when ipld parsing of a catalog entry fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
-func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
+func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, []wfapi.WarehouseAddr, error) {
 	// traverse workspace stack
 	for _, ws := range wsSet {
-		wareId, wareAddr, err := ws.GetCatalogWare(ref)
+		wareId, wareAddrs, err := ws.GetCatalogWare(ref)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -52,7 +52,7 @@ func (wsSet WorkspaceSet) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *
 			return nil, nil, err
 		}
 		if wareId != nil {
-			return wareId, wareAddr, nil
+			return wareId, wareAddrs, nil
 		}
 	}
 
@@ -110,7 +110,7 @@ func (wsSet WorkspaceSet) Tidy(ctx context.Context, plot wfapi.Plot, force bool)
 		return err
 	}
 	for _, ref := range refs {
-		wareId, wareAddr, err := wsSet.GetCatalogWare(ref)
+		wareId, wareAddrs, err := wsSet.GetCatalogWare(ref)
 		if err != nil {
 			return err
 		}
@@ -123,8 +123,8 @@ func (wsSet WorkspaceSet) Tidy(ctx context.Context, plot wfapi.Plot, force bool)
 		logger.Info("", "bundled \"%s:%s:%s\"\n", ref.ModuleName, ref.ReleaseName, ref.ItemName)
 
 		cat.AddItem(ref, *wareId, force)
-		if wareAddr != nil {
-			err := cat.AddByWareMirror(ref, *wareId, *wareAddr)
+		for _, wh := range wareAddrs {
+			err := cat.AddByWareMirror(ref, *wareId, wh)
 			if err != nil {
 				logger.Debug("", "error adding ware: %s", err)
 			}

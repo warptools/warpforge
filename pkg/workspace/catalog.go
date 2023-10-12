@@ -213,7 +213,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 	return &release, nil
 }
 
-// Get a ware from a given catalog.
+// GetWare returns the ware ID and known warehouse addresses for a given catalog reference.
 //
 // Errors:
 //
@@ -221,7 +221,7 @@ func (cat *Catalog) GetRelease(ref wfapi.CatalogRef) (*wfapi.CatalogRelease, err
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when catalog files are not found
 //     - warpforge-error-catalog-missing-entry -- when catalog item is not found
-func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
+func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, []wfapi.WarehouseAddr, error) {
 	release, err := cat.GetRelease(ref)
 	if err != nil {
 		return nil, nil, err
@@ -239,35 +239,33 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	}
 
 	// item found, check for a matching mirror
-	mirror, err := cat.GetMirror(ref)
+	mirror, err := cat.GetMirrors(ref)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// resolve which WarehouseAddr will get returned for this particular ware
-	// this is done by first looking for a specific ByWare mirror for the WareID
-	// if none exists, the ByModule address is returned if it exists
-	// TODO: handling of multiple mirrors
 	if mirror == nil {
 		// no mirror exists at all, return nil
 		return &wareId, nil, nil
 	}
 
+	resultAddrs := []wfapi.WarehouseAddr{}
 	// check ByWare for a matching WareId
 	if mirror.ByWare != nil {
 		if addrs, exists := mirror.ByWare.Values[wareId]; exists {
-			// match found, return it
-			return &wareId, &addrs[0], nil
+			resultAddrs = append(resultAddrs, addrs...)
 		}
 	}
 
 	// check if we can return a ByModule WarehouseAddress
 	// note, this address may not actually contain the ware we're looking for
 	if mirror.ByModule != nil {
-		if len(mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype]) > 0 {
-			return &wareId, &mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype][0], nil
+		if addrs, exists := mirror.ByModule.Values[ref.ModuleName].Values[wareId.Packtype]; exists {
+			resultAddrs = append(resultAddrs, addrs...)
 		}
-		return &wareId, nil, nil
+	}
+	if len(resultAddrs) > 0 {
+		return &wareId, resultAddrs, nil
 	}
 
 	// we have exhausted our options, no mirror exists
@@ -275,13 +273,13 @@ func (cat *Catalog) GetWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.Warehou
 	return &wareId, nil, nil
 }
 
-// Get a catalog mirror for a given catalog reference.
+// GetMirrors returns the mirrors for a given catalog module.
 //
 // Errors:
 //
 //    - warpforge-error-io -- when reading lineage file fails
 //    - warpforge-error-catalog-parse -- when ipld parsing of mirror file fails
-func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, error) {
+func (cat *Catalog) GetMirrors(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, error) {
 	// open lineage file
 	mirrorPath := cat.mirrorFilePath(ref)
 	var mirrorFile fs.File
@@ -289,7 +287,8 @@ func (cat *Catalog) GetMirror(ref wfapi.CatalogRef) (*wfapi.CatalogMirrors, erro
 	if mirrorFile, err = cat.fsys.Open(mirrorPath); os.IsNotExist(err) {
 		// no mirror file for this ware
 		return nil, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return nil, wfapi.ErrorIo("error opening mirror file", mirrorPath, err)
 	}
 

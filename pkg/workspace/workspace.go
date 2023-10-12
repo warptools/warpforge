@@ -268,8 +268,10 @@ func (ws *Workspace) ListCatalogs() ([]string, error) {
 }
 
 // Get a catalog ware from a workspace, doing lookup by CatalogRef.
-// In a root workspace this will check valid catalogs within the "catalogs" subdirectory
+// In a root workspace this will check valid catalogs within the "catalogs" subdirectory.
 // In a non-root workspace, it will check the "catalog" subdirectory
+//
+// Currently root workspaces do not define catalog order or priority.
 //
 // Errors:
 //
@@ -277,7 +279,7 @@ func (ws *Workspace) ListCatalogs() ([]string, error) {
 //     - warpforge-error-catalog-parse -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-invalid -- when ipld parsing of lineage or mirror files fails
 //     - warpforge-error-catalog-missing-entry -- when catalog item is missing
-func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi.WarehouseAddr, error) {
+func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, []wfapi.WarehouseAddr, error) {
 	// list the catalogs within the "catalogs" subdirectory
 	cats, err := ws.ListCatalogs()
 	if err != nil {
@@ -295,7 +297,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 				return nil, nil, err
 			}
 		}
-		wareId, wareAddr, err := cat.GetWare(ref)
+		wareId, wareAddrs, err := cat.GetWare(ref)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -303,7 +305,7 @@ func (ws *Workspace) GetCatalogWare(ref wfapi.CatalogRef) (*wfapi.WareID, *wfapi
 			// not found in this catalog, keep trying
 			continue
 		}
-		return wareId, wareAddr, nil
+		return wareId, wareAddrs, nil
 	}
 
 	// nothing found

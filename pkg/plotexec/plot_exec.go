@@ -183,7 +183,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 		)
 
 		// find the WareID and WareAddress for this catalog item
-		wareId, wareAddr, err := wss.GetCatalogWare(*basis.CatalogRef)
+		wareId, wareAddrs, err := wss.GetCatalogWare(*basis.CatalogRef)
 		if err != nil {
 			return wfapi.FormulaInputSimple{}, nil, serum.Error(wfapi.ECodeCatalogMissingEntry,
 				serum.WithMessageTemplate("could not find {{ catalogRef | q}}"),
@@ -199,10 +199,13 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 				nil,
 				wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef, false)
 		}
-
 		wareStr := "none"
-		if wareAddr != nil {
-			wareStr = string(*wareAddr)
+		var wareAddr *wfapi.WarehouseAddr
+		if len(wareAddrs) > 0 {
+			//TODO: handle multiple locations
+			t := wareAddrs[0]
+			wareAddr = &t
+			wareStr = string(t)
 		}
 		logger.Info(LOG_TAG, "\t\t%s = %s\n\t\t%s = %s",
 			color.HiBlueString("wareId"),
