@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/serum-errors/go-serum"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/warptools/warpforge/pkg/formulaexec"
@@ -86,11 +87,11 @@ func plotInputToFormulaInput(ctx context.Context,
 	wss workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	plotConfig wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.FormulaInput, *wfapi.WarehouseAddr, error) {
+	pipeCtx pipeMap) (wfapi.FormulaInput, []wfapi.WarehouseAddr, error) {
 	ctx, span := tracing.Start(ctx, "plotInputToFormulaInput")
 	defer span.End()
 
-	basis, addr, err := plotInputToFormulaInputSimple(ctx, cfg, wss, plotInput, plotConfig, pipeCtx)
+	basis, addrs, err := plotInputToFormulaInputSimple(ctx, cfg, wss, plotInput, plotConfig, pipeCtx)
 	if err != nil {
 		return wfapi.FormulaInput{}, nil, err
 	}
@@ -99,13 +100,13 @@ func plotInputToFormulaInput(ctx context.Context,
 	case plotInput.PlotInputSimple != nil:
 		return wfapi.FormulaInput{
 			FormulaInputSimple: &basis,
-		}, addr, nil
+		}, addrs, nil
 	case plotInput.PlotInputComplex != nil:
 		return wfapi.FormulaInput{
 			FormulaInputComplex: &wfapi.FormulaInputComplex{
 				Basis:   basis,
 				Filters: plotInput.PlotInputComplex.Filters,
-			}}, addr, nil
+			}}, addrs, nil
 	default:
 		panic("unreachable")
 	}
@@ -128,7 +129,7 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 	wss workspace.WorkspaceSet,
 	plotInput wfapi.PlotInput,
 	plotCfg wfapi.PlotExecConfig,
-	pipeCtx pipeMap) (wfapi.FormulaInputSimple, *wfapi.WarehouseAddr, error) {
+	pipeCtx pipeMap) (wfapi.FormulaInputSimple, []wfapi.WarehouseAddr, error) {
 	ctx, span := tracing.Start(ctx, "plotInputToFormulaInputSimple")
 	defer span.End()
 	logger := logging.Ctx(ctx)
@@ -199,63 +200,34 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 				nil,
 				wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef, false)
 		}
-		wareStr := "none"
-		var wareAddr *wfapi.WarehouseAddr
-		if len(wareAddrs) > 0 {
-			//TODO: handle multiple locations
-			t := wareAddrs[0]
-			wareAddr = &t
-			wareStr = string(t)
-		}
 		logger.Info(LOG_TAG, "\t\t%s = %s\n\t\t%s = %s",
 			color.HiBlueString("wareId"),
 			color.WhiteString(wareId.String()),
-			color.HiBlueString("wareAddr"),
-			color.WhiteString(wareStr),
+			color.HiBlueString("numWarehouses"),
+			color.WhiteString("%d", len(wareAddrs)),
 		)
 
 		// resolve the replay
 		// TODO: unclear if this should happen here or elsewhere
-		if wareAddr == nil {
+		if len(wareAddrs) == 0 {
 			// check if the ware is already in the warehouse
 			root := wss.Root()
 			warehousePath := filepath.Join("/",
 				root.WarehousePath(),
 				wareId.Hash[0:3], wareId.Hash[3:6], wareId.Hash)
-			if _, err := os.Stat(filepath.Join("/", warehousePath)); os.IsNotExist(err) {
+			_, err := os.Stat(filepath.Join("/", warehousePath))
+			if err == nil || !os.IsNotExist(err) {
+				return wfapi.FormulaInputSimple{WareID: wareId}, nil, nil
+			}
+			if err := execReplay(ctx, wss, *basis.CatalogRef, cfg, plotCfg, *wareId); err != nil {
 				// ware not found, run the replay to generate it
-				replay, err := wss.GetCatalogReplay(*basis.CatalogRef)
-				if err != nil {
-					return wfapi.FormulaInputSimple{}, nil, err
-				}
-				if replay != nil {
-					if !plotCfg.Recursive {
-						// recursion is not allowed, return error
-						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorMissingCatalogEntry(*basis.CatalogRef, true)
-					}
-					logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
-						basis.CatalogRef.ModuleName, basis.CatalogRef.ReleaseName)
-					result, err := execPlot(ctx, cfg, wss, *replay, plotCfg)
-					if err != nil {
-						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotStepFailed("replay", err)
-					}
-					replayWareId, hasItem := result.Values[wfapi.LocalLabel(basis.CatalogRef.ItemName)]
-					if !hasItem {
-						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
-							fmt.Sprintf("replay doesn't have item %q", wfapi.LocalLabel(basis.CatalogRef.ItemName)))
-					}
-					if replayWareId != *wareId {
-						return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid(
-							fmt.Sprintf("replay failed to produce correct WareID for item %q. expected %q, replay WareID is %q",
-								basis.CatalogRef.ItemName, wareId, replayWareId))
-					}
-				}
+				return wfapi.FormulaInputSimple{}, nil, err
 			}
 		}
 
 		return wfapi.FormulaInputSimple{
 			WareID: wareId,
-		}, wareAddr, nil
+		}, wareAddrs, nil
 
 	case basis.Pipe != nil:
 		// resolve the pipe to a WareID using the pipeCtx
@@ -336,6 +308,44 @@ func plotInputToFormulaInputSimple(ctx context.Context,
 	return wfapi.FormulaInputSimple{}, nil, wfapi.ErrorPlotInvalid("invalid type in plot input")
 }
 
+func execReplay(ctx context.Context, wss workspace.WorkspaceSet, ref wfapi.CatalogRef, cfg ExecConfig, plotCfg wfapi.PlotExecConfig, expected wfapi.WareID) error {
+	ctx, span := tracing.Start(ctx, "execReplay")
+	defer span.End()
+	span.SetAttributes(attribute.KeyValue{Key: "ref", Value: attribute.StringValue(ref.String())})
+	logger := logging.Ctx(ctx)
+
+	if !plotCfg.Recursive {
+		// recursion is not allowed, return
+		//REVIEW: Do we need to signal lack of execution
+		return nil
+	}
+	replay, err := wss.GetCatalogReplay(ref)
+	if err != nil {
+		return err
+	}
+	if replay == nil {
+		// REVIEW: Probably need an error to signal no replay executed
+		return nil
+	}
+	logger.Info(LOG_TAG, "resolving replay for module = %s, release = %s...",
+		ref.ModuleName, ref.ReleaseName)
+	result, err := execPlot(ctx, cfg, wss, *replay, plotCfg)
+	if err != nil {
+		return wfapi.ErrorPlotStepFailed("replay", err)
+	}
+	replayWareId, hasItem := result.Values[wfapi.LocalLabel(ref.ItemName)]
+	if !hasItem {
+		return wfapi.ErrorPlotInvalid(
+			fmt.Sprintf("replay doesn't have item %q", wfapi.LocalLabel(ref.ItemName)))
+	}
+	if replayWareId != expected {
+		return wfapi.ErrorPlotInvalid(
+			fmt.Sprintf("replay failed to produce correct WareID for item %q. expected %q, replay WareID is %q",
+				ref.ItemName, expected, replayWareId))
+	}
+	return nil
+}
+
 // Executes a protoformula within a Plot
 //
 // Errors:
@@ -363,6 +373,7 @@ func execProtoformula(ctx context.Context,
 	pipeCtx pipeMap) (wfapi.RunRecord, error) {
 	ctx, span := tracing.Start(ctx, "execProtoformula")
 	defer span.End()
+	logger := logging.Ctx(ctx)
 
 	// create an empty Formula and FormulaContext
 	formula := wfapi.Formula{
@@ -374,15 +385,20 @@ func execProtoformula(ctx context.Context,
 	// convert Protoformula inputs (of type PlotInput) to FormulaInputs
 	for sbPort, plotInput := range pf.Inputs.Values {
 		formula.Inputs.Keys = append(formula.Inputs.Keys, sbPort)
-		input, wareAddr, err := plotInputToFormulaInput(ctx, cfg, wss, plotInput, plotCfg, pipeCtx)
+		input, wareAddrs, err := plotInputToFormulaInput(ctx, cfg, wss, plotInput, plotCfg, pipeCtx)
 		if err != nil {
 			return wfapi.RunRecord{}, err
 		}
 		formula.Inputs.Values[sbPort] = input
-		if wareAddr != nil {
+		if len(wareAddrs) != 0 {
 			// input specifies a WarehouseAddr, add it to the formula's context
 			formulaCtx.Warehouses.Keys = append(formulaCtx.Warehouses.Keys, *input.Basis().WareID)
-			formulaCtx.Warehouses.Values[*input.Basis().WareID] = *wareAddr
+			//TODO: Change WF API for multiple warehouses per ware ID
+			logger.Info(LOG_TAG, "\t\t%s = %s",
+				color.HiBlueString("warehouse"),
+				color.WhiteString("%s", wareAddrs[0]),
+			)
+			formulaCtx.Warehouses.Values[*input.Basis().WareID] = wareAddrs[0]
 		}
 	}
 
@@ -435,15 +451,15 @@ func execPlot(ctx context.Context, cfg ExecConfig, wss workspace.WorkspaceSet, p
 	inputContext := wfapi.FormulaContext{}
 	inputContext.Warehouses.Values = make(map[wfapi.WareID]wfapi.WarehouseAddr)
 	for name, input := range plot.Inputs.Values {
-		input, wareAddr, err := plotInputToFormulaInput(ctx, cfg, wss, input, pltCfg, pipeCtx)
+		input, wareAddrs, err := plotInputToFormulaInput(ctx, cfg, wss, input, pltCfg, pipeCtx)
 		if err != nil {
 			return results, err
 		}
 		pipeCtx[""][name] = input
-		if wareAddr != nil {
+		if len(wareAddrs) != 0 {
 			// input specifies an address, add it to the context
 			inputContext.Warehouses.Keys = append(inputContext.Warehouses.Keys, *input.Basis().WareID)
-			inputContext.Warehouses.Values[*input.Basis().WareID] = *wareAddr
+			inputContext.Warehouses.Values[*input.Basis().WareID] = wareAddrs[0] // TODO: handle multiple warehouses
 		}
 	}
 
