@@ -705,7 +705,7 @@ warpforge --json run
 ```
 { "log": { "Msg": "inputs:" } } 
 { "log": { "Msg": "type = catalog ref = catalog:warpsys.org/busybox:v1.35.0:amd64-static" } } 
-{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 wareAddr = none" } } 
+{ "log": { "Msg": "wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 numWarehouses = 0" } } 
 { "log": { "Msg": "(hello-world) evaluating protoformula" } } 
 { "log": { "Msg": "ware mount: wareId = tar:4z9DCTxoKkStqXQRwtf9nimpfQQ36dbndDsAPCQgECfbXt3edanUrsVKCjE9TkX2v9 destPath = /" } } 
 { "log": { "Msg": "executing script interpreter = /bin/sh" } } 
