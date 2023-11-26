@@ -582,7 +582,12 @@ func cmdCatalogRelease(c *cli.Context) error {
 		}
 	}
 
-	fsys := os.DirFS("/")
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	fsys := os.DirFS(cwd)
 	// get the module, release, and item values (in format `module:release:item`)
 	module, err := dab.ModuleFromFile(fsys, dab.MagicFilename_Module)
 	if err != nil {
