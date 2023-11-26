@@ -598,6 +598,7 @@ func (rc *runcConfig) makeWareMount(ctx context.Context,
 			"lowerdir=" + lowerdirPath,
 			"upperdir=" + upperdirPath,
 			"workdir=" + workdirPath,
+			"userxattr,index=on,xino=on",
 		},
 	}, nil
 }
